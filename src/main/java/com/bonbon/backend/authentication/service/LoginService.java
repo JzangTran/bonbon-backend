@@ -85,7 +85,7 @@ public class LoginService {
      * Shared password check behind the brute-force guard. Unknown email, wrong password, a role outside
      * {@code allowedRoles} and an account without a password all give the same answer.
      */
-    User authenticate(String email, String password, String captchaToken, String ip, Set<Role> allowedRoles) {
+    public User authenticate(String email, String password, String captchaToken, String ip, Set<Role> allowedRoles) {
         String normalized = email.trim();
         if (guard.requiresCaptcha(normalized, ip) && !captcha.isValid(captchaToken, ip)) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "CAPTCHA_REQUIRED",
