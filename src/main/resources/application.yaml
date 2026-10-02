@@ -49,6 +49,11 @@ bonbon:
     web-url: ${BONBON_WEB_URL:http://localhost:5173}
   mail:
     from: ${BONBON_MAIL_FROM:bonbon <no-reply@bonbon.local>}
+  admin:
+    seed:
+      # First administrator, created once at startup if none exists (admin-login.md).
+      email: ${ADMIN_SEED_EMAIL:}
+      password: ${ADMIN_SEED_PASSWORD:}
   captcha:
     enabled: ${BONBON_CAPTCHA_ENABLED:true}
     secret: ${BONBON_RECAPTCHA_SECRET:}

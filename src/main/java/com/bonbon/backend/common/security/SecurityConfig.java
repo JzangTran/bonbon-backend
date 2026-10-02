@@ -50,7 +50,8 @@ class SecurityConfig {
             "/swagger-ui.html",
             "/api/public/**",
             "/api/auth/**",
-            "/api/legal/documents/**"
+            "/api/legal/documents/**",
+            "/api/admin/auth/**"
     };
 
     @Bean

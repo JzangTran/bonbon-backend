@@ -55,6 +55,13 @@ class SessionController {
         recovery.resetPassword(request.token(), request.newPassword());
     }
 
+    /** The link an administrator created by another administrator receives to set the first password. */
+    @PostMapping("/set-initial-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void setInitialPassword(@Valid @RequestBody PasswordRequests.SetPassword request) {
+        recovery.setInitialPassword(request.token(), request.newPassword());
+    }
+
     private static Jwt requireSignedIn(Jwt jwt) {
         if (jwt == null) {
             throw new BusinessException(HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED", "Vui lòng đăng nhập.");

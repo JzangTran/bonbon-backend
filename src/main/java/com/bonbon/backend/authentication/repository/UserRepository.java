@@ -12,4 +12,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @Query("select u from User u where lower(u.email) = lower(:email)")
     Optional<User> findByEmail(@Param("email") String email);
+
+    @Query("select count(u) > 0 from User u join u.roles r where r = :role")
+    boolean existsWithRole(@Param("role") com.bonbon.backend.authentication.Role role);
 }
