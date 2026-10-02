@@ -16,9 +16,17 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
@@ -27,7 +35,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
  * Stateless API security: every request carries a signed access token, except the public paths below.
- * Authorities are the {@code <resource>:<action>} permissions from the token's {@code perms} claim,
+ * Authorities are the {@code <resource>:<action>} permissions from the token's {@code permissions} claim,
  * checked with {@code @PreAuthorize("hasAuthority('order:read')")}.
  */
 @Configuration
@@ -69,9 +77,19 @@ class SecurityConfig {
     }
 
     @Bean
-    JwtDecoder jwtDecoder(JwtProperties props) {
+    JwtDecoder jwtDecoder(JwtProperties props, List<TokenRevocationCheck> revocationChecks) {
         SecretKeySpec key = new SecretKeySpec(props.secretBytes(), "HmacSHA256");
-        return NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
+        OAuth2TokenValidator<Jwt> notRevoked = jwt -> revocationChecks.stream().anyMatch(c -> c.isRevoked(jwt))
+                ? OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Token revoked", null))
+                : OAuth2TokenValidatorResult.success();
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(JwtValidators.createDefault(), notRevoked));
+        return decoder;
+    }
+
+    @Bean
+    JwtEncoder jwtEncoder(JwtProperties props) {
+        return NimbusJwtEncoder.withSecretKey(new SecretKeySpec(props.secretBytes(), "HmacSHA256")).build();
     }
 
     @Bean

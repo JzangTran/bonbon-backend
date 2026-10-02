@@ -1,14 +1,20 @@
 package com.bonbon.backend.common.security;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * HS256 signing secret for access tokens, read from {@code BONBON_JWT_SECRET}; never committed.
+ * Access-token signing and lifetimes. The secret comes from {@code BONBON_JWT_SECRET} and is never committed.
+ * Lifetimes follow the non-functional requirements: access 30 min, refresh 7 days with rotation.
  */
 @ConfigurationProperties("bonbon.security.jwt")
-public record JwtProperties(String secret) {
+public record JwtProperties(
+        String secret,
+        @DefaultValue("PT30M") Duration accessTtl,
+        @DefaultValue("P7D") Duration refreshTtl) {
 
     private static final int MIN_SECRET_BYTES = 32;
 
@@ -20,7 +26,7 @@ public record JwtProperties(String secret) {
         }
     }
 
-    byte[] secretBytes() {
+    public byte[] secretBytes() {
         return secret.getBytes(StandardCharsets.UTF_8);
     }
 }
