@@ -1,0 +1,28 @@
+name: Bug
+description: Something does not behave as the flow doc says
+title: "[bug] "
+labels: ["type:bug", "area:backend"]
+projects: ["JzangTran/7"]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected (cite the flow doc if possible)
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Branch / commit / app version
