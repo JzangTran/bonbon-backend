@@ -2,6 +2,11 @@
 spring:
   datasource:
     password: ${BONBON_DB_PASSWORD:bonbon}
+  # Mailpit from deploy/compose.dev.yaml: SMTP 1025, inbox at http://localhost:8025
+
+bonbon:
+  captcha:
+    enabled: ${BONBON_CAPTCHA_ENABLED:false}
 
 springdoc:
   api-docs:
