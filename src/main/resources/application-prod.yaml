@@ -1,0 +1,12 @@
+# Production: every value comes from the environment; nothing here may default to a secret.
+spring:
+  datasource:
+    url: ${BONBON_DB_URL}
+    username: ${BONBON_DB_USER}
+    password: ${BONBON_DB_PASSWORD}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
