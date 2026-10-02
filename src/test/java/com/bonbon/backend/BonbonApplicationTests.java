@@ -1,10 +1,10 @@
-package com.fit.se;
+package com.bonbon.backend;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class BackendApplicationTests {
+class BonbonApplicationTests {
 
     @Test
     void contextLoads() {
