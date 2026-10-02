@@ -1,3 +1,28 @@
 spring:
   application:
     name: bonbon-backend
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  error:
+    include-stacktrace: never
+
+bonbon:
+  security:
+    jwt:
+      # HS256 secret, at least 32 bytes. Set the environment variable; never commit a value.
+      secret: ${BONBON_JWT_SECRET:}
+  cors:
+    allowed-origins: ${BONBON_CORS_ORIGINS:http://localhost:5173}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
