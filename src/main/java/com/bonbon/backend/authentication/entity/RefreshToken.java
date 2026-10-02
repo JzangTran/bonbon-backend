@@ -38,17 +38,27 @@ public class RefreshToken {
     @Column(name = "revoked_at")
     private Instant revokedAt;
 
+    /** All tokens rotated from one login share a family; reuse of a revoked one revokes the family. */
+    @Column(name = "family_id", nullable = false)
+    private UUID familyId;
+
+    /** When the user actually authenticated (password or OAuth), carried across rotations. */
+    @Column(name = "auth_time", nullable = false)
+    private Instant authTime;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     protected RefreshToken() {
     }
 
-    public RefreshToken(UUID userId, Role role, String tokenHash, Instant expiresAt) {
+    public RefreshToken(UUID userId, Role role, String tokenHash, Instant expiresAt, UUID familyId, Instant authTime) {
         this.userId = userId;
         this.role = role;
         this.tokenHash = tokenHash;
         this.expiresAt = expiresAt;
+        this.familyId = familyId;
+        this.authTime = authTime;
         this.createdAt = Instant.now();
     }
 
@@ -80,5 +90,13 @@ public class RefreshToken {
 
     public Instant getRevokedAt() {
         return revokedAt;
+    }
+
+    public UUID getFamilyId() {
+        return familyId;
+    }
+
+    public Instant getAuthTime() {
+        return authTime;
     }
 }

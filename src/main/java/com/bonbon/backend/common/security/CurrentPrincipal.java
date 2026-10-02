@@ -13,13 +13,14 @@ import org.springframework.security.oauth2.jwt.Jwt;
  * @param id          {@code sub}: id of the principal in its own table
  * @param actorType   {@code actor}: kind of principal, also written to {@code acted_by_type}
  * @param activeRole  {@code role}: the one role active in this session (CUSTOMER, SELLER, ADMIN)
- * @param permissions {@code perms}: {@code <resource>:<action>} permissions granted to that role
+ * @param permissions {@code permissions}: {@code <resource>:<action>} permissions granted to that role
  */
 public record CurrentPrincipal(UUID id, ActorType actorType, String activeRole, Set<String> permissions) {
 
     public static final String CLAIM_ACTOR = "actor";
     public static final String CLAIM_ROLE = "role";
-    public static final String CLAIM_PERMISSIONS = "perms";
+    public static final String CLAIM_PERMISSIONS = "permissions";
+    public static final String CLAIM_AUTH_TIME = "auth_time";
 
     public static CurrentPrincipal from(Jwt jwt) {
         List<String> perms = jwt.getClaimAsStringList(CLAIM_PERMISSIONS);
