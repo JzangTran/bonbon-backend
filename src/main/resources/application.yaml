@@ -5,6 +5,12 @@ spring:
     virtual:
       enabled: true
 
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
 server:
   error:
     include-stacktrace: never

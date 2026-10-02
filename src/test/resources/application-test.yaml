@@ -2,3 +2,6 @@ bonbon:
   security:
     jwt:
       secret: test-only-secret-at-least-32-bytes-long!!
+springdoc:
+  api-docs:
+    enabled: true
