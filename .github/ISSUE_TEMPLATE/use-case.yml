@@ -1,0 +1,37 @@
+name: Use case / task
+description: One use case (or technical task) for one sprint
+title: "<use case name>"
+labels: ["type:feature", "area:backend"]
+projects: ["JzangTran/7"]
+body:
+  - type: input
+    id: flow
+    attributes:
+      label: Flow doc
+      description: Path of the flow doc this implements (docs/explanation/flows/...)
+      placeholder: docs/explanation/flows/order/place-order.md
+    validations:
+      required: true
+  - type: dropdown
+    id: actor
+    attributes:
+      label: Actor
+      options: [Customer, Seller, Administrator, System, Guest, "— (technical task)"]
+    validations:
+      required: true
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Acceptance criteria
+      description: From the flow's main and alternative flows, one checkbox each
+      value: |
+        - [ ] 
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options: [Must, Should, Could]
+    validations:
+      required: true
