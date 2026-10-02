@@ -3,6 +3,7 @@ package com.bonbon.backend.common;
 import java.util.List;
 import java.util.UUID;
 
+import com.bonbon.backend.TestcontainersConfiguration;
 import com.bonbon.backend.common.exception.BusinessException;
 import com.bonbon.backend.common.security.CurrentPrincipal;
 import jakarta.validation.Valid;
@@ -33,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Import(SecurityAndErrorHandlingTests.ProbeController.class)
+@Import({TestcontainersConfiguration.class, SecurityAndErrorHandlingTests.ProbeController.class})
 class SecurityAndErrorHandlingTests {
 
     private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
