@@ -1,0 +1,10 @@
+# Local development against deploy/compose.dev.yaml (bonbon repo). Not for any shared environment.
+spring:
+  datasource:
+    password: ${BONBON_DB_PASSWORD:bonbon}
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
