@@ -49,13 +49,21 @@ public class LoginService {
     @Transactional
     public LoginResponse login(String email, String password, String captchaToken, String ip) {
         User user = authenticate(email, password, captchaToken, ip, APP_ROLES);
-        Instant authTime = Instant.now();
+        return complete(user, null, Instant.now());
+    }
+
+    /**
+     * Ends any successful sign-in: tokens for {@code requested} (already held) or the only app role, otherwise
+     * a role-selection step.
+     */
+    LoginResponse complete(User user, Role requested, Instant authTime) {
         Set<Role> roles = EnumSet.copyOf(user.getRoles());
         roles.retainAll(APP_ROLES);
-        if (roles.size() > 1) {
+        if (requested == null && roles.size() > 1) {
             return LoginResponse.selectRole(roles, roleSelections.create(user.getId(), authTime));
         }
-        Role role = roles.iterator().next();
+        Role role = requested != null ? requested : roles.iterator().next();
+        requireRole(user, role);
         return LoginResponse.signedIn(TokenResponse.of(tokens.issue(user, role, authTime)), UserSummary.of(user, role));
     }
 

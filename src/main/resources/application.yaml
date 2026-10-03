@@ -54,6 +54,11 @@ bonbon:
       # First administrator, created once at startup if none exists (admin-login.md).
       email: ${ADMIN_SEED_EMAIL:}
       password: ${ADMIN_SEED_PASSWORD:}
+  oauth:
+    google:
+      # OAuth client IDs (comma-separated) whose Google ID tokens are accepted: web, Android, iOS.
+      # Not secret, but configured per environment; empty disables Google sign-in.
+      client-ids: ${GOOGLE_CLIENT_IDS:}
   captcha:
     enabled: ${BONBON_CAPTCHA_ENABLED:true}
     secret: ${BONBON_RECAPTCHA_SECRET:}

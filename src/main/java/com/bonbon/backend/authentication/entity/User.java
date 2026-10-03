@@ -94,6 +94,11 @@ public class User {
         return email;
     }
 
+    /** Only for an address the identity provider has verified (OAuth profile sync). */
+    public void changeEmail(String email) {
+        this.email = email;
+    }
+
     public String getPasswordHash() {
         return passwordHash;
     }
