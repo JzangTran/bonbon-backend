@@ -13,6 +13,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 /** Requests of an approved shop editing itself (edit-store-info.md, pause-orders.md). */
 public final class ShopProfileRequests {
@@ -24,6 +25,7 @@ public final class ShopProfileRequests {
      * Only the fields present change. A new {@code placeId} sends the shop back to review; everything else
      * applies at once. {@code clearFreeDeliveryThreshold} / {@code clearMinOrderValue} remove those options.
      */
+    @Schema(name = "ShopProfileUpdateRequest")
     public record Update(
             @Size(min = 1, max = 100) String name,
             @Pattern(regexp = ShopApplicationRequests.VN_PHONE, message = "Số điện thoại không hợp lệ") String phone,
@@ -39,8 +41,11 @@ public final class ShopProfileRequests {
     }
 
     /** The whole weekly schedule; an empty list means closed every day. */
+    @Schema(name = "ShopOpeningHoursRequest")
     public record OpeningHours(@NotNull @Size(max = 28) List<ShopApplicationRequests.@Valid @NotNull Window> openingHours) {
     }
+
+    @Schema(name = "AcceptingOrdersRequest")
 
     public record AcceptingOrders(@NotNull Boolean accepting) {
     }
