@@ -5,10 +5,20 @@ spring:
   # Mailpit from deploy/compose.dev.yaml: SMTP 1025, inbox at http://localhost:8025
 
 bonbon:
+  storage:
+    # S3Mock from deploy/compose.dev.yaml accepts any key pair.
+    endpoint: ${BONBON_STORAGE_ENDPOINT:http://localhost:9090}
+    region: ${BONBON_STORAGE_REGION:us-east-1}
+    access-key: ${BONBON_STORAGE_ACCESS_KEY:dev}
+    secret-key: ${BONBON_STORAGE_SECRET_KEY:dev}
+    public-base-url: ${BONBON_STORAGE_PUBLIC_BASE_URL:http://localhost:9090/bonbon-public}
+  geo:
+    # Without GOONG_API_KEY, suggestions come from a fake geocoder around a fixed point in Hà Nội.
+    fake-when-unconfigured: true
   oauth:
     google:
-      # Web client of the bonbon Google Cloud project (origins: localhost, :5173, :8081).
-      client-ids: ${GOOGLE_CLIENT_IDS:802394872594-j6l9f60rlfmkj0e0m5ohebja14o9dua4.apps.googleusercontent.com}
+      # Web and iOS clients of the bonbon Google Cloud project (web origins: localhost, :5173, :8081).
+      client-ids: ${GOOGLE_CLIENT_IDS:1083524871594-tim3ulsu19iegg7605ab0t4b7ca6onf0.apps.googleusercontent.com,1083524871594-2dpqinqn9opkekea75vm6gg0ttkfrf67.apps.googleusercontent.com}
   captcha:
     enabled: ${BONBON_CAPTCHA_ENABLED:false}
 

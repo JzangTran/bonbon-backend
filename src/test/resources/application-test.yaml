@@ -1,9 +1,12 @@
 bonbon:
+  geo:
+    fake-when-unconfigured: true
   captcha:
     enabled: false
   security:
     jwt:
       secret: test-only-secret-at-least-32-bytes-long!!
+    data-key: dGVzdC1vbmx5LWRhdGEta2V5LTMyLWJ5dGVzLWxvbmc=
 springdoc:
   api-docs:
     enabled: true
