@@ -17,8 +17,8 @@ bonbon:
     fake-when-unconfigured: true
   oauth:
     google:
-      # Web client of the bonbon Google Cloud project (origins: localhost, :5173, :8081).
-      client-ids: ${GOOGLE_CLIENT_IDS:802394872594-j6l9f60rlfmkj0e0m5ohebja14o9dua4.apps.googleusercontent.com}
+      # Web and iOS clients of the bonbon Google Cloud project (web origins: localhost, :5173, :8081).
+      client-ids: ${GOOGLE_CLIENT_IDS:1083524871594-tim3ulsu19iegg7605ab0t4b7ca6onf0.apps.googleusercontent.com,1083524871594-2dpqinqn9opkekea75vm6gg0ttkfrf67.apps.googleusercontent.com}
   captcha:
     enabled: ${BONBON_CAPTCHA_ENABLED:false}
 
