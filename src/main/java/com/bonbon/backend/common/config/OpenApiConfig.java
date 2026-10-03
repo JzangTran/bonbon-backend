@@ -5,6 +5,8 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import com.bonbon.backend.common.security.CurrentPrincipal;
+import org.springdoc.core.utils.SpringDocUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -16,6 +18,11 @@ import org.springframework.context.annotation.Configuration;
 class OpenApiConfig {
 
     private static final String BEARER = "bearerAuth";
+
+    static {
+        // Resolved from the access token by CurrentPrincipalArgumentResolver, not sent by clients.
+        SpringDocUtils.getConfig().addRequestWrapperToIgnore(CurrentPrincipal.class);
+    }
 
     @Bean
     OpenAPI bonbonOpenApi() {
