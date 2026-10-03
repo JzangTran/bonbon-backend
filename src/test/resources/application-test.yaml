@@ -1,4 +1,6 @@
 bonbon:
+  geo:
+    fake-when-unconfigured: true
   captcha:
     enabled: false
   security:

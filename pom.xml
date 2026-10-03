@@ -31,6 +31,7 @@
         <spring-modulith.version>2.1.1</spring-modulith.version>
         <archunit.version>1.4.2</archunit.version>
         <springdoc.version>3.1.1</springdoc.version>
+        <awssdk.version>2.55.11</awssdk.version>
     </properties>
     <dependencies>
         <dependency>
@@ -82,6 +83,17 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
+        </dependency>
+        <dependency>
+            <!-- Object storage over the S3 API: Cloudflare R2 in production, S3Mock locally -->
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>netty-nio-client</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.springframework.modulith</groupId>
@@ -138,6 +150,13 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${awssdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>org.springframework.modulith</groupId>
                 <artifactId>spring-modulith-bom</artifactId>

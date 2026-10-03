@@ -22,6 +22,11 @@ spring:
   mail:
     host: ${SPRING_MAIL_HOST:localhost}
     port: ${SPRING_MAIL_PORT:1025}
+  servlet:
+    multipart:
+      # Uploads are validated per use (type sniffed, size per field); this is only the outer bound.
+      max-file-size: 10MB
+      max-request-size: 25MB
   data:
     redis:
       host: ${BONBON_REDIS_HOST:localhost}
@@ -54,6 +59,19 @@ bonbon:
       # First administrator, created once at startup if none exists (admin-login.md).
       email: ${ADMIN_SEED_EMAIL:}
       password: ${ADMIN_SEED_PASSWORD:}
+  storage:
+    # S3 API: Cloudflare R2 in production (see deploy/.env.example). No defaults for credentials.
+    endpoint: ${BONBON_STORAGE_ENDPOINT:}
+    region: ${BONBON_STORAGE_REGION:auto}
+    access-key: ${BONBON_STORAGE_ACCESS_KEY:}
+    secret-key: ${BONBON_STORAGE_SECRET_KEY:}
+    private-bucket: ${BONBON_STORAGE_PRIVATE_BUCKET:bonbon-private}
+    public-bucket: ${BONBON_STORAGE_PUBLIC_BUCKET:bonbon-public}
+    public-base-url: ${BONBON_STORAGE_PUBLIC_BASE_URL:}
+  geo:
+    goong:
+      # Goong REST API key; stays on the server (clients call /api/geo/autocomplete).
+      api-key: ${GOONG_API_KEY:}
   oauth:
     google:
       # OAuth client IDs (comma-separated) whose Google ID tokens are accepted: web, Android, iOS.

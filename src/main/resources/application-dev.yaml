@@ -5,6 +5,16 @@ spring:
   # Mailpit from deploy/compose.dev.yaml: SMTP 1025, inbox at http://localhost:8025
 
 bonbon:
+  storage:
+    # S3Mock from deploy/compose.dev.yaml accepts any key pair.
+    endpoint: ${BONBON_STORAGE_ENDPOINT:http://localhost:9090}
+    region: ${BONBON_STORAGE_REGION:us-east-1}
+    access-key: ${BONBON_STORAGE_ACCESS_KEY:dev}
+    secret-key: ${BONBON_STORAGE_SECRET_KEY:dev}
+    public-base-url: ${BONBON_STORAGE_PUBLIC_BASE_URL:http://localhost:9090/bonbon-public}
+  geo:
+    # Without GOONG_API_KEY, suggestions come from a fake geocoder around a fixed point in Hà Nội.
+    fake-when-unconfigured: true
   oauth:
     google:
       # Web client of the bonbon Google Cloud project (origins: localhost, :5173, :8081).
