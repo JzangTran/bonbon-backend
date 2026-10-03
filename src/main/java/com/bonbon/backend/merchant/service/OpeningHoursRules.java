@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.bonbon.backend.common.exception.BusinessException;
+import com.bonbon.backend.merchant.dto.ShopApplicationRequests;
 import com.bonbon.backend.merchant.entity.OpeningWindow;
 import org.springframework.http.HttpStatus;
 
@@ -21,6 +22,18 @@ final class OpeningHoursRules {
     private static final int WEEK_MINUTES = 7 * 1440;
 
     private OpeningHoursRules() {
+    }
+
+    /** Request windows to stored ones (minutes only); open and close at the same time is rejected. */
+    static List<OpeningWindow> toWindows(List<ShopApplicationRequests.Window> input) {
+        List<OpeningWindow> windows = input == null ? List.of() : input.stream()
+                .map(w -> new OpeningWindow(w.weekday().shortValue(), w.opensAt().withSecond(0).withNano(0),
+                        w.closesAt().withSecond(0).withNano(0)))
+                .toList();
+        if (windows.stream().anyMatch(w -> w.opensAt().equals(w.closesAt()))) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "OPENING_HOURS_INVALID", "Giờ đóng cửa phải khác giờ mở cửa.");
+        }
+        return windows;
     }
 
     static void validate(List<OpeningWindow> windows) {

@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.bonbon.backend.common.persistence.ActorType;
 import com.bonbon.backend.merchant.VendorStatus;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -81,6 +82,16 @@ public class Vendor {
     @Column(name = "accepting_orders", nullable = false)
     private boolean acceptingOrders = true;
 
+    @Column(name = "accepting_orders_changed_at")
+    private Instant acceptingOrdersChangedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "accepting_orders_changed_by_type", columnDefinition = "text")
+    private ActorType acceptingOrdersChangedByType;
+
+    @Column(name = "accepting_orders_changed_by_id")
+    private UUID acceptingOrdersChangedById;
+
     @Column(name = "rejection_reason", columnDefinition = "text")
     private String rejectionReason;
 
@@ -140,6 +151,12 @@ public class Vendor {
     }
 
     public void submit(Instant at) {
+        this.status = VendorStatus.PENDING;
+        this.submittedAt = at;
+    }
+
+    /** An approved shop changed a field the administrator checked (its address): it goes back to review. */
+    public void returnToReview(Instant at) {
         this.status = VendorStatus.PENDING;
         this.submittedAt = at;
     }
@@ -244,8 +261,15 @@ public class Vendor {
         return acceptingOrders;
     }
 
-    public void setAcceptingOrders(boolean acceptingOrders) {
-        this.acceptingOrders = acceptingOrders;
+    public void setAcceptingOrders(boolean accepting, ActorType byType, UUID byId, Instant at) {
+        this.acceptingOrders = accepting;
+        this.acceptingOrdersChangedAt = at;
+        this.acceptingOrdersChangedByType = byType;
+        this.acceptingOrdersChangedById = byId;
+    }
+
+    public Instant getAcceptingOrdersChangedAt() {
+        return acceptingOrdersChangedAt;
     }
 
     public String getRejectionReason() {
