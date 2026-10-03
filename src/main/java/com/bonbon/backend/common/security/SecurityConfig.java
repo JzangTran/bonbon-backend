@@ -68,13 +68,13 @@ class SecurityConfig {
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(permissionsConverter()))
                         .authenticationEntryPoint((req, res, ex) ->
                                 writeProblem(res, HttpServletResponse.SC_UNAUTHORIZED, "UNAUTHENTICATED",
-                                        "Sign in to continue."))
+                                        "Vui lòng đăng nhập để tiếp tục."))
                         .accessDeniedHandler((req, res, ex) ->
                                 writeProblem(res, HttpServletResponse.SC_FORBIDDEN, "FORBIDDEN",
-                                        "You do not have permission for this action.")))
+                                        "Bạn không có quyền thực hiện thao tác này.")))
                 .exceptionHandling(e -> e.authenticationEntryPoint((req, res, ex) ->
                         writeProblem(res, HttpServletResponse.SC_UNAUTHORIZED, "UNAUTHENTICATED",
-                                "Sign in to continue.")));
+                                "Vui lòng đăng nhập để tiếp tục.")));
         return http.build();
     }
 
