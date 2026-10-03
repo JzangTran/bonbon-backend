@@ -47,6 +47,8 @@ bonbon:
     jwt:
       # HS256 secret, at least 32 bytes. Set the environment variable; never commit a value.
       secret: ${BONBON_JWT_SECRET:}
+    # AES-256 key (32 bytes, base64) for encrypted columns: identity numbers, bank accounts. Never commit.
+    data-key: ${BONBON_DATA_KEY:}
   cors:
     allowed-origins: ${BONBON_CORS_ORIGINS:http://localhost:5173}
   app:
