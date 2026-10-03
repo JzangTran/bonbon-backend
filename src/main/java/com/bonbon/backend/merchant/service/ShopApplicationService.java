@@ -1,8 +1,8 @@
 package com.bonbon.backend.merchant.service;
 
-import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -16,7 +16,6 @@ import com.bonbon.backend.common.exception.BusinessException;
 import com.bonbon.backend.common.geo.Geocoder;
 import com.bonbon.backend.common.geo.PlaceDetail;
 import com.bonbon.backend.common.security.CurrentPrincipal;
-import com.bonbon.backend.common.settings.SystemSettingsService;
 import com.bonbon.backend.common.storage.ObjectStorage;
 import com.bonbon.backend.common.storage.ObjectStorage.Visibility;
 import com.bonbon.backend.common.storage.ValidatedFile;
@@ -67,12 +66,12 @@ public class ShopApplicationService {
     private final Geocoder geocoder;
     private final ObjectStorage storage;
     private final FieldCipher cipher;
-    private final SystemSettingsService settings;
+    private final DeliveryRadiusCap radiusCap;
     private final LegalConsentService legal;
 
     ShopApplicationService(VendorRepository vendors, VendorTaxInfoRepository taxInfos, VendorIdentityRepository identities,
             PayoutAccountRepository payouts, Geocoder geocoder, ObjectStorage storage, FieldCipher cipher,
-            SystemSettingsService settings, LegalConsentService legal) {
+            DeliveryRadiusCap radiusCap, LegalConsentService legal) {
         this.vendors = vendors;
         this.taxInfos = taxInfos;
         this.identities = identities;
@@ -80,15 +79,15 @@ public class ShopApplicationService {
         this.geocoder = geocoder;
         this.storage = storage;
         this.cipher = cipher;
-        this.settings = settings;
+        this.radiusCap = radiusCap;
         this.legal = legal;
     }
 
     @Transactional(readOnly = true)
     public ShopApplicationView view(UUID ownerId) {
         return vendors.findByOwnerUserId(ownerId).map(this::toView)
-                .orElseGet(() -> new ShopApplicationView("NONE", null, null, 1, List.of(), maxRadiusKm(),
-                        null, null, null, null));
+                .orElseGet(() -> new ShopApplicationView("NONE", null, null, 1, List.of(), radiusCap.maxKm(),
+                        null, null, null, null, null, null));
     }
 
     @Transactional
@@ -113,16 +112,9 @@ public class ShopApplicationService {
     @Transactional
     public ShopApplicationView saveShipping(CurrentPrincipal owner, ShopApplicationRequests.Step2 req) {
         Vendor vendor = editableVendor(owner.id());
-        List<OpeningWindow> windows = req.openingHours() == null ? List.of() : req.openingHours().stream()
-                .map(w -> new OpeningWindow(w.weekday().shortValue(), w.opensAt().withSecond(0).withNano(0),
-                        w.closesAt().withSecond(0).withNano(0)))
-                .toList();
-        if (windows.stream().anyMatch(w -> w.opensAt().equals(w.closesAt()))) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "OPENING_HOURS_INVALID",
-                    "Giờ đóng cửa phải khác giờ mở cửa.");
-        }
+        List<OpeningWindow> windows = OpeningHoursRules.toWindows(req.openingHours());
         OpeningHoursRules.validate(windows);
-        requireWithinRadiusCap(req.deliveryRadiusKm());
+        radiusCap.require(req.deliveryRadiusKm());
         vendor.replaceOpeningHours(windows);
         vendor.setShipping(req.deliveryRadiusKm(), req.deliveryFee(), req.freeDeliveryThreshold(), req.minOrderValue());
         return toView(vendors.save(vendor));
@@ -224,7 +216,7 @@ public class ShopApplicationService {
                     .withProperty("missing", missing);
         }
         // The cap may have been lowered since step 2 was saved.
-        requireWithinRadiusCap(vendor.getDeliveryRadiusKm());
+        radiusCap.require(vendor.getDeliveryRadiusKm());
         vendor.submit(Instant.now());
         return toView(vendors.save(vendor));
     }
@@ -277,7 +269,7 @@ public class ShopApplicationService {
         return List.of(state(1, s1), state(2, s2), state(3, s3), state(4, s4));
     }
 
-    private ShopApplicationView toView(Vendor v) {
+    ShopApplicationView toView(Vendor v) {
         List<ShopApplicationView.StepState> steps = steps(v);
         Integer firstIncomplete = steps.stream().filter(s -> !s.complete()).map(ShopApplicationView.StepState::step)
                 .findFirst().orElse(null);
@@ -303,7 +295,8 @@ public class ShopApplicationService {
                 signed(id.getFrontFileKey()), signed(id.getSelfieFileKey()), id.getAccuracyConfirmedAt() != null,
                 id.getTermsAcceptedAt() != null, id.getIdentityConsentAt() != null);
         return new ShopApplicationView(v.getStatus().name(), v.getRejectionReason(), v.getSubmittedAt(), firstIncomplete,
-                steps, maxRadiusKm(), shop, shipping, taxView, identityView);
+                steps, radiusCap.maxKm(), v.isAcceptingOrders(), ShopHours.isOpen(v, ZonedDateTime.now()), shop, shipping,
+                taxView, identityView);
     }
 
     // --- helpers
@@ -322,19 +315,6 @@ public class ShopApplicationService {
                             : "Cửa hàng đã được duyệt; hãy sửa thông tin trong phần quản lý cửa hàng.")
                     .withProperty("status", vendor.getStatus().name());
         }
-    }
-
-    private void requireWithinRadiusCap(BigDecimal radiusKm) {
-        BigDecimal cap = maxRadiusKm();
-        if (radiusKm != null && radiusKm.compareTo(cap) > 0) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "DELIVERY_RADIUS_TOO_LARGE",
-                    "Bán kính giao hàng tối đa là " + cap.stripTrailingZeros().toPlainString() + " km.")
-                    .withProperty("maxDeliveryRadiusKm", cap);
-        }
-    }
-
-    private BigDecimal maxRadiusKm() {
-        return new BigDecimal(settings.getString("merchant.max_delivery_radius_km", "3"));
     }
 
     private String signed(String key) {

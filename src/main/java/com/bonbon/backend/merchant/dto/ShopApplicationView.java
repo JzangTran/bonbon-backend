@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
  * The seller's own view of the shop application. {@code status} is NONE before the first saved step.
+ * {@code openNow} is the effective state: approved, accepting orders and inside an opening window.
  * Secrets come back masked (last 4 digits); own document photos come as short-lived signed URLs.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -19,6 +20,8 @@ public record ShopApplicationView(
         Integer firstIncompleteStep,
         List<StepState> steps,
         BigDecimal maxDeliveryRadiusKm,
+        Boolean acceptingOrders,
+        Boolean openNow,
         ShopInfo shop,
         Shipping shipping,
         Tax tax,
