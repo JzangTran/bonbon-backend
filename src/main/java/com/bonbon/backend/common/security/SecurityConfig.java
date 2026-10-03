@@ -16,9 +16,17 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
@@ -27,7 +35,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
  * Stateless API security: every request carries a signed access token, except the public paths below.
- * Authorities are the {@code <resource>:<action>} permissions from the token's {@code perms} claim,
+ * Authorities are the {@code <resource>:<action>} permissions from the token's {@code permissions} claim,
  * checked with {@code @PreAuthorize("hasAuthority('order:read')")}.
  */
 @Configuration
@@ -41,7 +49,9 @@ class SecurityConfig {
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/api/public/**",
-            "/api/auth/**"
+            "/api/auth/**",
+            "/api/legal/documents/**",
+            "/api/admin/auth/**"
     };
 
     @Bean
@@ -58,20 +68,30 @@ class SecurityConfig {
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(permissionsConverter()))
                         .authenticationEntryPoint((req, res, ex) ->
                                 writeProblem(res, HttpServletResponse.SC_UNAUTHORIZED, "UNAUTHENTICATED",
-                                        "Sign in to continue."))
+                                        "Vui lòng đăng nhập để tiếp tục."))
                         .accessDeniedHandler((req, res, ex) ->
                                 writeProblem(res, HttpServletResponse.SC_FORBIDDEN, "FORBIDDEN",
-                                        "You do not have permission for this action.")))
+                                        "Bạn không có quyền thực hiện thao tác này.")))
                 .exceptionHandling(e -> e.authenticationEntryPoint((req, res, ex) ->
                         writeProblem(res, HttpServletResponse.SC_UNAUTHORIZED, "UNAUTHENTICATED",
-                                "Sign in to continue.")));
+                                "Vui lòng đăng nhập để tiếp tục.")));
         return http.build();
     }
 
     @Bean
-    JwtDecoder jwtDecoder(JwtProperties props) {
+    JwtDecoder jwtDecoder(JwtProperties props, List<TokenRevocationCheck> revocationChecks) {
         SecretKeySpec key = new SecretKeySpec(props.secretBytes(), "HmacSHA256");
-        return NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
+        OAuth2TokenValidator<Jwt> notRevoked = jwt -> revocationChecks.stream().anyMatch(c -> c.isRevoked(jwt))
+                ? OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Token revoked", null))
+                : OAuth2TokenValidatorResult.success();
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(JwtValidators.createDefault(), notRevoked));
+        return decoder;
+    }
+
+    @Bean
+    JwtEncoder jwtEncoder(JwtProperties props) {
+        return NimbusJwtEncoder.withSecretKey(new SecretKeySpec(props.secretBytes(), "HmacSHA256")).build();
     }
 
     @Bean
@@ -79,7 +99,7 @@ class SecurityConfig {
         CorsConfiguration cors = new CorsConfiguration();
         cors.setAllowedOrigins(props.allowedOrigins());
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        cors.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key"));
+        cors.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key", "X-Client-Channel", "X-App-Version"));
         cors.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cors);

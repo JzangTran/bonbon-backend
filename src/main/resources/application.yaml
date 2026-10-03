@@ -19,6 +19,9 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  mail:
+    host: ${SPRING_MAIL_HOST:localhost}
+    port: ${SPRING_MAIL_PORT:1025}
   data:
     redis:
       host: ${BONBON_REDIS_HOST:localhost}
@@ -41,8 +44,30 @@ bonbon:
       secret: ${BONBON_JWT_SECRET:}
   cors:
     allowed-origins: ${BONBON_CORS_ORIGINS:http://localhost:5173}
+  app:
+    # Links in emails (verify email, reset password) open the web app, which calls the API.
+    web-url: ${BONBON_WEB_URL:http://localhost:5173}
+  mail:
+    from: ${BONBON_MAIL_FROM:bonbon <no-reply@bonbon.local>}
+  admin:
+    seed:
+      # First administrator, created once at startup if none exists (admin-login.md).
+      email: ${ADMIN_SEED_EMAIL:}
+      password: ${ADMIN_SEED_PASSWORD:}
+  oauth:
+    google:
+      # OAuth client IDs (comma-separated) whose Google ID tokens are accepted: web, Android, iOS.
+      # Not secret, but configured per environment; empty disables Google sign-in.
+      client-ids: ${GOOGLE_CLIENT_IDS:}
+  captcha:
+    enabled: ${BONBON_CAPTCHA_ENABLED:true}
+    secret: ${BONBON_RECAPTCHA_SECRET:}
 
 management:
+  health:
+    mail:
+      # An SMTP outage must not mark the whole app unhealthy; emails are retried by the user (resend).
+      enabled: false
   endpoints:
     web:
       exposure:

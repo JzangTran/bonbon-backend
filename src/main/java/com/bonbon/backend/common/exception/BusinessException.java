@@ -1,5 +1,8 @@
 package com.bonbon.backend.common.exception;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 
 /**
@@ -10,6 +13,7 @@ public class BusinessException extends RuntimeException {
 
     private final HttpStatus status;
     private final String code;
+    private final Map<String, Object> properties = new LinkedHashMap<>();
 
     public BusinessException(HttpStatus status, String code, String message) {
         super(message);
@@ -27,6 +31,16 @@ public class BusinessException extends RuntimeException {
 
     public static BusinessException unprocessable(String code, String message) {
         return new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT, code, message);
+    }
+
+    /** Extra problem-detail member the client needs to react (e.g. which step comes next). */
+    public BusinessException withProperty(String name, Object value) {
+        properties.put(name, value);
+        return this;
+    }
+
+    public Map<String, Object> getProperties() {
+        return Map.copyOf(properties);
     }
 
     public HttpStatus getStatus() {

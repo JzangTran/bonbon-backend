@@ -2,6 +2,15 @@
 spring:
   datasource:
     password: ${BONBON_DB_PASSWORD:bonbon}
+  # Mailpit from deploy/compose.dev.yaml: SMTP 1025, inbox at http://localhost:8025
+
+bonbon:
+  oauth:
+    google:
+      # Web client of the bonbon Google Cloud project (origins: localhost, :5173, :8081).
+      client-ids: ${GOOGLE_CLIENT_IDS:802394872594-j6l9f60rlfmkj0e0m5ohebja14o9dua4.apps.googleusercontent.com}
+  captcha:
+    enabled: ${BONBON_CAPTCHA_ENABLED:false}
 
 springdoc:
   api-docs:
