@@ -19,6 +19,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * One request per wizard step. A PUT replaces that step's data, and any field may be missing (a draft);
@@ -35,6 +36,8 @@ public final class ShopApplicationRequests {
     private ShopApplicationRequests() {
     }
 
+    @Schema(name = "ShopApplicationStep1Request")
+
     public record Step1(
             @Size(max = 100) String name,
             @Pattern(regexp = VN_PHONE, message = "Số điện thoại không hợp lệ") String phone,
@@ -43,11 +46,15 @@ public final class ShopApplicationRequests {
             @Size(max = 200) String addressDetail) {
     }
 
+    @Schema(name = "OpeningWindowInput")
+
     public record Window(
             @NotNull @Min(1) @Max(7) Integer weekday,
             @NotNull LocalTime opensAt,
             @NotNull LocalTime closesAt) {
     }
+
+    @Schema(name = "ShopApplicationStep2Request")
 
     public record Step2(
             @Size(max = 28) List<@Valid @NotNull Window> openingHours,
@@ -56,6 +63,8 @@ public final class ShopApplicationRequests {
             @PositiveOrZero @Max(100_000_000) Integer freeDeliveryThreshold,
             @PositiveOrZero @Max(100_000_000) Integer minOrderValue) {
     }
+
+    @Schema(name = "ShopApplicationStep3Request")
 
     public record Step3(
             BusinessType businessType,
@@ -72,6 +81,7 @@ public final class ShopApplicationRequests {
      * {@code sellerTermsDocumentId} and {@code privacyPolicyDocumentId} are the two separate consents of
      * step 4; each is recorded when sent (the versions shown) and kept afterwards.
      */
+    @Schema(name = "ShopApplicationStep4Request")
     public record Step4(
             DocType docType,
             @Pattern(regexp = "^(\\d{9}|\\d{12})$", message = "Số giấy tờ gồm 9 hoặc 12 chữ số") String docNumber,

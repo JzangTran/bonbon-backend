@@ -6,6 +6,7 @@ import com.bonbon.backend.account.entity.Address;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 public final class AddressDtos {
 
@@ -16,6 +17,7 @@ public final class AddressDtos {
     }
 
     /** {@code placeId} is a suggestion from /api/geo/autocomplete; a free-text-only address cannot be saved. */
+    @Schema(name = "AddressCreateRequest")
     public record Create(
             @NotBlank @Size(max = 30) String label,
             @NotBlank @Size(max = 1024) String placeId,
@@ -26,6 +28,7 @@ public final class AddressDtos {
     }
 
     /** Only the fields present change; a new {@code placeId} is resolved again, editing {@code detail} is free. */
+    @Schema(name = "AddressUpdateRequest")
     public record Update(
             @Size(min = 1, max = 30) String label,
             @Size(min = 1, max = 1024) String placeId,
@@ -33,6 +36,8 @@ public final class AddressDtos {
             @Size(min = 1, max = 100) String recipientName,
             @Pattern(regexp = VN_MOBILE, message = "Số điện thoại di động Việt Nam không hợp lệ") String recipientPhone) {
     }
+
+    @Schema(name = "DeliveryAddress")
 
     public record View(UUID id, String label, String placeId, String formattedAddress, String ward, String province,
             String detail, String recipientName, String recipientPhone, double lat, double lng, boolean isDefault) {

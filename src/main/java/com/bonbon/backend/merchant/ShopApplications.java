@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * Shop applications as the review side sees them (merchant-approval flows). The identity section is a
@@ -33,14 +34,19 @@ public interface ShopApplications {
     /** PENDING → REJECTED with the reason the seller will see. */
     Decided reject(UUID vendorId, String reason);
 
+    @Schema(name = "ShopApplicationSummary")
+
     record Summary(UUID vendorId, UUID ownerUserId, String name, String ward, String province, String businessType,
             VendorStatus status, Instant submittedAt, Boolean payoutHolderMatchesIdentity) {
     }
+
+    @Schema(name = "ShopReviewOpeningWindow")
 
     record Hours(int weekday, LocalTime opensAt, LocalTime closesAt) {
     }
 
     /** Everything an administrator reviews except the identity documents; the bank account comes masked. */
+    @Schema(name = "ShopApplicationDetail")
     record Detail(UUID vendorId, UUID ownerUserId, VendorStatus status, String rejectionReason, Instant submittedAt,
             Instant decidedAt, String name, String phone, String email, String formattedAddress, String addressDetail,
             String ward, String province, Double lat, Double lng, List<Hours> openingHours, BigDecimal deliveryRadiusKm,
@@ -50,8 +56,12 @@ public interface ShopApplications {
             Boolean payoutHolderMatchesIdentity, String identityDocType, String identityFullName) {
     }
 
+    @Schema(name = "ShopIdentityDocuments")
+
     record IdentityDocuments(String docType, String docNumber, String fullName, String frontPhotoUrl, String selfiePhotoUrl) {
     }
+
+    @Schema(name = "ShopDecision")
 
     record Decided(UUID vendorId, UUID ownerUserId, String shopName, VendorStatus status) {
     }
