@@ -71,6 +71,24 @@ public class LegalConsentService {
         }
     }
 
+    /**
+     * The separate, unticked-by-default consent to processing identity data for shop verification
+     * (open-shop.md step 4), evidenced against the privacy policy version shown.
+     *
+     * @throws BusinessException 409 LEGAL_DOCUMENTS_CHANGED when {@code privacyPolicyId} is not the version in force
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void recordIdentityVerificationConsent(String principalType, UUID principalId, UUID privacyPolicyId,
+            ClientContext client) {
+        LegalDocument privacy = findCurrent(DocumentType.PRIVACY_POLICY);
+        if (!privacy.getId().equals(privacyPolicyId)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "LEGAL_DOCUMENTS_CHANGED",
+                    "Chính sách quyền riêng tư vừa được cập nhật, vui lòng xem lại và đồng ý phiên bản mới.");
+        }
+        consents.save(new ConsentRecord(principalType, principalId, "IDENTITY_VERIFICATION", privacy.getId(), true,
+                client.channel(), client.appVersion(), client.ip()));
+    }
+
     private LegalDocument findCurrent(DocumentType type) {
         return documents.findCurrent(type, Instant.now())
                 .orElseThrow(() -> new IllegalStateException("No published " + type + " document"));
