@@ -35,4 +35,8 @@ public final class OrderRequests {
             @Size(max = 30) List<@NotNull UUID> optionIds,
             @Size(max = 200) String note) {
     }
+
+    @Schema(name = "CancelOrderRequest")
+    public record Cancel(@Size(max = 300) String reason) {
+    }
 }

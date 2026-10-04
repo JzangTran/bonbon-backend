@@ -1,5 +1,6 @@
 package com.bonbon.backend.order.repository;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -10,6 +11,7 @@ import com.bonbon.backend.order.entity.Order;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -31,4 +33,27 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     /** One row per line, in order, for the list previews (avoids loading every item graph for a page of orders). */
     @Query("select i.order.id, i.name, i.quantity from OrderItem i where i.order.id in :orderIds order by i.order.id, i.position")
     List<Object[]> linePreviews(@Param("orderIds") Collection<UUID> orderIds);
+
+    Optional<Order> findByIdAndVendorId(UUID id, UUID vendorId);
+
+    /**
+     * The one conditional update behind every status change: it only happens when the order is still in
+     * {@code from}. Zero rows means somebody else moved it first. Timestamps and payment status are only set
+     * when given.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            update Order o set o.status = :to, o.version = o.version + 1, o.updatedAt = :now,
+                   o.confirmedAt = coalesce(:confirmedAt, o.confirmedAt),
+                   o.outForDeliveryAt = coalesce(:outForDeliveryAt, o.outForDeliveryAt),
+                   o.finishedAt = coalesce(:finishedAt, o.finishedAt),
+                   o.paymentStatus = coalesce(:paymentStatus, o.paymentStatus)
+            where o.id = :id and o.status = :from""")
+    int transition(@Param("id") UUID id, @Param("from") OrderStatus from, @Param("to") OrderStatus to, @Param("now") Instant now,
+            @Param("confirmedAt") Instant confirmedAt, @Param("outForDeliveryAt") Instant outForDeliveryAt,
+            @Param("finishedAt") Instant finishedAt, @Param("paymentStatus") String paymentStatus);
+
+    @Query("select o from Order o where o.vendorId = :vendorId and o.status in :statuses and o.placedAt >= :from and o.placedAt < :to")
+    Page<Order> findForVendor(@Param("vendorId") UUID vendorId, @Param("statuses") Collection<OrderStatus> statuses,
+            @Param("from") Instant from, @Param("to") Instant to, Pageable pageable);
 }
