@@ -2,6 +2,7 @@ package com.bonbon.backend.category;
 
 import java.math.BigDecimal;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /** What other modules may ask of the category tree. */
@@ -15,4 +16,7 @@ public interface CategoryCatalog {
      * caller then applies the global default).
      */
     Optional<BigDecimal> effectiveCommissionRate(UUID categoryId);
+
+    /** The category and every node below it (empty when it does not exist) - what a category filter matches. */
+    Set<UUID> subtreeIds(UUID categoryId);
 }
