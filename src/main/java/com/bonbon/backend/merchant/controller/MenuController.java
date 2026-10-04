@@ -5,6 +5,7 @@ import java.util.UUID;
 import com.bonbon.backend.common.security.CurrentPrincipal;
 import com.bonbon.backend.merchant.dto.MenuRequests;
 import com.bonbon.backend.merchant.dto.MenuView;
+import com.bonbon.backend.merchant.dto.OptionRequests;
 import com.bonbon.backend.merchant.service.MenuService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -90,6 +91,20 @@ class MenuController {
     @PreAuthorize("hasAuthority('vendor:write')")
     MenuView deleteItem(CurrentPrincipal principal, @PathVariable UUID id) {
         return menu.deleteItem(principal, id);
+    }
+
+    /** The quick sold-out switch, deliberately apart from the full edit. */
+    @PatchMapping("/menu-items/{id}/status")
+    @PreAuthorize("hasAuthority('vendor:write')")
+    MenuView setStatus(CurrentPrincipal principal, @PathVariable UUID id, @Valid @RequestBody MenuRequests.ItemStatus request) {
+        return menu.setItemStatus(principal, id, request);
+    }
+
+    /** The complete list of option groups this dish offers, in order. */
+    @PutMapping("/menu-items/{id}/option-groups")
+    @PreAuthorize("hasAuthority('vendor:write')")
+    MenuView setOptionGroups(CurrentPrincipal principal, @PathVariable UUID id, @Valid @RequestBody OptionRequests.ItemGroups request) {
+        return menu.setItemOptionGroups(principal, id, request);
     }
 
     @PutMapping(path = "/menu-items/{id}/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
