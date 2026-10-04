@@ -1,8 +1,10 @@
 package com.bonbon.backend.account.service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
+import com.bonbon.backend.account.DeliveryAddresses;
 import com.bonbon.backend.account.dto.AddressDtos;
 import com.bonbon.backend.account.entity.Address;
 import com.bonbon.backend.account.repository.AddressRepository;
@@ -18,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
  * any exist. Goong Place Detail is called once per picked place, never when only the detail line changes.
  */
 @Service
-public class AddressService {
+public class AddressService implements DeliveryAddresses {
 
     static final int MAX_ADDRESSES = 10;
 
@@ -28,6 +30,15 @@ public class AddressService {
     AddressService(AddressRepository addresses, Geocoder geocoder) {
         this.addresses = addresses;
         this.geocoder = geocoder;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Snapshot> snapshotFor(UUID customerId, UUID addressId) {
+        return addresses.findByIdAndCustomerId(addressId, customerId).map(a -> new Snapshot(a.getRecipientName(),
+                a.getRecipientPhone(),
+                (a.getDetail() == null || a.getDetail().isBlank() ? "" : a.getDetail().strip() + ", ") + a.getFormattedAddress(),
+                a.getLat(), a.getLng()));
     }
 
     @Transactional(readOnly = true)
