@@ -65,6 +65,8 @@ class SecurityConfig {
                         .requestMatchers(PUBLIC_PATHS).permitAll()
                         // Reading the category tree is public (browsing filters); writes live under /api/admin.
                         .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
+                        // Guests browse shops and menus before logging in (browse-vendors-in-area.md).
+                        .requestMatchers(HttpMethod.GET, "/api/vendors", "/api/vendors/*/menu").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(rs -> rs
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(permissionsConverter()))

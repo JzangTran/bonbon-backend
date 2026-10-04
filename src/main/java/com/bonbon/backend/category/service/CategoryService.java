@@ -130,6 +130,24 @@ public class CategoryService implements CategoryCatalog {
 
     @Override
     @Transactional(readOnly = true)
+    public java.util.Set<UUID> subtreeIds(UUID categoryId) {
+        Map<UUID, List<Category>> children = categories.findAll().stream().filter(c -> c.getParentId() != null)
+                .collect(Collectors.groupingBy(Category::getParentId));
+        java.util.Set<UUID> found = new java.util.LinkedHashSet<>();
+        if (categories.existsById(categoryId)) {
+            java.util.ArrayDeque<UUID> queue = new java.util.ArrayDeque<>(List.of(categoryId));
+            while (!queue.isEmpty()) {
+                UUID id = queue.poll();
+                if (found.add(id)) {
+                    children.getOrDefault(id, List.of()).forEach(c -> queue.add(c.getId()));
+                }
+            }
+        }
+        return found;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean isAssignableLeaf(UUID categoryId) {
         return categories.findById(categoryId)
                 .filter(c -> c.getLevel() == Category.MAX_LEVEL && c.isActive() && ancestorsActive(c))
