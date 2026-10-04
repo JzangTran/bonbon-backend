@@ -12,6 +12,9 @@ import java.util.UUID;
  */
 public interface ShopOrdering {
 
+    /** The approved shop this user owns, if any. */
+    Optional<UUID> approvedVendorOwnedBy(UUID ownerUserId);
+
     /** The shop, or empty when it does not exist or is not approved. */
     Optional<OrderableShop> shop(UUID vendorId);
 

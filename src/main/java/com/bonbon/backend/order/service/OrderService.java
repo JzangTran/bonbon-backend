@@ -57,16 +57,19 @@ public class OrderService {
     private final DeliveryAddresses addresses;
     private final CategoryCatalog categories;
     private final SystemSettingsService settings;
+    private final OrderTransitions transitions;
     private final TransactionTemplate tx;
 
     OrderService(OrderRepository orders, OrderStatusHistoryRepository history, ShopOrdering shops, DeliveryAddresses addresses,
-            CategoryCatalog categories, SystemSettingsService settings, PlatformTransactionManager transactions) {
+            CategoryCatalog categories, SystemSettingsService settings, OrderTransitions transitions,
+            PlatformTransactionManager transactions) {
         this.orders = orders;
         this.history = history;
         this.shops = shops;
         this.addresses = addresses;
         this.categories = categories;
         this.settings = settings;
+        this.transitions = transitions;
         this.tx = new TransactionTemplate(transactions);
     }
 
@@ -165,6 +168,7 @@ public class OrderService {
 
         orders.saveAndFlush(order);
         history.save(new OrderStatusHistory(order.getId(), null, OrderStatus.PLACED, ActorType.CUSTOMER, customerId, null));
+        transitions.placed(order);
         return detail(order);
     }
 
@@ -204,6 +208,27 @@ public class OrderService {
             }
         }
         return chosen;
+    }
+
+    // --- changing
+
+    /** Free cancellation through CONFIRMED; once the shop starts preparing it is too late (cancel-order.md). */
+    @Transactional
+    public OrderViews.Detail cancel(UUID customerId, UUID orderId, String reason) {
+        return move(customerId, orderId, OrderStatus.CANCELLED, reason);
+    }
+
+    /** The customer has the food in hand (confirm-order-received.md); the shop can also mark it, first one wins. */
+    @Transactional
+    public OrderViews.Detail received(UUID customerId, UUID orderId) {
+        return move(customerId, orderId, OrderStatus.DELIVERED, null);
+    }
+
+    private OrderViews.Detail move(UUID customerId, UUID orderId, OrderStatus to, String reason) {
+        Order order = orders.findByIdAndCustomerId(orderId, customerId)
+                .orElseThrow(() -> BusinessException.notFound("ORDER_NOT_FOUND", "Không tìm thấy đơn hàng."));
+        transitions.move(order, to, ActorType.CUSTOMER, customerId, reason);
+        return detail(orders.findById(orderId).orElseThrow());
     }
 
     // --- reading

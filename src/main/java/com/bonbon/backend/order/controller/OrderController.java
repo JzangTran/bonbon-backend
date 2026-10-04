@@ -63,4 +63,17 @@ class OrderController {
     OrderViews.Detail get(CurrentPrincipal principal, @PathVariable UUID id) {
         return orders.get(principal.id(), id);
     }
+
+    /** Free until the shop starts preparing; {@code reason} is optional. */
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAuthority('order:cancel')")
+    OrderViews.Detail cancel(CurrentPrincipal principal, @PathVariable UUID id, @Valid @RequestBody(required = false) OrderRequests.Cancel request) {
+        return orders.cancel(principal.id(), id, request == null ? null : request.reason());
+    }
+
+    /** The customer has it in hand; the shop can also mark it delivered and the first one wins. */
+    @PostMapping("/{id}/received")
+    OrderViews.Detail received(CurrentPrincipal principal, @PathVariable UUID id) {
+        return orders.received(principal.id(), id);
+    }
 }
