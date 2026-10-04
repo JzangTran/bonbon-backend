@@ -1,4 +1,8 @@
 bonbon:
+  order:
+    timers:
+      # Tests call OrderTimers.runOnce themselves, with a time they choose.
+      enabled: false
   geo:
     fake-when-unconfigured: true
   captcha:

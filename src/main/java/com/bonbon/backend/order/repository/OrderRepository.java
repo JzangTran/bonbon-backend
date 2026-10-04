@@ -56,4 +56,16 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     @Query("select o from Order o where o.vendorId = :vendorId and o.status in :statuses and o.placedAt >= :from and o.placedAt < :to")
     Page<Order> findForVendor(@Param("vendorId") UUID vendorId, @Param("statuses") Collection<OrderStatus> statuses,
             @Param("from") Instant from, @Param("to") Instant to, Pageable pageable);
+
+    /** New orders the shop has left unanswered since before {@code cutoff}, oldest first. */
+    @Query("select o.id from Order o where o.status = 'PLACED' and o.placedAt < :cutoff order by o.placedAt")
+    List<UUID> unansweredSince(@Param("cutoff") Instant cutoff, Pageable limit);
+
+    /** Confirmed orders that have not left the kitchen since before {@code cutoff}. */
+    @Query("select o.id from Order o where o.status in ('CONFIRMED', 'PREPARING') and o.confirmedAt < :cutoff order by o.confirmedAt")
+    List<UUID> notHandedOverSince(@Param("cutoff") Instant cutoff, Pageable limit);
+
+    /** Orders out for delivery since before {@code cutoff} that nobody has closed and no case is holding. */
+    @Query("select o.id from Order o where o.status = 'OUT_FOR_DELIVERY' and o.incidentHold = false and o.outForDeliveryAt < :cutoff order by o.outForDeliveryAt")
+    List<UUID> undeliveredSince(@Param("cutoff") Instant cutoff, Pageable limit);
 }
