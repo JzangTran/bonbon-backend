@@ -47,6 +47,8 @@ class SecurityConfig {
             "/actuator/health/**",
             "/v3/api-docs/**",
             "/scalar",
+            // The WebSocket handshake carries no token; the first message does (see OrderSocketHandler).
+            "/ws/orders",
             "/api/public/**",
             "/api/auth/**",
             "/api/legal/documents/**",
