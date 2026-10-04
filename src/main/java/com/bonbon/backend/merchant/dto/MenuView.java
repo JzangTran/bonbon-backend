@@ -29,6 +29,7 @@ public record MenuView(List<Section> sections) {
             MenuItemStatus status,
             boolean soldOut,
             Integer stockQuantity,
-            int sortOrder) {
+            int sortOrder,
+            List<UUID> optionGroupIds) {
     }
 }

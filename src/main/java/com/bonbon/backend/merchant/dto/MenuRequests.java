@@ -26,6 +26,10 @@ public final class MenuRequests {
     public record Order(@NotEmpty @Size(max = 200) List<@NotNull UUID> ids) {
     }
 
+    @Schema(name = "MenuItemStatusRequest")
+    public record ItemStatus(@NotNull com.bonbon.backend.merchant.MenuItemStatus status) {
+    }
+
     @Schema(name = "MenuItemCreateRequest")
     public record ItemCreate(
             @NotNull UUID sectionId,

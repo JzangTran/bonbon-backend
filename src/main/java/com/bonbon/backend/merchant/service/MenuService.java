@@ -17,15 +17,14 @@ import com.bonbon.backend.common.security.CurrentPrincipal;
 import com.bonbon.backend.common.storage.ObjectStorage;
 import com.bonbon.backend.common.storage.ObjectStorage.Visibility;
 import com.bonbon.backend.common.storage.ValidatedFile;
-import com.bonbon.backend.merchant.VendorStatus;
 import com.bonbon.backend.merchant.dto.MenuRequests;
 import com.bonbon.backend.merchant.dto.MenuView;
+import com.bonbon.backend.merchant.dto.OptionRequests;
 import com.bonbon.backend.merchant.entity.MenuItem;
 import com.bonbon.backend.merchant.entity.MenuSection;
 import com.bonbon.backend.merchant.entity.Vendor;
 import com.bonbon.backend.merchant.repository.MenuItemRepository;
 import com.bonbon.backend.merchant.repository.MenuSectionRepository;
-import com.bonbon.backend.merchant.repository.VendorRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -46,15 +45,17 @@ public class MenuService {
     private static final Logger log = LoggerFactory.getLogger(MenuService.class);
     private static final long PHOTO_MAX_BYTES = 5L * 1024 * 1024;
 
-    private final VendorRepository vendors;
+    private final ApprovedShops shops;
+    private final OptionService optionService;
     private final MenuSectionRepository sections;
     private final MenuItemRepository items;
     private final CategoryCatalog categories;
     private final ObjectStorage storage;
 
-    MenuService(VendorRepository vendors, MenuSectionRepository sections, MenuItemRepository items,
-            CategoryCatalog categories, ObjectStorage storage) {
-        this.vendors = vendors;
+    MenuService(ApprovedShops shops, OptionService optionService, MenuSectionRepository sections,
+            MenuItemRepository items, CategoryCatalog categories, ObjectStorage storage) {
+        this.shops = shops;
+        this.optionService = optionService;
         this.sections = sections;
         this.items = items;
         this.categories = categories;
@@ -220,15 +221,36 @@ public class MenuService {
         return view(shop);
     }
 
+    /** The quick sold-out switch, separate from full editing. Setting AVAILABLE does not restore stock. */
+    @Transactional
+    public MenuView setItemStatus(CurrentPrincipal owner, UUID itemId, MenuRequests.ItemStatus req) {
+        Vendor shop = approvedShop(owner.id());
+        MenuItem item = item(shop, itemId);
+        item.setStatus(req.status());
+        item.touchedBy(owner.actorType(), owner.id());
+        items.save(item);
+        return view(shop);
+    }
+
+    @Transactional
+    public MenuView setItemOptionGroups(CurrentPrincipal owner, UUID itemId, OptionRequests.ItemGroups req) {
+        Vendor shop = approvedShop(owner.id());
+        MenuItem item = item(shop, itemId);
+        optionService.replaceItemGroups(shop, item.getId(), req.groupIds());
+        return view(shop);
+    }
+
     // --- internals
 
     private MenuView view(Vendor shop) {
+        OptionService.MenuOptionInfo optionInfo = optionService.forMenu(shop.getId());
         Map<UUID, List<MenuView.Item>> bySection = new LinkedHashMap<>();
         for (MenuItem i : items.findActiveByVendor(shop.getId())) {
             bySection.computeIfAbsent(i.getSectionId(), k -> new ArrayList<>()).add(new MenuView.Item(
                     i.getId(), i.getSectionId(), i.getCategoryId(), i.getName(), i.getDescription(), i.getPrice(),
-                    i.getPhotoKey() == null ? null : storage.publicUrl(i.getPhotoKey()), i.getStatus(), i.isSoldOut(),
-                    i.getStockQuantity(), i.getSortOrder()));
+                    i.getPhotoKey() == null ? null : storage.publicUrl(i.getPhotoKey()), i.getStatus(),
+                    i.isSoldOut() || optionInfo.blockedItems().contains(i.getId()), i.getStockQuantity(), i.getSortOrder(),
+                    optionInfo.groupIdsByItem().getOrDefault(i.getId(), List.of())));
         }
         return new MenuView(sections.findByVendorIdOrderBySortOrderAscNameAsc(shop.getId()).stream()
                 .map(s -> new MenuView.Section(s.getId(), s.getName(), s.getSortOrder(),
@@ -237,14 +259,7 @@ public class MenuService {
     }
 
     private Vendor approvedShop(UUID ownerId) {
-        Vendor vendor = vendors.findByOwnerUserId(ownerId).orElseThrow(() -> new BusinessException(HttpStatus.CONFLICT,
-                "SHOP_NOT_APPROVED", "Bạn chưa có cửa hàng được duyệt.").withProperty("status", "NONE"));
-        if (vendor.getStatus() != VendorStatus.APPROVED) {
-            throw new BusinessException(HttpStatus.CONFLICT, "SHOP_NOT_APPROVED",
-                    "Chỉ cửa hàng đã được duyệt mới quản lý được thực đơn.")
-                    .withProperty("status", vendor.getStatus().name());
-        }
-        return vendor;
+        return shops.of(ownerId);
     }
 
     private MenuSection section(Vendor shop, UUID id) {
