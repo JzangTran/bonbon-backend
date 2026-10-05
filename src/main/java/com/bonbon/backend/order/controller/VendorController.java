@@ -4,6 +4,8 @@ import java.util.UUID;
 
 import com.bonbon.backend.merchant.ShopCatalog;
 import com.bonbon.backend.order.dto.VendorPage;
+import com.bonbon.backend.order.ReviewViews;
+import com.bonbon.backend.order.service.ReviewService;
 import com.bonbon.backend.order.service.VendorBrowseService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,9 +24,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 class VendorController {
 
     private final VendorBrowseService browse;
+    private final ReviewService reviews;
 
-    VendorController(VendorBrowseService browse) {
+    VendorController(VendorBrowseService browse, ReviewService reviews) {
         this.browse = browse;
+        this.reviews = reviews;
     }
 
     /** {@code sort}: {@code distance} (default; open shops first) or {@code name}. */
@@ -48,5 +52,13 @@ class VendorController {
     ShopCatalog.ShopMenu menu(@PathVariable UUID id, @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lng) {
         return browse.menu(id, lat, lng);
+    }
+
+    @Operation(operationId = "listShopReviews", summary = "Đánh giá của quán", description = "Công khai, mới nhất trước. Chỉ gồm đánh giá đang hiển thị (đánh giá bị quản trị ẩn không có ở đây) kèm phản hồi của quán nếu có. Kèm điểm trung bình (một chữ số thập phân) và số đánh giá. Tên người đánh giá được rút gọn, không có thông tin đơn.")
+    @ApiError(status = 404, code = "VENDOR_NOT_FOUND", when = "Quán không tồn tại hoặc chưa được duyệt.")
+    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–50.")
+    @GetMapping("/{id}/reviews")
+    ReviewViews.Page shopReviews(@PathVariable UUID id, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        return reviews.forShop(id, page, size);
     }
 }
