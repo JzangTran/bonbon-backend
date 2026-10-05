@@ -48,13 +48,13 @@ class LoginController {
      * Sign in with a Google ID token. 409 OAUTH_SIGNUP_REQUIRED asks for role and consent (new identity);
      * 409 ACCOUNT_EXISTS_LINK_REQUIRED with linkMethod PASSWORD asks for the existing account password.
      */
-    @Operation(operationId = "loginWithGoogle", summary = "Đăng nhập bằng Google", description = "Gửi ID token của Google. Email chưa có tài khoản thì cần thêm vai trò và văn bản đã đồng ý để tạo tài khoản. Email đã có tài khoản bằng mật khẩu thì cần mật khẩu đó để liên kết (không bao giờ liên kết ngầm).")
+    @Operation(operationId = "loginWithGoogle", summary = "Đăng nhập bằng Google", description = "Gửi ID token của Google. Email chưa có tài khoản thì cần thêm vai trò và văn bản đã đồng ý để tạo tài khoản. Email đã có tài khoản bằng mật khẩu và đã xác thực thì cần mật khẩu đó để liên kết (không bao giờ liên kết ngầm). Email có tài khoản nhưng chưa từng xác thực thì Google được coi là bằng chứng sở hữu: email thành đã xác thực, mật khẩu cũ bị xóa (có thể do người khác đặt trước), Google được liên kết và người dùng đăng nhập luôn; đặt lại mật khẩu bằng \"Quên mật khẩu\" nếu muốn dùng.")
     @ApiError(status = 401, code = "INVALID_OAUTH_TOKEN", when = "ID token không hợp lệ hoặc không dành cho bonbon.")
     @ApiError(status = 400, code = "OAUTH_EMAIL_UNVERIFIED", when = "Google chưa xác thực email này.")
     @ApiError(status = 400, code = "PROVIDER_NOT_SUPPORTED", when = "Nhà cung cấp chưa được hỗ trợ (hiện chỉ có Google).")
     @ApiError(status = 400, code = "ROLE_NOT_SELF_REGISTERABLE", when = "Vai trò này không tự đăng ký được.")
     @ApiError(status = 409, code = "OAUTH_SIGNUP_REQUIRED", when = "Chưa có tài khoản cho email này: chọn vai trò và đồng ý điều khoản rồi gửi lại; có `email`, `name`.")
-    @ApiError(status = 409, code = "ACCOUNT_EXISTS_LINK_REQUIRED", when = "Email đã có tài khoản: `linkMethod` cho biết cần làm gì (`PASSWORD`, `SIGN_IN_FIRST`, `VERIFY_EMAIL_FIRST`).")
+    @ApiError(status = 409, code = "ACCOUNT_EXISTS_LINK_REQUIRED", when = "Email đã có tài khoản: `linkMethod` cho biết cần làm gì (`PASSWORD`: nhập mật khẩu rồi gửi lại; `SIGN_IN_FIRST`: đăng nhập bằng phương thức cũ rồi liên kết).")
     @ApiError(status = 409, code = "EMAIL_ALREADY_REGISTERED", when = "Email vừa được đăng ký bởi yêu cầu khác; thử lại.")
     @ApiError(status = 401, code = "INVALID_CREDENTIALS", when = "Mật khẩu để liên kết không đúng.")
     @ApiError(status = 400, code = "CAPTCHA_REQUIRED", when = "Sai nhiều lần liên tiếp: gửi lại kèm `captchaToken` (reCAPTCHA).")
