@@ -83,7 +83,7 @@ class OrderTransitions {
     /** Publishes the "placed" event for a brand-new order. */
     void placed(Order order) {
         events.publishEvent(new OrderStatusChanged(order.getId(), order.getNumber(), order.getCustomerId(), order.getVendorId(), null,
-                order.getStatus()));
+                order.getStatus(), ActorType.CUSTOMER));
     }
 
     /**
@@ -124,7 +124,7 @@ class OrderTransitions {
         }
         history.save(new OrderStatusHistory(order.getId(), from, to, actorType, actorId, cleanReason));
         toReturn.forEach(shops::returnStock);
-        events.publishEvent(new OrderStatusChanged(order.getId(), order.getNumber(), order.getCustomerId(), order.getVendorId(), from, to));
+        events.publishEvent(new OrderStatusChanged(order.getId(), order.getNumber(), order.getCustomerId(), order.getVendorId(), from, to, actorType));
     }
 
     private static BusinessException alreadyChanged() {
