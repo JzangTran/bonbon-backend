@@ -46,8 +46,9 @@ class SecurityConfig {
     static final String[] PUBLIC_PATHS = {
             "/actuator/health/**",
             "/v3/api-docs/**",
-            "/swagger-ui/**",
-            "/swagger-ui.html",
+            "/scalar",
+            // The WebSocket handshake carries no token; the first message does (see OrderSocketHandler).
+            "/ws/orders",
             "/api/public/**",
             "/api/auth/**",
             "/api/legal/documents/**",
