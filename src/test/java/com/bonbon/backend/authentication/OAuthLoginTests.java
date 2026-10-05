@@ -147,13 +147,40 @@ class OAuthLoginTests {
     }
 
     @Test
-    void unverifiedLocalAccountIsNeverLinked() throws Exception {
+    void googleTakesOverAnUnverifiedAccountAndDropsItsPassword() throws Exception {
         User user = new User(unique("chuaverify"), passwords.encode("matkhau123"), "Chưa xác thực");
         user.addRole(Role.CUSTOMER);
-        String email = users.saveAndFlush(user).getEmail();
-        oauth(Map.of("provider", "GOOGLE", "token", googleToken(email, true), "password", "matkhau123"))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.linkMethod").value("VERIFY_EMAIL_FIRST"));
+        User saved = users.saveAndFlush(user);
+        String email = saved.getEmail();
+        assertThat(saved.isEmailVerified()).isFalse();
+
+        // Google proves the email: no password asked, signed in straight away.
+        oauth(Map.of("provider", "GOOGLE", "token", googleToken(email, true)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.id").value(saved.getId().toString()));
+
+        User after = users.findById(saved.getId()).orElseThrow();
+        assertThat(after.isEmailVerified()).isTrue();
+        assertThat(after.hasPassword()).isFalse();
+        assertThat(providers.isLinked(saved.getId(), AuthProvider.GOOGLE)).isTrue();
+
+        // The password set before the email was proven (maybe by someone else) no longer works.
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(JSON.writeValueAsString(Map.of("email", email, "password", "matkhau123", "role", "CUSTOMER"))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void unverifiedGoogleEmailDoesNotTakeOverAnUnverifiedAccount() throws Exception {
+        User user = new User(unique("chuaverify2"), passwords.encode("matkhau123"), "Chưa xác thực");
+        user.addRole(Role.CUSTOMER);
+        User saved = users.saveAndFlush(user);
+        oauth(Map.of("provider", "GOOGLE", "token", googleToken(saved.getEmail(), false)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("OAUTH_EMAIL_UNVERIFIED"));
+        User after = users.findById(saved.getId()).orElseThrow();
+        assertThat(after.isEmailVerified()).isFalse();
+        assertThat(after.hasPassword()).isTrue();
     }
 
     @Test

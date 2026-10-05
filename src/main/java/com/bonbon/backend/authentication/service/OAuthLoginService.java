@@ -31,7 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Sign in with Google (flows/authentication/login-oauth.md). A provider identity seen before signs in
  * directly; a new one either creates a bonbon identity (role and consent required) or links to the
  * account that already owns its email, but only after that account proves ownership with its password,
- * never on a matching email alone.
+ * never on a matching email alone. An account whose email was never verified has no owner to prove it, so
+ * Google's verification of the address takes it over.
  */
 @Service
 public class OAuthLoginService {
@@ -41,7 +42,7 @@ public class OAuthLoginService {
     private static final String PRINCIPAL_TYPE = "USER";
 
     /** What the client must do before Google can be attached to the existing account with this email. */
-    enum LinkMethod { PASSWORD, VERIFY_EMAIL_FIRST, SIGN_IN_FIRST }
+    enum LinkMethod { PASSWORD, SIGN_IN_FIRST }
 
     private final GoogleIdTokenVerifier google;
     private final UserRepository users;
@@ -120,16 +121,15 @@ public class OAuthLoginService {
 
     private User linkToExisting(User existing, GoogleIdentity identity, OAuthLoginRequest req, ClientContext client) {
         if (!existing.isEmailVerified()) {
-            throw linkRequired(LinkMethod.VERIFY_EMAIL_FIRST,
-                    "Email này đã có tài khoản bonbon nhưng chưa xác thực. Hãy xác thực email, đăng nhập bằng mật khẩu rồi liên kết Google.");
+            return claimUnverified(existing, identity);
         }
         if (providers.isLinked(existing.getId(), AuthProvider.GOOGLE)) {
             throw linkRequired(LinkMethod.SIGN_IN_FIRST,
-                    "Tài khoản bonbon có email này đã liên kết với một tài khoản Google khác.");
+                    "Tài khoản bonbon có email này đã liên kết với một tài khoản Google khác. Hãy đăng nhập bằng tài khoản Google đó, hoặc bằng email và mật khẩu.");
         }
         if (!existing.hasPassword()) {
             throw linkRequired(LinkMethod.SIGN_IN_FIRST,
-                    "Email này đã có tài khoản bonbon. Hãy đăng nhập bằng phương thức đã dùng trước đó.");
+                    "Email này đã có tài khoản bonbon chưa đặt mật khẩu. Hãy đăng nhập bằng phương thức đã dùng trước đó, hoặc chọn Quên mật khẩu để đặt mật khẩu.");
         }
         if (req.password() == null || req.password().isEmpty()) {
             throw linkRequired(LinkMethod.PASSWORD,
@@ -142,6 +142,24 @@ public class OAuthLoginService {
             owner.setAvatarUrl(identity.pictureUrl());
         }
         return owner;
+    }
+
+    /**
+     * The email was never verified, so whoever set its password may not own it (someone can pre-register another
+     * person's address). Google has just proved the address belongs to the person signing in, so it becomes
+     * verified, the unproven password is dropped and Google becomes the way in. A password can be set again with
+     * "forgot password".
+     */
+    private User claimUnverified(User existing, GoogleIdentity identity) {
+        existing.markEmailVerified();
+        existing.setPasswordHash(null);
+        if (existing.getAvatarUrl() == null) {
+            existing.setAvatarUrl(identity.pictureUrl());
+        }
+        users.saveAndFlush(existing);
+        providers.save(new UserAuthProvider(existing.getId(), AuthProvider.GOOGLE, identity.subject()));
+        log.info("Unverified account {} claimed through Google; password removed", existing.getId());
+        return existing;
     }
 
     /**
