@@ -79,6 +79,13 @@ public class Vendor {
     @Column(name = "min_order_value")
     private Integer minOrderValue;
 
+    /** Kept in step with the reviews by {@code ShopRatings}; never written through the entity. */
+    @Column(name = "rating_sum", nullable = false, insertable = false, updatable = false)
+    private int ratingSum;
+
+    @Column(name = "rating_count", nullable = false, insertable = false, updatable = false)
+    private int ratingCount;
+
     @Column(name = "accepting_orders", nullable = false)
     private boolean acceptingOrders = true;
 
@@ -255,6 +262,14 @@ public class Vendor {
 
     public Integer getMinOrderValue() {
         return minOrderValue;
+    }
+
+    public int getRatingSum() {
+        return ratingSum;
+    }
+
+    public int getRatingCount() {
+        return ratingCount;
     }
 
     public boolean isAcceptingOrders() {

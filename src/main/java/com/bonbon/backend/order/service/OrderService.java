@@ -32,6 +32,7 @@ import com.bonbon.backend.order.entity.OrderItem;
 import com.bonbon.backend.order.entity.OrderStatusHistory;
 import com.bonbon.backend.order.repository.OrderRepository;
 import com.bonbon.backend.order.repository.OrderStatusHistoryRepository;
+import com.bonbon.backend.order.repository.ReviewRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -58,11 +59,12 @@ public class OrderService {
     private final CategoryCatalog categories;
     private final SystemSettingsService settings;
     private final OrderTransitions transitions;
+    private final ReviewRepository reviews;
     private final TransactionTemplate tx;
 
     OrderService(OrderRepository orders, OrderStatusHistoryRepository history, ShopOrdering shops, DeliveryAddresses addresses,
             CategoryCatalog categories, SystemSettingsService settings, OrderTransitions transitions,
-            PlatformTransactionManager transactions) {
+            ReviewRepository reviews, PlatformTransactionManager transactions) {
         this.orders = orders;
         this.history = history;
         this.shops = shops;
@@ -70,6 +72,7 @@ public class OrderService {
         this.categories = categories;
         this.settings = settings;
         this.transitions = transitions;
+        this.reviews = reviews;
         this.tx = new TransactionTemplate(transactions);
     }
 
@@ -275,7 +278,7 @@ public class OrderService {
                 new OrderViews.Shop(o.getVendorId(), o.getVendorName()),
                 new OrderViews.Delivery(o.getDeliveryName(), o.getDeliveryPhone(), o.getDeliveryAddress(), o.getNote()), lines,
                 new OrderViews.Totals(o.getItemsTotal(), o.getDiscount(), o.getDeliveryFee(), o.getGrandTotal()), o.getPlacedAt(),
-                timeline);
+                timeline, reviews.findByOrderId(o.getId()).map(r -> new OrderViews.Reviewed(r.getId(), r.getRating(), r.isHidden())).orElse(null));
     }
 
     /** The customer sees "the shop", never the individual staff member who pressed the button. */

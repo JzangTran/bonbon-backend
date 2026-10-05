@@ -21,7 +21,10 @@ public interface ShopCatalog {
     /** The shop's menu, or empty when the shop does not exist or is not approved. */
     Optional<ShopMenu> menu(UUID shopId, Double lat, Double lng);
 
-    /** {@code distanceKm} is null when the caller gave no position. {@code open} is the one rule of pause-orders.md. */
+    /**
+     * {@code distanceKm} is null when the caller gave no position. {@code open} is the one rule of pause-orders.md.
+     * {@code ratingAverage} (one decimal) is null while the shop has no visible review.
+     */
     record Shop(
             UUID id,
             String name,
@@ -31,7 +34,9 @@ public interface ShopCatalog {
             BigDecimal deliveryRadiusKm,
             Integer deliveryFee,
             Integer freeDeliveryThreshold,
-            Integer minOrderValue) {
+            Integer minOrderValue,
+            Double ratingAverage,
+            int ratingCount) {
     }
 
     record ShopMenu(Shop shop, List<Section> sections) {

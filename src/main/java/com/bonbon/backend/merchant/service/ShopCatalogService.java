@@ -152,7 +152,8 @@ class ShopCatalogService implements ShopCatalog {
     private static Shop shop(Vendor v, Double distanceKm, ZonedDateTime now) {
         return new Shop(v.getId(), v.getName(), v.getFormattedAddress(),
                 distanceKm == null ? null : Math.round(distanceKm * 100.0) / 100.0, ShopHours.isOpen(v, now),
-                v.getDeliveryRadiusKm(), v.getDeliveryFee(), v.getFreeDeliveryThreshold(), v.getMinOrderValue());
+                v.getDeliveryRadiusKm(), v.getDeliveryFee(), v.getFreeDeliveryThreshold(), v.getMinOrderValue(),
+                v.getRatingCount() == 0 ? null : Math.round(v.getRatingSum() * 10.0 / v.getRatingCount()) / 10.0, v.getRatingCount());
     }
 
     private static String escapeLike(String raw) {

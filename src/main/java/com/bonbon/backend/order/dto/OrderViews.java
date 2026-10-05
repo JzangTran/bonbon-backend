@@ -27,7 +27,13 @@ public final class OrderViews {
             List<Line> items,
             Totals totals,
             Instant placedAt,
-            List<Step> timeline) {
+            List<Step> timeline,
+            @Schema(description = "Đánh giá của khách cho đơn này; vắng mặt khi chưa đánh giá.") Reviewed review) {
+    }
+
+    /** Just enough for an order screen to show "đã đánh giá"; the review itself is read from its own endpoint. */
+    @Schema(name = "OrderReviewed")
+    public record Reviewed(UUID id, int rating, boolean hidden) {
     }
 
     @Schema(name = "OrderShop")
