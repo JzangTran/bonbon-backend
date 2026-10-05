@@ -33,6 +33,9 @@ spring:
       port: ${BONBON_REDIS_PORT:6379}
 
 springdoc:
+  # Error responses come from @ApiError (OpenApiConfig), not from every @ExceptionHandler.
+  override-with-generic-response: false
+  default-produces-media-type: application/json
   api-docs:
     enabled: false
 
