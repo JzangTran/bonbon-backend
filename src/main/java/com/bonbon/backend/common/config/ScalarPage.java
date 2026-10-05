@@ -1,5 +1,6 @@
 package com.bonbon.backend.common.config;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
  * It exists only where the document itself is served ({@code springdoc.api-docs.enabled=true}, the dev profile).
  * The Scalar script is loaded from a CDN, so the page needs internet access; the API is not affected without it.
  */
+@Hidden
 @RestController
 @ConditionalOnProperty(name = "springdoc.api-docs.enabled", havingValue = "true")
 class ScalarPage {
