@@ -56,9 +56,22 @@ public class NotificationService {
             // The shop's own answer (or the timeout) settles the "new order" alert.
             notifications.resolveNewOrderAlerts(e.orderId(), Instant.now());
         }
+        if (e.to() == OrderStatus.PENDING_PAYMENT) {
+            // An unpaid online order is nobody's business yet: not the shop's, and the customer is on the payment screen.
+            return;
+        }
         List<Notification> drafts = new ArrayList<>();
         String n = "#" + e.number();
-        if (e.from() == null) {
+        boolean paid = e.from() == OrderStatus.PENDING_PAYMENT && e.to() == OrderStatus.PLACED;
+        if (e.from() == OrderStatus.PENDING_PAYMENT && e.to() == OrderStatus.CANCELLED) {
+            // Only the customer's own order was ever unpaid; the shop never knew about it.
+            if (e.by() == ActorType.SYSTEM) {
+                toCustomer(drafts, e, "ORDER_CANCELLED", "Đơn " + n + " đã bị huỷ", "Bạn chưa thanh toán trong thời hạn nên đơn đã tự huỷ.");
+            }
+        } else if (e.from() == null || paid) {
+            if (paid) {
+                toCustomer(drafts, e, "ORDER_PAID", "Đã thanh toán đơn " + n, "Quán sẽ xác nhận đơn của bạn trong ít phút.");
+            }
             shop(e).ifPresent(owner -> drafts.add(draft(owner, SHOP, "ORDER_NEW", e, "Đơn mới " + n, "Có đơn mới, hãy xác nhận trong vài phút.")));
         } else {
             ActorType by = e.by();

@@ -18,12 +18,12 @@ public final class OrderRequests {
     private OrderRequests() {
     }
 
-    /** {@code paymentMethod}: only {@code COD} exists until online payment is built. */
+    /** {@code paymentMethod}: {@code COD} (pay at the door) or {@code ONLINE} (MoMo, 1.000 to 50.000.000 ₫). */
     @Schema(name = "PlaceOrderRequest")
     public record Place(
             @NotNull UUID vendorId,
             @NotNull UUID addressId,
-            @NotNull @Pattern(regexp = "COD", message = "Hiện chỉ hỗ trợ thanh toán khi nhận hàng.") String paymentMethod,
+            @NotNull @Pattern(regexp = "COD|ONLINE", message = "Phương thức thanh toán phải là COD hoặc ONLINE.") String paymentMethod,
             @Size(max = 300) String note,
             @NotEmpty @Size(max = 50) List<@Valid @NotNull Line> items) {
     }

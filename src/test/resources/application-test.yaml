@@ -3,6 +3,10 @@ bonbon:
     timers:
       # Tests call OrderTimers.runOnce themselves, with a time they choose.
       enabled: false
+  payment:
+    reconcile:
+      # Tests call PaymentReconciliation.runOnce themselves.
+      enabled: false
   geo:
     fake-when-unconfigured: true
   captcha:

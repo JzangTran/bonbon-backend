@@ -30,6 +30,7 @@ public class OrderTimers {
 
     static final String NO_RESPONSE = "Quán không phản hồi kịp thời.";
     static final String NOT_HANDED_OVER = "Quán chưa giao món trong thời hạn cho phép.";
+    static final String PAYMENT_EXPIRED = "Hết thời hạn thanh toán.";
 
     private final OrderRepository orders;
     private final OrderTransitions transitions;
@@ -44,18 +45,19 @@ public class OrderTimers {
     }
 
     /** How many orders each rule moved in one run. */
-    public record Result(int rejected, int cancelled, int delivered) {
+    public record Result(int rejected, int cancelled, int delivered, int unpaid) {
     }
 
-    /** Runs all three rules as if it were {@code now}. */
+    /** Runs all four rules as if it were {@code now}. */
     public Result runOnce(Instant now) {
         int rejected = apply(orders.unansweredSince(now.minus(settings.sellerResponse()), BATCH), OrderStatus.PLACED, OrderStatus.REJECTED, NO_RESPONSE);
         int cancelled = apply(orders.notHandedOverSince(now.minus(settings.handover()), BATCH), null, OrderStatus.CANCELLED, NOT_HANDED_OVER);
         int delivered = apply(orders.undeliveredSince(now.minus(settings.autoDelivered()), BATCH), OrderStatus.OUT_FOR_DELIVERY, OrderStatus.DELIVERED, null);
-        if (rejected + cancelled + delivered > 0) {
-            log.info("Order timers: {} rejected, {} cancelled, {} delivered", rejected, cancelled, delivered);
+        int unpaid = apply(orders.unpaidSince(now.minus(settings.paymentWindow()), BATCH), OrderStatus.PENDING_PAYMENT, OrderStatus.CANCELLED, PAYMENT_EXPIRED);
+        if (rejected + cancelled + delivered + unpaid > 0) {
+            log.info("Order timers: {} rejected, {} cancelled, {} delivered, {} unpaid", rejected, cancelled, delivered, unpaid);
         }
-        return new Result(rejected, cancelled, delivered);
+        return new Result(rejected, cancelled, delivered, unpaid);
     }
 
     private int apply(List<UUID> ids, OrderStatus expected, OrderStatus to, String reason) {

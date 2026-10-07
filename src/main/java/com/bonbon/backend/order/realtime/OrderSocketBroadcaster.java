@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import com.bonbon.backend.order.OrderStatus;
 import com.bonbon.backend.order.OrderStatusChanged;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -26,7 +27,12 @@ class OrderSocketBroadcaster {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     void onChanged(OrderStatusChanged event) {
         push(OrderSocketHandler.customerChannel(event.customerId()), "customer", event);
-        push(OrderSocketHandler.vendorChannel(event.vendorId()), "shop", event);
+        // An order nobody has paid for is not the shop's yet (it first hears of it when it becomes PLACED).
+        boolean unpaidOnly = event.to() == OrderStatus.PENDING_PAYMENT
+                || (event.from() == OrderStatus.PENDING_PAYMENT && event.to() != OrderStatus.PLACED);
+        if (!unpaidOnly) {
+            push(OrderSocketHandler.vendorChannel(event.vendorId()), "shop", event);
+        }
     }
 
     private void push(String channel, String audience, OrderStatusChanged event) {

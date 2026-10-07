@@ -80,6 +80,18 @@ bonbon:
       # OAuth client IDs (comma-separated) whose Google ID tokens are accepted: web, Android, iOS.
       # Not secret, but configured per environment; empty disables Google sign-in.
       client-ids: ${GOOGLE_CLIENT_IDS:}
+  payment:
+    # fake (default) never leaves the machine; momo talks to MoMo. Production must use momo.
+    provider: ${BONBON_PAYMENT_PROVIDER:fake}
+    momo:
+      # MoMo test environment by default; production is https://payment.momo.vn after MoMo verifies the business.
+      endpoint: ${MOMO_ENDPOINT:https://test-payment.momo.vn}
+      partner-code: ${MOMO_PARTNER_CODE:}
+      access-key: ${MOMO_ACCESS_KEY:}
+      secret-key: ${MOMO_SECRET_KEY:}
+      # Where the customer lands after paying (shown only, never trusted) and where MoMo reports the result.
+      redirect-url: ${MOMO_REDIRECT_URL:${bonbon.app.web-url}/payment/return}
+      ipn-url: ${MOMO_IPN_URL:http://localhost:8080/api/payments/momo/ipn}
   captcha:
     enabled: ${BONBON_CAPTCHA_ENABLED:true}
     secret: ${BONBON_RECAPTCHA_SECRET:}

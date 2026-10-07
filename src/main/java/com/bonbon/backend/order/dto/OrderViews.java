@@ -28,7 +28,24 @@ public final class OrderViews {
             Totals totals,
             Instant placedAt,
             List<Step> timeline,
+            @Schema(description = "Thanh toán MoMo đang chờ của đơn `PENDING_PAYMENT`; vắng mặt ở các đơn khác.") Payment payment,
             @Schema(description = "Đánh giá của khách cho đơn này; vắng mặt khi chưa đánh giá.") Reviewed review) {
+    }
+
+    /**
+     * The newest MoMo attempt of an unpaid online order. {@code attemptStatus} is PENDING (open the link), FAILED (start
+     * a new attempt) or EXPIRED. Opening {@code deeplink}, or {@code payUrl} when MoMo is not installed, is how the
+     * customer pays; only the order status says whether the payment arrived.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @Schema(name = "OrderPayment")
+    public record Payment(
+            @Schema(description = "Số lần thử thanh toán, bắt đầu từ 1.") int attempt,
+            String attemptStatus,
+            @Schema(description = "Trang thanh toán MoMo (mở trong trình duyệt).") String payUrl,
+            @Schema(description = "Liên kết mở thẳng ứng dụng MoMo.") String deeplink,
+            @Schema(description = "Ảnh mã QR để quét bằng MoMo.") String qrCodeUrl,
+            @Schema(description = "Hạn thanh toán; quá hạn đơn tự huỷ.") Instant expiresAt) {
     }
 
     /** Just enough for an order screen to show "đã đánh giá"; the review itself is read from its own endpoint. */
