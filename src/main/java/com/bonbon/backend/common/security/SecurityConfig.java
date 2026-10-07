@@ -67,7 +67,11 @@ class SecurityConfig {
                         // Reading the category tree is public (browsing filters); writes live under /api/admin.
                         .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
                         // Guests browse shops and menus before logging in (browse-vendors-in-area.md).
-                        .requestMatchers(HttpMethod.GET, "/api/vendors", "/api/vendors/*/menu").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/vendors", "/api/vendors/*/menu", "/api/vendors/*/reviews").permitAll()
+                        // MoMo calls this server to server; it carries no token, the signature is the trust (pay-online.md).
+                        // The fake-pay pages exist only outside production (FakePayController).
+                        .requestMatchers(HttpMethod.POST, "/api/payments/momo/ipn").permitAll()
+                        .requestMatchers("/api/payments/fake/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(rs -> rs
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(permissionsConverter()))

@@ -4,6 +4,7 @@ import static com.bonbon.backend.order.OrderStatus.CANCELLED;
 import static com.bonbon.backend.order.OrderStatus.CONFIRMED;
 import static com.bonbon.backend.order.OrderStatus.DELIVERED;
 import static com.bonbon.backend.order.OrderStatus.OUT_FOR_DELIVERY;
+import static com.bonbon.backend.order.OrderStatus.PENDING_PAYMENT;
 import static com.bonbon.backend.order.OrderStatus.PLACED;
 import static com.bonbon.backend.order.OrderStatus.PREPARING;
 import static com.bonbon.backend.order.OrderStatus.REJECTED;
@@ -24,6 +25,7 @@ import com.bonbon.backend.order.entity.OrderItem;
 import com.bonbon.backend.order.entity.OrderStatusHistory;
 import com.bonbon.backend.order.repository.OrderRepository;
 import com.bonbon.backend.order.repository.OrderStatusHistoryRepository;
+import com.bonbon.backend.payment.OnlinePayments;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -53,6 +55,7 @@ class OrderTransitions {
 
     static {
         ALLOWED.put(Actor.CUSTOMER, Map.of(
+                PENDING_PAYMENT, Set.of(CANCELLED),
                 PLACED, Set.of(CANCELLED),
                 CONFIRMED, Set.of(CANCELLED),
                 OUT_FOR_DELIVERY, Set.of(DELIVERED)));
@@ -62,6 +65,8 @@ class OrderTransitions {
                 PREPARING, Set.of(OUT_FOR_DELIVERY, CANCELLED),
                 OUT_FOR_DELIVERY, Set.of(DELIVERED)));
         ALLOWED.put(Actor.SYSTEM, Map.of(
+                // Payment arrived (PLACED) or the payment window ran out (CANCELLED).
+                PENDING_PAYMENT, Set.of(PLACED, CANCELLED),
                 PLACED, Set.of(REJECTED),
                 CONFIRMED, Set.of(CANCELLED),
                 PREPARING, Set.of(CANCELLED),
@@ -72,12 +77,15 @@ class OrderTransitions {
     private final OrderStatusHistoryRepository history;
     private final ShopOrdering shops;
     private final ApplicationEventPublisher events;
+    private final OnlinePayments payments;
 
-    OrderTransitions(OrderRepository orders, OrderStatusHistoryRepository history, ShopOrdering shops, ApplicationEventPublisher events) {
+    OrderTransitions(OrderRepository orders, OrderStatusHistoryRepository history, ShopOrdering shops, ApplicationEventPublisher events,
+            OnlinePayments payments) {
         this.orders = orders;
         this.history = history;
         this.shops = shops;
         this.events = events;
+        this.payments = payments;
     }
 
     /** Publishes the "placed" event for a brand-new order. */
@@ -114,16 +122,28 @@ class OrderTransitions {
         }
         Instant now = Instant.now();
         String paymentStatus = null;
-        if (to == DELIVERED && "COD".equals(order.getPaymentMethod()) && !order.isIncidentHold()) {
+        boolean cashCollected = to == DELIVERED && "COD".equals(order.getPaymentMethod()) && !order.isIncidentHold();
+        if (cashCollected) {
+            paymentStatus = "PAID";
+        }
+        // Paid online: the shop's response clock starts now, not when the unpaid order was created.
+        boolean paidOnline = from == PENDING_PAYMENT && to == PLACED;
+        if (paidOnline) {
             paymentStatus = "PAID";
         }
         int changed = orders.transition(order.getId(), from, to, now, to == CONFIRMED ? now : null,
-                to == OUT_FOR_DELIVERY ? now : null, to.isTerminal() ? now : null, paymentStatus);
+                to == OUT_FOR_DELIVERY ? now : null, to.isTerminal() ? now : null, paidOnline ? now : null, paymentStatus);
         if (changed == 0) {
             throw alreadyChanged();
         }
         history.save(new OrderStatusHistory(order.getId(), from, to, actorType, actorId, cleanReason));
         toReturn.forEach(shops::returnStock);
+        if (cashCollected) {
+            payments.cashCollected(order.getId());
+        }
+        if (to == REJECTED || to == CANCELLED) {
+            payments.orderClosed(order.getId());
+        }
         events.publishEvent(new OrderStatusChanged(order.getId(), order.getNumber(), order.getCustomerId(), order.getVendorId(), from, to, actorType));
     }
 

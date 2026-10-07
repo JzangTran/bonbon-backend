@@ -5,6 +5,11 @@ spring:
     username: ${BONBON_DB_USER}
     password: ${BONBON_DB_PASSWORD}
 
+bonbon:
+  payment:
+    # The fake provider is refused in production (PaymentConfig); MoMo credentials come from MOMO_* variables.
+    provider: ${BONBON_PAYMENT_PROVIDER:momo}
+
 springdoc:
   api-docs:
     enabled: false

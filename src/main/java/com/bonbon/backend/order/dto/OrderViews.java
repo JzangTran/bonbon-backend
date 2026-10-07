@@ -27,7 +27,43 @@ public final class OrderViews {
             List<Line> items,
             Totals totals,
             Instant placedAt,
-            List<Step> timeline) {
+            List<Step> timeline,
+            @Schema(description = "Thanh toán MoMo đang chờ của đơn `PENDING_PAYMENT`; vắng mặt ở các đơn khác.") Payment payment,
+            @Schema(description = "Hoàn tiền của đơn online đã thanh toán rồi bị huỷ hoặc từ chối; vắng mặt ở các đơn khác.") Refund refund,
+            @Schema(description = "Đánh giá của khách cho đơn này; vắng mặt khi chưa đánh giá.") Reviewed review) {
+    }
+
+    /**
+     * Where the customer's money stands after a paid online order fell through. {@code status}: REQUESTED or PROCESSING
+     * (on its way), NEEDS_DESTINATION (send the refund account with {@code PUT /api/orders/{id}/refund-destination}),
+     * COMPLETED. {@code mode}: GATEWAY (back to the MoMo wallet) or MANUAL (bank transfer by an admin).
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @Schema(name = "OrderRefund")
+    public record Refund(String status, String mode, int amount, boolean needsDestination,
+            @Schema(description = "Lý do chuyển khoản trước đó không thành công; khách cần nhập tài khoản khác.") String failureReason,
+            @Schema(description = "4 số cuối tài khoản nhận hoàn tiền đã nhập.") String destinationLast4) {
+    }
+
+    /**
+     * The newest MoMo attempt of an unpaid online order. {@code attemptStatus} is PENDING (open the link), FAILED (start
+     * a new attempt) or EXPIRED. Opening {@code deeplink}, or {@code payUrl} when MoMo is not installed, is how the
+     * customer pays; only the order status says whether the payment arrived.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @Schema(name = "OrderPayment")
+    public record Payment(
+            @Schema(description = "Số lần thử thanh toán, bắt đầu từ 1.") int attempt,
+            String attemptStatus,
+            @Schema(description = "Trang thanh toán MoMo (mở trong trình duyệt).") String payUrl,
+            @Schema(description = "Liên kết mở thẳng ứng dụng MoMo.") String deeplink,
+            @Schema(description = "Ảnh mã QR để quét bằng MoMo.") String qrCodeUrl,
+            @Schema(description = "Hạn thanh toán; quá hạn đơn tự huỷ.") Instant expiresAt) {
+    }
+
+    /** Just enough for an order screen to show "đã đánh giá"; the review itself is read from its own endpoint. */
+    @Schema(name = "OrderReviewed")
+    public record Reviewed(UUID id, int rating, boolean hidden) {
     }
 
     @Schema(name = "OrderShop")

@@ -23,5 +23,8 @@ bonbon:
     enabled: ${BONBON_CAPTCHA_ENABLED:false}
 
 springdoc:
+  # Error responses come from @ApiError (OpenApiConfig), not from every @ExceptionHandler.
+  override-with-generic-response: false
+  default-produces-media-type: application/json
   api-docs:
     enabled: true

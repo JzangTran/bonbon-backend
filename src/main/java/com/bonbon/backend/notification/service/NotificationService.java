@@ -14,6 +14,8 @@ import com.bonbon.backend.notification.entity.Notification;
 import com.bonbon.backend.notification.repository.NotificationRepository;
 import com.bonbon.backend.order.OrderStatus;
 import com.bonbon.backend.order.OrderStatusChanged;
+import com.bonbon.backend.payment.RefundCompleted;
+import com.bonbon.backend.payment.RefundNeedsDestination;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.PageRequest;
@@ -56,9 +58,22 @@ public class NotificationService {
             // The shop's own answer (or the timeout) settles the "new order" alert.
             notifications.resolveNewOrderAlerts(e.orderId(), Instant.now());
         }
+        if (e.to() == OrderStatus.PENDING_PAYMENT) {
+            // An unpaid online order is nobody's business yet: not the shop's, and the customer is on the payment screen.
+            return;
+        }
         List<Notification> drafts = new ArrayList<>();
         String n = "#" + e.number();
-        if (e.from() == null) {
+        boolean paid = e.from() == OrderStatus.PENDING_PAYMENT && e.to() == OrderStatus.PLACED;
+        if (e.from() == OrderStatus.PENDING_PAYMENT && e.to() == OrderStatus.CANCELLED) {
+            // Only the customer's own order was ever unpaid; the shop never knew about it.
+            if (e.by() == ActorType.SYSTEM) {
+                toCustomer(drafts, e, "ORDER_CANCELLED", "Đơn " + n + " đã bị huỷ", "Bạn chưa thanh toán trong thời hạn nên đơn đã tự huỷ.");
+            }
+        } else if (e.from() == null || paid) {
+            if (paid) {
+                toCustomer(drafts, e, "ORDER_PAID", "Đã thanh toán đơn " + n, "Quán sẽ xác nhận đơn của bạn trong ít phút.");
+            }
             shop(e).ifPresent(owner -> drafts.add(draft(owner, SHOP, "ORDER_NEW", e, "Đơn mới " + n, "Có đơn mới, hãy xác nhận trong vài phút.")));
         } else {
             ActorType by = e.by();
@@ -101,6 +116,27 @@ public class NotificationService {
             notifications.saveAll(drafts);
             events.publishEvent(new Created(List.copyOf(drafts)));
         }
+    }
+
+    /** The customer has their money back (through MoMo or by bank transfer). */
+    @EventListener
+    void onRefundCompleted(RefundCompleted e) {
+        String how = "MANUAL".equals(e.mode()) ? "bằng chuyển khoản" : "về ví MoMo";
+        raise(e.customerId(), "REFUND_DONE", e.orderId(), e.orderNumber(), "Đã hoàn tiền đơn #" + e.orderNumber(),
+                "Đã hoàn " + e.amount() + " ₫ " + how + ".");
+    }
+
+    /** A refund can only go back by bank transfer: the customer has to say to which account. */
+    @EventListener
+    void onRefundNeedsDestination(RefundNeedsDestination e) {
+        raise(e.customerId(), "REFUND_NEEDS_ACCOUNT", e.orderId(), e.orderNumber(), "Cần tài khoản nhận hoàn tiền đơn #" + e.orderNumber(),
+                "Hãy nhập tài khoản ngân hàng để nhận lại " + e.amount() + " ₫.");
+    }
+
+    private void raise(UUID customerId, String type, UUID orderId, long orderNumber, String title, String body) {
+        Notification n = new Notification(customerId, CUSTOMER, type, orderId, orderNumber, title, body);
+        notifications.save(n);
+        events.publishEvent(new Created(List.of(n)));
     }
 
     private Optional<UUID> shop(OrderStatusChanged e) {

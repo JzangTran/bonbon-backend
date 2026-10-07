@@ -47,11 +47,12 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
                    o.confirmedAt = coalesce(:confirmedAt, o.confirmedAt),
                    o.outForDeliveryAt = coalesce(:outForDeliveryAt, o.outForDeliveryAt),
                    o.finishedAt = coalesce(:finishedAt, o.finishedAt),
+                   o.placedAt = coalesce(:placedAt, o.placedAt),
                    o.paymentStatus = coalesce(:paymentStatus, o.paymentStatus)
             where o.id = :id and o.status = :from""")
     int transition(@Param("id") UUID id, @Param("from") OrderStatus from, @Param("to") OrderStatus to, @Param("now") Instant now,
             @Param("confirmedAt") Instant confirmedAt, @Param("outForDeliveryAt") Instant outForDeliveryAt,
-            @Param("finishedAt") Instant finishedAt, @Param("paymentStatus") String paymentStatus);
+            @Param("finishedAt") Instant finishedAt, @Param("placedAt") Instant placedAt, @Param("paymentStatus") String paymentStatus);
 
     @Query("select o from Order o where o.vendorId = :vendorId and o.status in :statuses and o.placedAt >= :from and o.placedAt < :to")
     Page<Order> findForVendor(@Param("vendorId") UUID vendorId, @Param("statuses") Collection<OrderStatus> statuses,
@@ -68,4 +69,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     /** Orders out for delivery since before {@code cutoff} that nobody has closed and no case is holding. */
     @Query("select o.id from Order o where o.status = 'OUT_FOR_DELIVERY' and o.incidentHold = false and o.outForDeliveryAt < :cutoff order by o.outForDeliveryAt")
     List<UUID> undeliveredSince(@Param("cutoff") Instant cutoff, Pageable limit);
+
+    /** Online orders still waiting for payment since before {@code cutoff}, oldest first. */
+    @Query("select o.id from Order o where o.status = 'PENDING_PAYMENT' and o.placedAt < :cutoff order by o.placedAt")
+    List<UUID> unpaidSince(@Param("cutoff") Instant cutoff, Pageable limit);
 }
