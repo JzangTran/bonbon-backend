@@ -12,12 +12,15 @@ import java.util.UUID;
 public interface OnlinePayments {
 
     /** The payments row of a cash-on-delivery order, created with the order. */
-    void recordCashOnDelivery(UUID orderId, int amount);
+    void recordCashOnDelivery(UUID orderId, long orderNumber, UUID customerId, int amount);
 
     /** The shop handed the food over and the cash changed hands: the payment is done. */
     void cashCollected(UUID orderId);
 
-    /** The order ended without being paid for (or without being delivered): an unpaid payment fails, open attempts expire. */
+    /**
+     * The order was cancelled or rejected: an unpaid payment fails and its open attempts expire; a payment that was
+     * made is queued for a refund. Runs in the order's transaction.
+     */
     void orderClosed(UUID orderId);
 
     /**
@@ -25,13 +28,27 @@ public interface OnlinePayments {
      * Calls the gateway (up to 30 s), so it must run outside any transaction. A gateway failure is not thrown: the
      * attempt comes back {@code FAILED} and the customer can try again.
      */
-    Attempt startOnline(UUID orderId, long orderNumber, int amount, Instant expiresAt);
+    Attempt startOnline(UUID orderId, long orderNumber, UUID customerId, int amount, Instant expiresAt);
 
     /** The newest attempt of the order's online payment, if there is one. */
     Optional<Attempt> currentAttempt(UUID orderId);
 
     /** Money arrived for an order that can no longer use it: queue the refund (idempotent per payment). */
     void requestLateRefund(UUID paymentId);
+
+    /**
+     * The order's refund, if money is owed or was given back. {@code status} is REQUESTED, PROCESSING, NEEDS_DESTINATION
+     * (the customer must give a bank account), COMPLETED or FAILED; {@code mode} GATEWAY (back through MoMo) or MANUAL
+     * (a bank transfer by an admin).
+     */
+    Optional<RefundSummary> refundOf(UUID orderId);
+
+    record RefundSummary(String status, String mode, int amount, String failureReason, String destinationLast4) {
+
+        public boolean needsDestination() {
+            return "NEEDS_DESTINATION".equals(status);
+        }
+    }
 
     /** {@code status} is PENDING (waiting for the customer), SUCCESS, FAILED or EXPIRED. */
     record Attempt(int number, String status, String payUrl, String deeplink, String qrCodeUrl, Instant expiresAt) {

@@ -66,8 +66,37 @@ public class MomoPaymentGateway implements PaymentGateway {
         if (response == null) {
             throw new IllegalStateException("Empty answer from MoMo");
         }
+        java.util.List<RefundTrans> refunds = new java.util.ArrayList<>();
+        if (response.get("refundTrans") instanceof java.util.List<?> list) {
+            for (Object item : list) {
+                if (item instanceof Map<?, ?> m) {
+                    refunds.add(new RefundTrans(text(m.get("orderId")), longOf(m.get("transId")), longOf(m.get("amount")), intOf(m.get("resultCode"))));
+                }
+            }
+        }
         return new QueryResult(intOf(response.get("resultCode")), longOf(response.get("transId")), longOf(response.get("amount")),
-                text(response.get("payType")), text(response.get("message")));
+                text(response.get("payType")), text(response.get("message")), refunds);
+    }
+
+    @Override
+    public RefundResult refund(RefundRequest request) {
+        // The signature covers these fields; "lang" and the signature itself are not part of it.
+        Map<String, Object> signed = new LinkedHashMap<>();
+        signed.put("partnerCode", settings.partnerCode());
+        signed.put("orderId", request.providerOrderId());
+        signed.put("requestId", request.requestId());
+        signed.put("amount", request.amount());
+        signed.put("transId", request.purchaseTransId());
+        signed.put("description", request.description());
+        Map<String, Object> body = new LinkedHashMap<>(signed);
+        body.put("lang", "vi");
+        body.put("signature", signer.sign(signed));
+
+        Map<String, Object> response = client.post().uri("/v2/gateway/api/refund").body(body).retrieve().body(JSON);
+        if (response == null) {
+            throw new IllegalStateException("Empty answer from MoMo");
+        }
+        return new RefundResult(intOf(response.get("resultCode")), longOf(response.get("transId")), text(response.get("message")));
     }
 
     private static int intOf(Object value) {

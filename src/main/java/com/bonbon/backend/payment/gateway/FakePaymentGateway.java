@@ -13,6 +13,9 @@ public class FakePaymentGateway implements PaymentGateway {
     private final Map<String, QueryResult> results = new ConcurrentHashMap<>();
     private final AtomicBoolean failNext = new AtomicBoolean();
     private final String baseUrl;
+    private final Map<String, RefundResult> refundAnswers = new ConcurrentHashMap<>();
+    private final java.util.List<RefundRequest> refundCalls = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private volatile RefundResult refundDefault = null;
 
     /** {@code baseUrl} is where this backend can be reached: the dev payment page it serves lives there. */
     public FakePaymentGateway(String baseUrl) {
@@ -43,5 +46,29 @@ public class FakePaymentGateway implements PaymentGateway {
     /** The next create call is refused, as MoMo would on a bad request. */
     public void failNextCreate() {
         failNext.set(true);
+    }
+
+    @Override
+    public RefundResult refund(RefundRequest request) {
+        refundCalls.add(request);
+        RefundResult answer = refundAnswers.getOrDefault(request.providerOrderId(), refundDefault);
+        if (answer != null) {
+            return answer;
+        }
+        return new RefundResult(0, Math.abs(request.providerOrderId().hashCode()) + 1_000_000L, "Successful.");
+    }
+
+    /** Every refund call so far, oldest first. */
+    public java.util.List<RefundRequest> refundCalls() {
+        return refundCalls;
+    }
+
+    /** What refunds answer from now on unless a refund has its own answer; {@code null} restores success. */
+    public void answerRefunds(RefundResult result) {
+        refundDefault = result;
+    }
+
+    public void answerRefund(String providerOrderId, RefundResult result) {
+        refundAnswers.put(providerOrderId, result);
     }
 }

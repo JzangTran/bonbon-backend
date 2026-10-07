@@ -29,7 +29,20 @@ public final class OrderViews {
             Instant placedAt,
             List<Step> timeline,
             @Schema(description = "Thanh toán MoMo đang chờ của đơn `PENDING_PAYMENT`; vắng mặt ở các đơn khác.") Payment payment,
+            @Schema(description = "Hoàn tiền của đơn online đã thanh toán rồi bị huỷ hoặc từ chối; vắng mặt ở các đơn khác.") Refund refund,
             @Schema(description = "Đánh giá của khách cho đơn này; vắng mặt khi chưa đánh giá.") Reviewed review) {
+    }
+
+    /**
+     * Where the customer's money stands after a paid online order fell through. {@code status}: REQUESTED or PROCESSING
+     * (on its way), NEEDS_DESTINATION (send the refund account with {@code PUT /api/orders/{id}/refund-destination}),
+     * COMPLETED. {@code mode}: GATEWAY (back to the MoMo wallet) or MANUAL (bank transfer by an admin).
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @Schema(name = "OrderRefund")
+    public record Refund(String status, String mode, int amount, boolean needsDestination,
+            @Schema(description = "Lý do chuyển khoản trước đó không thành công; khách cần nhập tài khoản khác.") String failureReason,
+            @Schema(description = "4 số cuối tài khoản nhận hoàn tiền đã nhập.") String destinationLast4) {
     }
 
     /**

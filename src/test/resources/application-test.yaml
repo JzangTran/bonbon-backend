@@ -5,8 +5,10 @@ bonbon:
       enabled: false
   payment:
     reconcile:
-      # Tests call PaymentReconciliation.runOnce themselves.
+      # Tests call PaymentReconciliation.runOnce and PaymentRefunds themselves.
       enabled: false
+    refund:
+      immediate: false
   geo:
     fake-when-unconfigured: true
   captcha:

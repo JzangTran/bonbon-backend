@@ -29,9 +29,11 @@ class PaymentService implements OnlinePayments {
     private final PaymentGateway gateway;
     private final TransactionTemplate tx;
     private final String provider;
+    private final PaymentRefunds refunds;
 
-    PaymentService(JdbcClient jdbc, PaymentGateway gateway, PlatformTransactionManager transactions,
+    PaymentService(JdbcClient jdbc, PaymentGateway gateway, PlatformTransactionManager transactions, PaymentRefunds refunds,
             @Value("${bonbon.payment.provider:fake}") String provider) {
+        this.refunds = refunds;
         this.jdbc = jdbc;
         this.gateway = gateway;
         this.tx = new TransactionTemplate(transactions);
@@ -39,9 +41,11 @@ class PaymentService implements OnlinePayments {
     }
 
     @Override
-    public void recordCashOnDelivery(UUID orderId, int amount) {
-        jdbc.sql("insert into payments (order_id, method, amount) values (:o, 'COD', :a) on conflict (order_id) do nothing")
-                .param("o", orderId).param("a", amount).update();
+    public void recordCashOnDelivery(UUID orderId, long orderNumber, UUID customerId, int amount) {
+        jdbc.sql("""
+                insert into payments (order_id, order_number, customer_id, method, amount) values (:o, :n, :c, 'COD', :a)
+                on conflict (order_id) do nothing""")
+                .param("o", orderId).param("n", orderNumber).param("c", customerId).param("a", amount).update();
     }
 
     @Override
@@ -52,7 +56,6 @@ class PaymentService implements OnlinePayments {
 
     @Override
     public void orderClosed(UUID orderId) {
-        // A payment that already succeeded is not touched here: giving that money back is the refund work.
         int closed = jdbc.sql("update payments set status = 'FAILED', updated_at = now() where order_id = :o and status = 'PENDING'")
                 .param("o", orderId).update();
         if (closed > 0) {
@@ -60,12 +63,16 @@ class PaymentService implements OnlinePayments {
                     update payment_attempts set status = 'EXPIRED', updated_at = now()
                     where status = 'PENDING' and payment_id = (select id from payments where order_id = :o)""")
                     .param("o", orderId).update();
+            return;
         }
+        // Paid online and now cancelled or rejected: the customer's money goes back (same transaction as the status change).
+        jdbc.sql("select id from payments where order_id = :o and method = 'ONLINE' and status = 'SUCCESS'").param("o", orderId)
+                .query(UUID.class).optional().ifPresent(paymentId -> refunds.queue(paymentId, "ORDER_CLOSED"));
     }
 
     @Override
-    public Attempt startOnline(UUID orderId, long orderNumber, int amount, Instant expiresAt) {
-        Prepared prepared = tx.execute(status -> prepare(orderId, amount, expiresAt));
+    public Attempt startOnline(UUID orderId, long orderNumber, UUID customerId, int amount, Instant expiresAt) {
+        Prepared prepared = tx.execute(status -> prepare(orderId, orderNumber, customerId, amount, expiresAt));
         PaymentGateway.CreateResult result;
         try {
             result = gateway.create(new PaymentGateway.CreateRequest(prepared.providerOrderId(), prepared.requestId(), amount,
@@ -108,22 +115,28 @@ class PaymentService implements OnlinePayments {
 
     @Override
     public void requestLateRefund(UUID paymentId) {
-        int queued = jdbc.sql("""
-                insert into payment_refunds (payment_id, reason, amount, mode)
-                select id, 'LATE_PAYMENT', amount, 'GATEWAY' from payments where id = :p and amount > 0
-                on conflict (payment_id, reason) where case_id is null do nothing""")
-                .param("p", paymentId).update();
-        if (queued > 0) {
+        if (refunds.queue(paymentId, "LATE_PAYMENT").isPresent()) {
             log.info("Payment {} arrived for an order that cannot use it; refund queued", paymentId);
         }
     }
 
-    private Prepared prepare(UUID orderId, int amount, Instant expiresAt) {
+    @Override
+    public Optional<RefundSummary> refundOf(UUID orderId) {
+        return jdbc.sql("""
+                select r.status, r.mode, r.amount, r.failure_reason, r.destination_last4
+                from payment_refunds r join payments p on p.id = r.payment_id
+                where p.order_id = :o order by r.created_at desc limit 1""").param("o", orderId)
+                .query((rs, n) -> new RefundSummary(rs.getString("status"), rs.getString("mode"), rs.getInt("amount"),
+                        rs.getString("failure_reason"), rs.getString("destination_last4")))
+                .optional();
+    }
+
+    private Prepared prepare(UUID orderId, long orderNumber, UUID customerId, int amount, Instant expiresAt) {
         UUID paymentId = jdbc.sql("""
-                insert into payments (order_id, method, provider, amount) values (:o, 'ONLINE', :prov, :a)
+                insert into payments (order_id, order_number, customer_id, method, provider, amount) values (:o, :n, :c, 'ONLINE', :prov, :a)
                 on conflict (order_id) do update set provider = excluded.provider
                 returning id""")
-                .param("o", orderId).param("prov", provider).param("a", amount).query(UUID.class).single();
+                .param("o", orderId).param("n", orderNumber).param("c", customerId).param("prov", provider).param("a", amount).query(UUID.class).single();
         String status = jdbc.sql("select status from payments where id = :p").param("p", paymentId).query(String.class).single();
         if ("SUCCESS".equals(status)) {
             throw BusinessException.conflict("ALREADY_PAID", "Đơn này đã được thanh toán.");

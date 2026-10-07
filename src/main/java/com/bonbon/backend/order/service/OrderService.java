@@ -98,7 +98,7 @@ public class OrderService {
         try {
             OrderViews.Detail created = tx.execute(status -> create(customer.id(), idempotencyKey, req, client, userAgent));
             if ("ONLINE".equals(req.paymentMethod())) {
-                created = startPayment(created.id(), created.number(), created.totals().grandTotal(), created.placedAt());
+                created = startPayment(created.id(), created.number(), customer.id(), created.totals().grandTotal(), created.placedAt());
             }
             return new Placed(created, true);
         } catch (DataIntegrityViolationException e) {
@@ -189,7 +189,7 @@ public class OrderService {
         orders.saveAndFlush(order);
         history.save(new OrderStatusHistory(order.getId(), null, order.getStatus(), ActorType.CUSTOMER, customerId, null));
         if (!online) {
-            payments.recordCashOnDelivery(order.getId(), order.getGrandTotal());
+            payments.recordCashOnDelivery(order.getId(), order.getNumber(), customerId, order.getGrandTotal());
         }
         transitions.placed(order);
         return detail(order);
@@ -255,8 +255,8 @@ public class OrderService {
     }
 
     /** Calls MoMo outside any transaction, then reads the order again with the attempt that now exists. */
-    private OrderViews.Detail startPayment(UUID orderId, long number, int amount, Instant placedAt) {
-        payments.startOnline(orderId, number, amount, placedAt.plus(orderSettings.paymentWindow()));
+    private OrderViews.Detail startPayment(UUID orderId, long number, UUID customerId, int amount, Instant placedAt) {
+        payments.startOnline(orderId, number, customerId, amount, placedAt.plus(orderSettings.paymentWindow()));
         return tx.execute(status -> orders.findById(orderId).map(this::detail).orElseThrow());
     }
 
@@ -273,7 +273,7 @@ public class OrderService {
         if (!Instant.now().isBefore(deadline)) {
             throw BusinessException.conflict("PAYMENT_EXPIRED", "Đã hết thời hạn thanh toán của đơn này.");
         }
-        return startPayment(order.getId(), order.getNumber(), order.getGrandTotal(), order.getPlacedAt());
+        return startPayment(order.getId(), order.getNumber(), order.getCustomerId(), order.getGrandTotal(), order.getPlacedAt());
     }
 
     // --- reading
@@ -320,7 +320,17 @@ public class OrderService {
                 new OrderViews.Shop(o.getVendorId(), o.getVendorName()),
                 new OrderViews.Delivery(o.getDeliveryName(), o.getDeliveryPhone(), o.getDeliveryAddress(), o.getNote()), lines,
                 new OrderViews.Totals(o.getItemsTotal(), o.getDiscount(), o.getDeliveryFee(), o.getGrandTotal()), o.getPlacedAt(),
-                timeline, paymentOf(o), reviews.findByOrderId(o.getId()).map(r -> new OrderViews.Reviewed(r.getId(), r.getRating(), r.isHidden())).orElse(null));
+                timeline, paymentOf(o), refundOf(o), reviews.findByOrderId(o.getId()).map(r -> new OrderViews.Reviewed(r.getId(), r.getRating(), r.isHidden())).orElse(null));
+    }
+
+    /** Money owed back or given back for a paid online order that did not go through. */
+    private OrderViews.Refund refundOf(Order o) {
+        if (!"ONLINE".equals(o.getPaymentMethod()) || (o.getStatus() != OrderStatus.CANCELLED && o.getStatus() != OrderStatus.REJECTED)) {
+            return null;
+        }
+        return payments.refundOf(o.getId())
+                .map(r -> new OrderViews.Refund(r.status(), r.mode(), r.amount(), r.needsDestination(), r.failureReason(), r.destinationLast4()))
+                .orElse(null);
     }
 
     private OrderViews.Payment paymentOf(Order o) {
