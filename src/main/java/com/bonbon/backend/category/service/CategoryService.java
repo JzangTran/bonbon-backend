@@ -11,6 +11,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.bonbon.backend.category.CategoryCatalog;
+import com.bonbon.backend.category.CategoryCommissionChanged;
 import com.bonbon.backend.category.CategoryUsage;
 import com.bonbon.backend.category.dto.CategoryNode;
 import com.bonbon.backend.category.dto.CategoryRequests;
@@ -18,7 +19,9 @@ import com.bonbon.backend.category.entity.Category;
 import com.bonbon.backend.category.repository.CategoryRepository;
 import com.bonbon.backend.common.exception.BusinessException;
 import com.bonbon.backend.common.security.CurrentPrincipal;
+import com.bonbon.backend.common.persistence.ActorType;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -35,10 +38,12 @@ public class CategoryService implements CategoryCatalog {
 
     private final CategoryRepository categories;
     private final ObjectProvider<CategoryUsage> usage;
+    private final ApplicationEventPublisher events;
 
-    CategoryService(CategoryRepository categories, ObjectProvider<CategoryUsage> usage) {
+    CategoryService(CategoryRepository categories, ObjectProvider<CategoryUsage> usage, ApplicationEventPublisher events) {
         this.categories = categories;
         this.usage = usage;
+        this.events = events;
     }
 
     /** {@code includeHidden=false} is the public view: a hidden node disappears with its whole subtree. */
@@ -67,7 +72,12 @@ public class CategoryService implements CategoryCatalog {
         Category category = new Category(parent, name, categories.maxSortOrder(parent.getId()) + 1);
         category.setCommissionRate(req.commissionRate());
         category.actedBy(actor.actorType(), actor.id());
-        return save(category);
+        CategoryNode created = save(category);
+        if (req.commissionRate() != null) {
+            events.publishEvent(new CategoryCommissionChanged(category.getId(), category.getName(), req.commissionRate(), null,
+                    actor.actorType(), actor.id()));
+        }
+        return created;
     }
 
     @Transactional
@@ -95,11 +105,13 @@ public class CategoryService implements CategoryCatalog {
             requireUniqueName(category.getParentId(), name, id);
             category.setName(name);
         }
+        BigDecimal before = category.getCommissionRate();
         if (Boolean.TRUE.equals(req.clearCommissionRate())) {
             category.setCommissionRate(null);
         } else if (req.commissionRate() != null) {
             category.setCommissionRate(req.commissionRate());
         }
+        publishIfRateChanged(category, before, actor.actorType(), actor.id());
         if (req.active() != null) {
             category.setActive(req.active());
         }
@@ -108,6 +120,33 @@ public class CategoryService implements CategoryCatalog {
         }
         category.actedBy(actor.actorType(), actor.id());
         return save(category);
+    }
+
+    @Override
+    @Transactional
+    public void changeCommissionRate(UUID categoryId, BigDecimal rate, ActorType by, UUID actorId) {
+        Category category = find(categoryId);
+        BigDecimal before = category.getCommissionRate();
+        category.setCommissionRate(rate);
+        category.actedBy(by, actorId);
+        categories.saveAndFlush(category);
+        publishIfRateChanged(category, before, by, actorId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RateNode> rateNodes() {
+        return categories.findAllInTreeOrder().stream()
+                .map(c -> new RateNode(c.getId(), c.getParentId(), c.getLevel(), c.getName(), c.isActive(), c.getCommissionRate())).toList();
+    }
+
+    /** One history row per real change; saving the same rate again is not news. */
+    private void publishIfRateChanged(Category category, BigDecimal before, ActorType by, UUID actorId) {
+        BigDecimal after = category.getCommissionRate();
+        boolean same = before == null ? after == null : after != null && before.compareTo(after) == 0;
+        if (!same) {
+            events.publishEvent(new CategoryCommissionChanged(category.getId(), category.getName(), after, before, by, actorId));
+        }
     }
 
     /** Only an unused leaf can be deleted; anything a dish uses is hidden instead. */
