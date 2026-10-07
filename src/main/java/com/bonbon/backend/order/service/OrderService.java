@@ -2,6 +2,7 @@ package com.bonbon.backend.order.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -33,6 +34,7 @@ import com.bonbon.backend.order.entity.OrderStatusHistory;
 import com.bonbon.backend.order.repository.OrderRepository;
 import com.bonbon.backend.order.repository.OrderStatusHistoryRepository;
 import com.bonbon.backend.order.repository.ReviewRepository;
+import com.bonbon.backend.payment.OnlinePayments;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -51,6 +53,8 @@ public class OrderService {
     static final String MAX_OPEN_ORDERS_KEY = "abuse.max_open_orders";
     static final String DEFAULT_COMMISSION_KEY = "commission.default_rate";
     private static final int MAX_PAGE_SIZE = 50;
+    private static final int MIN_ONLINE = 1_000;
+    private static final int MAX_ONLINE = 50_000_000;
 
     private final OrderRepository orders;
     private final OrderStatusHistoryRepository history;
@@ -60,11 +64,13 @@ public class OrderService {
     private final SystemSettingsService settings;
     private final OrderTransitions transitions;
     private final ReviewRepository reviews;
+    private final OnlinePayments payments;
+    private final OrderSettings orderSettings;
     private final TransactionTemplate tx;
 
     OrderService(OrderRepository orders, OrderStatusHistoryRepository history, ShopOrdering shops, DeliveryAddresses addresses,
             CategoryCatalog categories, SystemSettingsService settings, OrderTransitions transitions,
-            ReviewRepository reviews, PlatformTransactionManager transactions) {
+            ReviewRepository reviews, OnlinePayments payments, OrderSettings orderSettings, PlatformTransactionManager transactions) {
         this.orders = orders;
         this.history = history;
         this.shops = shops;
@@ -73,6 +79,8 @@ public class OrderService {
         this.settings = settings;
         this.transitions = transitions;
         this.reviews = reviews;
+        this.payments = payments;
+        this.orderSettings = orderSettings;
         this.tx = new TransactionTemplate(transactions);
     }
 
@@ -89,6 +97,9 @@ public class OrderService {
         }
         try {
             OrderViews.Detail created = tx.execute(status -> create(customer.id(), idempotencyKey, req, client, userAgent));
+            if ("ONLINE".equals(req.paymentMethod())) {
+                created = startPayment(created.id(), created.number(), created.totals().grandTotal(), created.placedAt());
+            }
             return new Placed(created, true);
         } catch (DataIntegrityViolationException e) {
             // A double tap raced us: the other request won the unique (customer, key) pair.
@@ -124,7 +135,8 @@ public class OrderService {
 
         Map<UUID, OrderableDish> dishes = shops.dishes(shop.id(),
                 req.items().stream().map(OrderRequests.Line::menuItemId).collect(Collectors.toSet()));
-        Order order = new Order(customerId, shop.id(), shop.name(), OrderStatus.PLACED, req.paymentMethod(), address.recipientName(),
+        boolean online = "ONLINE".equals(req.paymentMethod());
+        Order order = new Order(customerId, shop.id(), shop.name(), online ? OrderStatus.PENDING_PAYMENT : OrderStatus.PLACED, req.paymentMethod(), address.recipientName(),
                 address.recipientPhone(), address.address(), address.lat(), address.lng(), blankToNull(req.note()), key,
                 client.ip(), truncate(userAgent, 300));
 
@@ -168,9 +180,17 @@ public class OrderService {
         }
         int deliveryFee = shop.freeDeliveryThreshold() != null && itemsTotal >= shop.freeDeliveryThreshold() ? 0 : shop.deliveryFee();
         order.setTotals(itemsTotal, 0, deliveryFee, itemsTotal + deliveryFee, commission);
+        if (online && (order.getGrandTotal() < MIN_ONLINE || order.getGrandTotal() > MAX_ONLINE)) {
+            // MoMo's payment API only accepts this range; the customer can pay the same order at the door instead.
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "ONLINE_AMOUNT_OUT_OF_RANGE",
+                    "Thanh toán online chỉ áp dụng cho đơn từ 1.000 ₫ đến 50.000.000 ₫. Hãy chọn thanh toán khi nhận hàng.");
+        }
 
         orders.saveAndFlush(order);
-        history.save(new OrderStatusHistory(order.getId(), null, OrderStatus.PLACED, ActorType.CUSTOMER, customerId, null));
+        history.save(new OrderStatusHistory(order.getId(), null, order.getStatus(), ActorType.CUSTOMER, customerId, null));
+        if (!online) {
+            payments.recordCashOnDelivery(order.getId(), order.getGrandTotal());
+        }
         transitions.placed(order);
         return detail(order);
     }
@@ -234,6 +254,28 @@ public class OrderService {
         return detail(orders.findById(orderId).orElseThrow());
     }
 
+    /** Calls MoMo outside any transaction, then reads the order again with the attempt that now exists. */
+    private OrderViews.Detail startPayment(UUID orderId, long number, int amount, Instant placedAt) {
+        payments.startOnline(orderId, number, amount, placedAt.plus(orderSettings.paymentWindow()));
+        return tx.execute(status -> orders.findById(orderId).map(this::detail).orElseThrow());
+    }
+
+    /** A fresh MoMo attempt for an online order that is still unpaid (the first one failed, lapsed or was abandoned). */
+    public OrderViews.Detail pay(UUID customerId, UUID orderId) {
+        Order order = tx.execute(status -> orders.findByIdAndCustomerId(orderId, customerId).orElse(null));
+        if (order == null) {
+            throw BusinessException.notFound("ORDER_NOT_FOUND", "Không tìm thấy đơn hàng.");
+        }
+        if (order.getStatus() != OrderStatus.PENDING_PAYMENT || !"ONLINE".equals(order.getPaymentMethod())) {
+            throw BusinessException.conflict("PAYMENT_NOT_PENDING", "Đơn này không còn chờ thanh toán.");
+        }
+        Instant deadline = order.getPlacedAt().plus(orderSettings.paymentWindow());
+        if (!Instant.now().isBefore(deadline)) {
+            throw BusinessException.conflict("PAYMENT_EXPIRED", "Đã hết thời hạn thanh toán của đơn này.");
+        }
+        return startPayment(order.getId(), order.getNumber(), order.getGrandTotal(), order.getPlacedAt());
+    }
+
     // --- reading
 
     @Transactional(readOnly = true)
@@ -278,7 +320,16 @@ public class OrderService {
                 new OrderViews.Shop(o.getVendorId(), o.getVendorName()),
                 new OrderViews.Delivery(o.getDeliveryName(), o.getDeliveryPhone(), o.getDeliveryAddress(), o.getNote()), lines,
                 new OrderViews.Totals(o.getItemsTotal(), o.getDiscount(), o.getDeliveryFee(), o.getGrandTotal()), o.getPlacedAt(),
-                timeline, reviews.findByOrderId(o.getId()).map(r -> new OrderViews.Reviewed(r.getId(), r.getRating(), r.isHidden())).orElse(null));
+                timeline, paymentOf(o), reviews.findByOrderId(o.getId()).map(r -> new OrderViews.Reviewed(r.getId(), r.getRating(), r.isHidden())).orElse(null));
+    }
+
+    private OrderViews.Payment paymentOf(Order o) {
+        if (o.getStatus() != OrderStatus.PENDING_PAYMENT || !"ONLINE".equals(o.getPaymentMethod())) {
+            return null;
+        }
+        return payments.currentAttempt(o.getId())
+                .map(a -> new OrderViews.Payment(a.number(), a.status(), a.payUrl(), a.deeplink(), a.qrCodeUrl(), a.expiresAt()))
+                .orElse(null);
     }
 
     /** The customer sees "the shop", never the individual staff member who pressed the button. */

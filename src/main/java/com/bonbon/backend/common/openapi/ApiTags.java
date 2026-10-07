@@ -23,6 +23,7 @@ public final class ApiTags {
     public static final String ADDRESS_SUGGESTIONS = "Gợi ý địa chỉ";
     public static final String CATEGORIES = "Ngành hàng";
     public static final String LEGAL = "Điều khoản & chính sách";
+    public static final String PAYMENT_WEBHOOK = "Cổng thanh toán (webhook)";
 
     // Khách
     public static final String CUSTOMER_ADDRESSES = "Khách — Địa chỉ giao hàng";
@@ -50,7 +51,7 @@ public final class ApiTags {
 
     private static Map<String, List<String>> groups() {
         Map<String, List<String>> g = new LinkedHashMap<>();
-        g.put("Chung", List.of(LOGIN, REGISTRATION, SESSION, ACCOUNT, NOTIFICATIONS, PUSH_DEVICES, ADDRESS_SUGGESTIONS, CATEGORIES, LEGAL));
+        g.put("Chung", List.of(LOGIN, REGISTRATION, SESSION, ACCOUNT, NOTIFICATIONS, PUSH_DEVICES, ADDRESS_SUGGESTIONS, CATEGORIES, LEGAL, PAYMENT_WEBHOOK));
         g.put("Khách", List.of(CUSTOMER_ADDRESSES, CUSTOMER_BROWSE, CUSTOMER_ORDERS, CUSTOMER_REVIEWS));
         g.put("Người bán", List.of(SELLER_OPEN_SHOP, SELLER_SHOP, SELLER_MENU, SELLER_OPTIONS, SELLER_ORDERS, SELLER_REVIEWS));
         g.put("Quản trị", List.of(ADMIN_AUTH, ADMIN_ADMINS, ADMIN_CATEGORIES, ADMIN_SHOP_REVIEW, ADMIN_REVIEWS));

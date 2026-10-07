@@ -51,7 +51,7 @@ class OrderController {
      * Places a cash-on-delivery order. The same {@code Idempotency-Key} always returns the same order (200 on a
      * repeat, 201 the first time), so a retry after a timeout or a double tap never creates a second one.
      */
-    @Operation(operationId = "placeOrder", summary = "Đặt đơn", description = "Hiện chỉ có thanh toán khi nhận hàng (`COD`). Không gửi giá: máy chủ tính lại toàn bộ (giá món, lựa chọn, phí giao, ngưỡng miễn phí) và chụp lại vào đơn. Header `Idempotency-Key` (8–100 ký tự) bắt buộc: cùng khoá luôn trả về cùng một đơn (201 lần đầu, 200 khi lặp lại), nên thử lại hay bấm hai lần không tạo đơn thứ hai. Lỗi theo từng món có thêm `menuItemId`.")
+    @Operation(operationId = "placeOrder", summary = "Đặt đơn", description = "Thanh toán khi nhận hàng (`COD`) hoặc trực tuyến bằng MoMo (`ONLINE`, đơn từ 1.000 ₫ đến 50.000.000 ₫). Đơn `ONLINE` được tạo ở trạng thái `PENDING_PAYMENT` kèm `payment` (`deeplink`, `payUrl`, `qrCodeUrl`, `expiresAt`): mở `deeplink` để vào ứng dụng MoMo, hoặc `payUrl` khi chưa cài MoMo; quán chỉ thấy đơn sau khi đã thanh toán. Không gửi giá: máy chủ tính lại toàn bộ (giá món, lựa chọn, phí giao, ngưỡng miễn phí) và chụp lại vào đơn. Header `Idempotency-Key` (8–100 ký tự) bắt buộc: cùng khoá luôn trả về cùng một đơn (201 lần đầu, 200 khi lặp lại), nên thử lại hay bấm hai lần không tạo đơn thứ hai. Lỗi theo từng món có thêm `menuItemId`.")
     @ApiError(status = 404, code = "VENDOR_NOT_FOUND", when = "Quán không tồn tại hoặc chưa được duyệt.")
     @ApiError(status = 404, code = "ADDRESS_NOT_FOUND", when = "Địa chỉ không phải của khách.")
     @ApiError(status = 409, code = "SHOP_CLOSED", when = "Quán đang đóng cửa hoặc tạm ngưng nhận đơn.")
@@ -65,6 +65,7 @@ class OrderController {
     @ApiError(status = 400, code = "OPTION_DUPLICATED", when = "Một lựa chọn bị chọn hai lần.")
     @ApiError(status = 400, code = "OPTION_NOT_OFFERED", when = "Lựa chọn không thuộc món.")
     @ApiError(status = 400, code = "BELOW_MIN_ORDER", when = "Chưa đạt đơn tối thiểu của quán; có `minOrderValue`.")
+    @ApiError(status = 400, code = "ONLINE_AMOUNT_OUT_OF_RANGE", when = "Đơn `ONLINE` có tổng ngoài khoảng 1.000 ₫ đến 50.000.000 ₫.")
     @ApiResponse(responseCode = "201", description = "Đã tạo đơn mới.", content = @Content(schema = @Schema(implementation = OrderViews.Detail.class)))
     @ApiResponse(responseCode = "200", description = "Khoá `Idempotency-Key` đã dùng: trả về đúng đơn đã tạo trước đó.", content = @Content(schema = @Schema(implementation = OrderViews.Detail.class)))
     @PostMapping
@@ -93,7 +94,7 @@ class OrderController {
     }
 
     /** Free until the shop starts preparing; {@code reason} is optional. */
-    @Operation(operationId = "cancelMyOrder", summary = "Huỷ đơn", description = "Miễn phí khi đơn còn `PLACED` hoặc `CONFIRMED`; quán đã bắt đầu chuẩn bị thì không huỷ được. Lý do không bắt buộc.")
+    @Operation(operationId = "cancelMyOrder", summary = "Huỷ đơn", description = "Miễn phí khi đơn còn `PENDING_PAYMENT` (bỏ thanh toán), `PLACED` hoặc `CONFIRMED`; quán đã bắt đầu chuẩn bị thì không huỷ được. Lý do không bắt buộc.")
     @ApiError(status = 404, code = "ORDER_NOT_FOUND", when = "Đơn không tồn tại hoặc không phải của người gọi (không tiết lộ đơn của người khác).")
     @ApiError(status = 409, code = "INVALID_TRANSITION", when = "Trạng thái hiện tại không cho phép bước này; `status` là trạng thái hiện tại.")
     @ApiError(status = 409, code = "ORDER_ALREADY_CHANGED", when = "Người khác vừa đổi trạng thái đơn trước; tải lại đơn để xem trạng thái mới.")
@@ -101,6 +102,17 @@ class OrderController {
     @PreAuthorize("hasAuthority('order:cancel')")
     OrderViews.Detail cancel(CurrentPrincipal principal, @PathVariable UUID id, @Valid @RequestBody(required = false) OrderRequests.Cancel request) {
         return orders.cancel(principal.id(), id, request == null ? null : request.reason());
+    }
+
+    /** A fresh MoMo attempt while the order is still unpaid. */
+    @Operation(operationId = "retryOrderPayment", summary = "Thanh toán lại", description = "Tạo lần thanh toán MoMo mới cho đơn `ONLINE` còn chờ thanh toán (lần trước thất bại, hết hạn hoặc khách bỏ dở). Trả về đơn kèm `payment` mới. Chỉ trạng thái đơn từ máy chủ mới cho biết đã thanh toán, không tin việc quay lại từ MoMo.")
+    @ApiError(status = 404, code = "ORDER_NOT_FOUND", when = "Đơn không tồn tại hoặc không phải của người gọi (không tiết lộ đơn của người khác).")
+    @ApiError(status = 409, code = "PAYMENT_NOT_PENDING", when = "Đơn không phải đơn `ONLINE` đang chờ thanh toán.")
+    @ApiError(status = 409, code = "PAYMENT_EXPIRED", when = "Đã quá thời hạn thanh toán (15 phút); đơn sắp tự huỷ.")
+    @ApiError(status = 409, code = "ALREADY_PAID", when = "Đơn đã được thanh toán.")
+    @PostMapping("/{id}/pay")
+    OrderViews.Detail pay(CurrentPrincipal principal, @PathVariable UUID id) {
+        return orders.pay(principal.id(), id);
     }
 
     /** The customer has it in hand; the shop can also mark it delivered and the first one wins. */
