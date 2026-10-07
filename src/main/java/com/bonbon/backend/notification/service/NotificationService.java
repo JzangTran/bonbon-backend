@@ -15,6 +15,7 @@ import com.bonbon.backend.notification.repository.NotificationRepository;
 import com.bonbon.backend.order.OrderStatus;
 import com.bonbon.backend.order.OrderStatusChanged;
 import com.bonbon.backend.payment.RefundCompleted;
+import com.bonbon.backend.settlement.PayoutRecorded;
 import com.bonbon.backend.payment.RefundNeedsDestination;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -116,6 +117,17 @@ public class NotificationService {
             notifications.saveAll(drafts);
             events.publishEvent(new Created(List.copyOf(drafts)));
         }
+    }
+
+    /** The admin recorded a payout to this shop: the owner is told, with the bank reference to check against their statement. */
+    @EventListener
+    void onPayoutRecorded(PayoutRecorded e) {
+        shops.shop(e.vendorId()).map(ShopOrdering.OrderableShop::ownerUserId).ifPresent(owner -> {
+            Notification n = new Notification(owner, SHOP, "PAYOUT_RECORDED", null, null, "Đã chuyển " + e.amount() + " ₫ cho quán",
+                    "Mã giao dịch " + e.reference() + ". Kiểm tra trong sao kê ngân hàng của bạn.");
+            notifications.save(n);
+            events.publishEvent(new Created(List.of(n)));
+        });
     }
 
     /** The customer has their money back (through MoMo or by bank transfer). */

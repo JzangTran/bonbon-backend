@@ -1,5 +1,7 @@
 package com.bonbon.backend.order;
 
+import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -7,6 +9,9 @@ import java.util.UUID;
 public interface OrderMoney {
 
     Optional<Money> of(UUID orderId);
+
+    /** The display number of each order (the ones that exist). */
+    Map<UUID, Long> numbers(Collection<UUID> orderIds);
 
     /**
      * {@code paymentMethod} is COD or ONLINE (an online order only exists as a real order once it is paid).

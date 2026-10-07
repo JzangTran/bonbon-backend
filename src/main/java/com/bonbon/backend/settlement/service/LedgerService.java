@@ -34,13 +34,18 @@ public class LedgerService {
      * @return true when this call wrote the entry
      */
     @Transactional
-    public boolean postForOrder(UUID vendorId, String type, int amount, UUID orderId, ActorType by, UUID actorId) {
+    public boolean postForOrder(UUID vendorId, String type, int amount, UUID orderId, OrderFigures figures, ActorType by, UUID actorId) {
         return jdbc.sql("""
-                insert into ledger_entries (vendor_id, type, amount, order_id, acted_by_type, acted_by_id)
-                values (:vendor, :type, :amount, :order, :by, :actor)
+                insert into ledger_entries (vendor_id, type, amount, order_id, items_total, discount, delivery_fee, commission, acted_by_type, acted_by_id)
+                values (:vendor, :type, :amount, :order, :items, :discount, :fee, :commission, :by, :actor)
                 on conflict (order_id, type) where order_id is not null and case_id is null do nothing""")
                 .param("vendor", vendorId).param("type", type).param("amount", amount).param("order", orderId)
-                .param("by", by.name()).param("actor", actorId).update() > 0;
+                .param("items", figures.itemsTotal()).param("discount", figures.discount()).param("fee", figures.deliveryFee())
+                .param("commission", figures.commission()).param("by", by.name()).param("actor", actorId).update() > 0;
+    }
+
+    /** The order figures an entry was posted from, kept on it so statements never need the order tables. */
+    public record OrderFigures(int itemsTotal, int discount, int deliveryFee, int commission) {
     }
 
     /** What the platform owes the shop (positive) or the shop owes the platform (negative). */

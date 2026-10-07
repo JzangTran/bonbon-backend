@@ -45,13 +45,14 @@ class LedgerPosting {
             log.error("Order {} ended but its money could not be read; nothing posted", event.orderId());
             throw new IllegalStateException("Order " + event.orderId() + " not found for the ledger");
         }
+        LedgerService.OrderFigures figures = new LedgerService.OrderFigures(money.itemsTotal(), money.discount(), money.deliveryFee(), money.commission());
         if ("ONLINE".equals(money.paymentMethod())) {
             int earning = money.grandTotal() - money.commission();
             if (earning > 0) {
-                ledger.postForOrder(money.vendorId(), "ONLINE_EARNING", earning, money.orderId(), ActorType.SYSTEM, null);
+                ledger.postForOrder(money.vendorId(), "ONLINE_EARNING", earning, money.orderId(), figures, ActorType.SYSTEM, null);
             }
         } else if (event.to() == OrderStatus.DELIVERED && money.commission() > 0) {
-            ledger.postForOrder(money.vendorId(), "COD_COMMISSION", -money.commission(), money.orderId(), ActorType.SYSTEM, null);
+            ledger.postForOrder(money.vendorId(), "COD_COMMISSION", -money.commission(), money.orderId(), figures, ActorType.SYSTEM, null);
         }
     }
 }

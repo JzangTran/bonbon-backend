@@ -1,5 +1,8 @@
 package com.bonbon.backend.order.service;
 
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,5 +25,15 @@ class OrderMoneyService implements OrderMoney {
     public Optional<Money> of(UUID orderId) {
         return orders.findById(orderId).map(o -> new Money(o.getId(), o.getVendorId(), o.getPaymentMethod(), o.getItemsTotal(), o.getDiscount(),
                 o.getDeliveryFee(), o.getGrandTotal(), o.getCommissionAmount()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<UUID, Long> numbers(Collection<UUID> orderIds) {
+        Map<UUID, Long> result = new HashMap<>();
+        if (!orderIds.isEmpty()) {
+            orders.findAllById(orderIds).forEach(o -> result.put(o.getId(), o.getNumber()));
+        }
+        return result;
     }
 }
