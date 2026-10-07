@@ -14,6 +14,8 @@ import com.bonbon.backend.notification.entity.Notification;
 import com.bonbon.backend.notification.repository.NotificationRepository;
 import com.bonbon.backend.order.OrderStatus;
 import com.bonbon.backend.order.OrderStatusChanged;
+import com.bonbon.backend.payment.RefundCompleted;
+import com.bonbon.backend.payment.RefundNeedsDestination;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.PageRequest;
@@ -114,6 +116,27 @@ public class NotificationService {
             notifications.saveAll(drafts);
             events.publishEvent(new Created(List.copyOf(drafts)));
         }
+    }
+
+    /** The customer has their money back (through MoMo or by bank transfer). */
+    @EventListener
+    void onRefundCompleted(RefundCompleted e) {
+        String how = "MANUAL".equals(e.mode()) ? "bằng chuyển khoản" : "về ví MoMo";
+        raise(e.customerId(), "REFUND_DONE", e.orderId(), e.orderNumber(), "Đã hoàn tiền đơn #" + e.orderNumber(),
+                "Đã hoàn " + e.amount() + " ₫ " + how + ".");
+    }
+
+    /** A refund can only go back by bank transfer: the customer has to say to which account. */
+    @EventListener
+    void onRefundNeedsDestination(RefundNeedsDestination e) {
+        raise(e.customerId(), "REFUND_NEEDS_ACCOUNT", e.orderId(), e.orderNumber(), "Cần tài khoản nhận hoàn tiền đơn #" + e.orderNumber(),
+                "Hãy nhập tài khoản ngân hàng để nhận lại " + e.amount() + " ₫.");
+    }
+
+    private void raise(UUID customerId, String type, UUID orderId, long orderNumber, String title, String body) {
+        Notification n = new Notification(customerId, CUSTOMER, type, orderId, orderNumber, title, body);
+        notifications.save(n);
+        events.publishEvent(new Created(List.of(n)));
     }
 
     private Optional<UUID> shop(OrderStatusChanged e) {

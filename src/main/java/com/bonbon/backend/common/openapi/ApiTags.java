@@ -45,6 +45,7 @@ public final class ApiTags {
     public static final String ADMIN_CATEGORIES = "Quản trị — Ngành hàng";
     public static final String ADMIN_SHOP_REVIEW = "Quản trị — Duyệt cửa hàng";
     public static final String ADMIN_REVIEWS = "Quản trị — Kiểm duyệt đánh giá";
+    public static final String ADMIN_REFUNDS = "Quản trị — Hoàn tiền";
 
     /** Sidebar groups of the reference (the {@code x-tagGroups} extension Scalar reads), in display order. */
     public static final Map<String, List<String>> GROUPS = groups();
@@ -54,7 +55,7 @@ public final class ApiTags {
         g.put("Chung", List.of(LOGIN, REGISTRATION, SESSION, ACCOUNT, NOTIFICATIONS, PUSH_DEVICES, ADDRESS_SUGGESTIONS, CATEGORIES, LEGAL, PAYMENT_WEBHOOK));
         g.put("Khách", List.of(CUSTOMER_ADDRESSES, CUSTOMER_BROWSE, CUSTOMER_ORDERS, CUSTOMER_REVIEWS));
         g.put("Người bán", List.of(SELLER_OPEN_SHOP, SELLER_SHOP, SELLER_MENU, SELLER_OPTIONS, SELLER_ORDERS, SELLER_REVIEWS));
-        g.put("Quản trị", List.of(ADMIN_AUTH, ADMIN_ADMINS, ADMIN_CATEGORIES, ADMIN_SHOP_REVIEW, ADMIN_REVIEWS));
+        g.put("Quản trị", List.of(ADMIN_AUTH, ADMIN_ADMINS, ADMIN_CATEGORIES, ADMIN_SHOP_REVIEW, ADMIN_REVIEWS, ADMIN_REFUNDS));
         return g;
     }
 }
