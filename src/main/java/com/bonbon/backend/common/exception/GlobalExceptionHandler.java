@@ -40,6 +40,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem;
     }
 
+    /** A constraint on a request header or parameter (for example the length of an Idempotency-Key) is the caller's mistake. */
+    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+    ProblemDetail handleConstraintViolation(jakarta.validation.ConstraintViolationException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Một số thông tin chưa hợp lệ.");
+        problem.setProperty("code", "VALIDATION_FAILED");
+        problem.setProperty("errors", ex.getConstraintViolations().stream()
+                .map(v -> java.util.Map.of("field", v.getPropertyPath().toString().substring(v.getPropertyPath().toString().lastIndexOf('.') + 1), "message", v.getMessage())).toList());
+        return problem;
+    }
+
     @ExceptionHandler(Exception.class)
     ProblemDetail handleUnexpected(Exception ex) {
         log.error("Unhandled exception", ex);

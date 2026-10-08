@@ -22,7 +22,7 @@ final class ShopHours {
 
     static boolean isOpen(Vendor vendor, ZonedDateTime now) {
         return vendor.getStatus() == VendorStatus.APPROVED && vendor.isAcceptingOrders()
-                && withinHours(vendor.getOpeningHours(), now);
+                && !vendor.getCommissionStage().pausesOrders() && withinHours(vendor.getOpeningHours(), now);
     }
 
     static boolean withinHours(List<OpeningWindow> windows, ZonedDateTime now) {

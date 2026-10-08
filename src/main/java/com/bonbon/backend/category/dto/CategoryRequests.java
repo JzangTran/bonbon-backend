@@ -22,7 +22,7 @@ public final class CategoryRequests {
     public record Create(
             @NotNull UUID parentId,
             @NotBlank @Size(max = 100) String name,
-            @DecimalMin("0") @DecimalMax("100") @Digits(integer = 3, fraction = 2) BigDecimal commissionRate) {
+            @DecimalMin("0") @DecimalMax("30") @Digits(integer = 3, fraction = 2) BigDecimal commissionRate) {
     }
 
     /**
@@ -33,7 +33,7 @@ public final class CategoryRequests {
     @Schema(name = "CategoryUpdateRequest")
     public record Update(
             @Size(min = 1, max = 100) String name,
-            @DecimalMin("0") @DecimalMax("100") @Digits(integer = 3, fraction = 2) BigDecimal commissionRate,
+            @DecimalMin("0") @DecimalMax("30") @Digits(integer = 3, fraction = 2) BigDecimal commissionRate,
             Boolean clearCommissionRate,
             Boolean active,
             @PositiveOrZero Integer sortOrder,

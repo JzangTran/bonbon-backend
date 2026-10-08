@@ -38,6 +38,8 @@ public final class ApiTags {
     public static final String SELLER_OPTIONS = "Người bán — Nhóm lựa chọn";
     public static final String SELLER_ORDERS = "Người bán — Đơn hàng";
     public static final String SELLER_REVIEWS = "Người bán — Đánh giá";
+    public static final String SELLER_EARNINGS = "Người bán — Thu nhập";
+    public static final String SELLER_STATS = "Người bán — Thống kê";
 
     // Quản trị
     public static final String ADMIN_AUTH = "Quản trị — Đăng nhập";
@@ -46,6 +48,8 @@ public final class ApiTags {
     public static final String ADMIN_SHOP_REVIEW = "Quản trị — Duyệt cửa hàng";
     public static final String ADMIN_REVIEWS = "Quản trị — Kiểm duyệt đánh giá";
     public static final String ADMIN_REFUNDS = "Quản trị — Hoàn tiền";
+    public static final String ADMIN_COMMISSION = "Quản trị — Hoa hồng";
+    public static final String ADMIN_SETTLEMENT = "Quản trị — Đối soát";
 
     /** Sidebar groups of the reference (the {@code x-tagGroups} extension Scalar reads), in display order. */
     public static final Map<String, List<String>> GROUPS = groups();
@@ -54,8 +58,8 @@ public final class ApiTags {
         Map<String, List<String>> g = new LinkedHashMap<>();
         g.put("Chung", List.of(LOGIN, REGISTRATION, SESSION, ACCOUNT, NOTIFICATIONS, PUSH_DEVICES, ADDRESS_SUGGESTIONS, CATEGORIES, LEGAL, PAYMENT_WEBHOOK));
         g.put("Khách", List.of(CUSTOMER_ADDRESSES, CUSTOMER_BROWSE, CUSTOMER_ORDERS, CUSTOMER_REVIEWS));
-        g.put("Người bán", List.of(SELLER_OPEN_SHOP, SELLER_SHOP, SELLER_MENU, SELLER_OPTIONS, SELLER_ORDERS, SELLER_REVIEWS));
-        g.put("Quản trị", List.of(ADMIN_AUTH, ADMIN_ADMINS, ADMIN_CATEGORIES, ADMIN_SHOP_REVIEW, ADMIN_REVIEWS, ADMIN_REFUNDS));
+        g.put("Người bán", List.of(SELLER_OPEN_SHOP, SELLER_SHOP, SELLER_MENU, SELLER_OPTIONS, SELLER_ORDERS, SELLER_REVIEWS, SELLER_EARNINGS, SELLER_STATS));
+        g.put("Quản trị", List.of(ADMIN_AUTH, ADMIN_ADMINS, ADMIN_CATEGORIES, ADMIN_SHOP_REVIEW, ADMIN_REVIEWS, ADMIN_REFUNDS, ADMIN_COMMISSION, ADMIN_SETTLEMENT));
         return g;
     }
 }

@@ -15,6 +15,10 @@ import com.bonbon.backend.notification.repository.NotificationRepository;
 import com.bonbon.backend.order.OrderStatus;
 import com.bonbon.backend.order.OrderStatusChanged;
 import com.bonbon.backend.payment.RefundCompleted;
+import com.bonbon.backend.settlement.CommissionStageChanged;
+import com.bonbon.backend.settlement.CommissionStatementIssued;
+import com.bonbon.backend.settlement.CommissionStatementReminder;
+import com.bonbon.backend.settlement.PayoutRecorded;
 import com.bonbon.backend.payment.RefundNeedsDestination;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -116,6 +120,63 @@ public class NotificationService {
             notifications.saveAll(drafts);
             events.publishEvent(new Created(List.copyOf(drafts)));
         }
+    }
+
+    /** The admin recorded a payout to this shop: the owner is told, with the bank reference to check against their statement. */
+    @EventListener
+    void onPayoutRecorded(PayoutRecorded e) {
+        shops.shop(e.vendorId()).map(ShopOrdering.OrderableShop::ownerUserId).ifPresent(owner -> {
+            Notification n = new Notification(owner, SHOP, "PAYOUT_RECORDED", null, null, "Đã chuyển " + e.amount() + " ₫ cho quán",
+                    "Mã giao dịch " + e.reference() + ". Kiểm tra trong sao kê ngân hàng của bạn.");
+            notifications.save(n);
+            events.publishEvent(new Created(List.of(n)));
+        });
+    }
+
+    /** A statement for unpaid commission was issued: the shop is told how much and by when. */
+    @EventListener
+    void onCommissionStatement(CommissionStatementIssued e) {
+        toShop(e.vendorId(), "COMMISSION_STATEMENT", "Sao kê hoa hồng: " + vnd(e.amountDue()),
+                "Quán cần trả " + vnd(e.amountDue()) + " hoa hồng đơn tiền mặt trước " + day(e.dueAt()) + ". Xem chi tiết ở mục Thu nhập.");
+    }
+
+    @EventListener
+    void onCommissionReminder(CommissionStatementReminder e) {
+        toShop(e.vendorId(), "COMMISSION_REMINDER", "Sắp đến hạn trả hoa hồng",
+                "Còn " + vnd(e.unpaid()) + " cần trả trước " + day(e.dueAt()) + ". Quá hạn sẽ bị hạn chế hiển thị.");
+    }
+
+    /** Overdue commission: the first message is the notice of what comes next and when (never sooner than 5 days). */
+    @EventListener
+    void onCommissionStage(CommissionStageChanged e) {
+        switch (e.stage()) {
+            case "OVERDUE" -> toShop(e.vendorId(), "COMMISSION_OVERDUE", "Hoa hồng đã quá hạn",
+                    "Quán còn nợ " + vnd(e.overdueAmount()) + " quá hạn. Từ " + day(e.nextAt()) + " quán sẽ bị hạn chế hiển thị nếu chưa trả.");
+            case "RESTRICTED" -> toShop(e.vendorId(), "COMMISSION_RESTRICTED", "Quán bị hạn chế hiển thị",
+                    "Quán không hiện khi khách tìm kiếm và xếp cuối danh sách. Từ " + day(e.nextAt()) + " quán sẽ tạm ngưng nhận đơn nếu chưa trả "
+                            + vnd(e.overdueAmount()) + ".");
+            case "PAUSED" -> toShop(e.vendorId(), "COMMISSION_PAUSED", "Quán tạm ngưng nhận đơn",
+                    "Quán không nhận đơn mới vì hoa hồng quá hạn. Trả " + vnd(e.overdueAmount()) + " để nhận đơn trở lại; đơn đang làm không bị ảnh hưởng.");
+            case "NONE" -> toShop(e.vendorId(), "COMMISSION_CLEARED", "Đã gỡ hạn chế", "Hoa hồng đã trả đủ. Quán hiển thị và nhận đơn bình thường.");
+            default -> {
+            }
+        }
+    }
+
+    private void toShop(UUID vendorId, String type, String title, String body) {
+        shops.shop(vendorId).map(ShopOrdering.OrderableShop::ownerUserId).ifPresent(owner -> {
+            Notification n = new Notification(owner, SHOP, type, null, null, title, body);
+            notifications.save(n);
+            events.publishEvent(new Created(List.of(n)));
+        });
+    }
+
+    private static String vnd(long amount) {
+        return String.format(java.util.Locale.forLanguageTag("vi-VN"), "%,d ₫", amount);
+    }
+
+    private static String day(java.time.Instant at) {
+        return at == null ? "" : java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy").withZone(java.time.ZoneId.of("Asia/Ho_Chi_Minh")).format(at);
     }
 
     /** The customer has their money back (through MoMo or by bank transfer). */
