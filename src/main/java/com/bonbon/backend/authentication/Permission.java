@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 public enum Permission {
     ORDER_CREATE("order:create"),
     ORDER_CANCEL("order:cancel"),
+    ORDER_REPORT("order:report"),
     ORDER_READ("order:read"),
     ORDER_WRITE("order:write"),
     REVIEW_CREATE("review:create"),
