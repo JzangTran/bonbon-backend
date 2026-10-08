@@ -207,10 +207,11 @@ class OrderCaseResponseTests {
         String id = file(order);
         Instant due = jdbc.sql("select shop_response_due_at from order_cases where id = :c::uuid").param("c", id).query((rs, n) -> rs.getTimestamp(1).toInstant()).single();
 
-        assertThat(shopCases.escalateOverdue(due.minusSeconds(60))).isZero();
+        // The database is shared with other tests, so the counts are not ours to assert: only what happens to this case.
+        shopCases.escalateOverdue(due.minusSeconds(60));
         assertThat(caseStatus(id)).isEqualTo("AWAITING_SHOP");
-        assertThat(shopCases.escalateOverdue(due.plusSeconds(60))).isEqualTo(1);
-        assertThat(shopCases.escalateOverdue(due.plusSeconds(120))).isZero();
+        assertThat(shopCases.escalateOverdue(due.plusSeconds(60))).isGreaterThanOrEqualTo(1);
+        shopCases.escalateOverdue(due.plusSeconds(120));       // a second run changes nothing for this case
         assertThat(caseStatus(id)).isEqualTo("OPEN");
         assertThat(jdbc.sql("select shop_response from order_cases where id = :c::uuid").param("c", id).query(String.class).optional()).isEmpty();
         assertThat(held()).isPositive();
