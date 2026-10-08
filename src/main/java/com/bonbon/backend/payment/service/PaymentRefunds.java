@@ -88,6 +88,37 @@ public class PaymentRefunds {
         return Optional.of(id);
     }
 
+    /**
+     * Gives the customer back {@code amount} of what they paid for an upheld order case, once per case. A cash order has
+     * no MoMo transaction to refund, so it always goes to the manual bank-transfer queue; so does an amount below MoMo's
+     * minimum. Runs in the caller's transaction.
+     */
+    public Optional<UUID> queueForCase(UUID orderId, UUID caseId, int amount) {
+        boolean manual = "MANUAL".equalsIgnoreCase(settings.getString(REFUND_MODE_KEY, "GATEWAY"));
+        UUID id = UUID.randomUUID();
+        int queued = jdbc.sql("""
+                insert into payment_refunds (id, payment_id, case_id, reason, amount, mode, status, provider_order_id)
+                select :id, p.id, :case, 'CASE_UPHELD', :amount,
+                       case when :manual or p.method = 'COD' or :amount < :min then 'MANUAL' else 'GATEWAY' end,
+                       case when :manual or p.method = 'COD' or :amount < :min then 'NEEDS_DESTINATION' else 'REQUESTED' end,
+                       :idText
+                from payments p where p.order_id = :order and p.status in ('SUCCESS', 'REFUNDED') and p.amount - p.refunded_amount >= :amount
+                on conflict (payment_id, case_id) where case_id is not null do nothing""")
+                .param("id", id).param("case", caseId).param("amount", amount).param("manual", manual).param("min", MIN_GATEWAY_AMOUNT)
+                .param("idText", id.toString()).param("order", orderId).update();
+        if (queued == 0) {
+            return Optional.empty();
+        }
+        log(id, "QUEUED", "SYSTEM", null, "CASE_UPHELD");
+        String mode = jdbc.sql("select mode from payment_refunds where id = :id").param("id", id).query(String.class).single();
+        if ("MANUAL".equals(mode)) {
+            askForDestination(id);
+        } else {
+            events.publishEvent(new RefundQueued(id));
+        }
+        return Optional.of(id);
+    }
+
     /** Submits one refund to MoMo and stores the answer; safe to call twice (only one caller can hold the claim). */
     public void execute(UUID refundId) {
         Claim claim = tx.execute(status -> claim(refundId));

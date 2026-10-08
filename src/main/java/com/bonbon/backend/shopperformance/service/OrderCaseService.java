@@ -218,10 +218,10 @@ public class OrderCaseService {
         UUID id;
         try {
             id = jdbc.sql("""
-                    insert into order_cases (order_id, vendor_id, customer_id, type, status, refund_amount, commission_amount, note, shop_response_due_at,
-                                             opened_by_type, opened_by_id, opened_at)
-                    values (:order, :vendor, :customer, :type, 'AWAITING_SHOP', :refund, :commission, :note, :due, :by, :byId, :at) returning id""")
-                    .param("order", order.id()).param("vendor", order.vendorId()).param("customer", customerId).param("type", type).param("refund", refund)
+                    insert into order_cases (order_id, order_number, customer_name, vendor_id, customer_id, type, status, refund_amount, commission_amount, note,
+                                             shop_response_due_at, opened_by_type, opened_by_id, opened_at)
+                    values (:order, :number, :name, :vendor, :customer, :type, 'AWAITING_SHOP', :refund, :commission, :note, :due, :by, :byId, :at) returning id""")
+                    .param("order", order.id()).param("number", order.number()).param("name", order.customerName()).param("vendor", order.vendorId()).param("customer", customerId).param("type", type).param("refund", refund)
                     .param("commission", commission).param("note", note).param("due", Timestamp.from(due)).param("by", ActorType.CUSTOMER.name())
                     .param("byId", customerId).param("at", Timestamp.from(now)).query(UUID.class).single();
         } catch (DataIntegrityViolationException e) {
@@ -247,15 +247,26 @@ public class OrderCaseService {
 
     // --- reading
 
+    /** What the customer sees of a case. */
     CaseViews.Case view(UUID caseId) {
+        return load(caseId, false);
+    }
+
+    /** What the shop (and an administrator) sees: also the customer's name and what the shop would bear. */
+    public CaseViews.Case viewForShop(UUID caseId) {
+        return load(caseId, true);
+    }
+
+    private CaseViews.Case load(UUID caseId, boolean forShop) {
         return jdbc.sql("""
-                select c.id, c.order_id, o.number, c.type, c.status, c.refund_amount, c.note, c.shop_response_due_at, c.shop_response, c.shop_response_note,
-                       c.opened_at, c.decided_at, c.decided_by_type, c.reason
-                from order_cases c join orders o on o.id = c.order_id where c.id = :id""").param("id", caseId)
-                .query((rs, n) -> new CaseViews.Case(rs.getObject("id", UUID.class), rs.getObject("order_id", UUID.class), rs.getLong("number"), rs.getString("type"),
+                select id, order_id, order_number, customer_name, type, status, refund_amount, commission_amount, note, shop_response_due_at, shop_response,
+                       shop_response_note, opened_at, decided_at, decided_by_type, reason
+                from order_cases where id = :id""").param("id", caseId)
+                .query((rs, n) -> new CaseViews.Case(rs.getObject("id", UUID.class), rs.getObject("order_id", UUID.class), rs.getLong("order_number"), rs.getString("type"),
                         rs.getString("status"), rs.getInt("refund_amount"), rs.getString("note"), instant(rs.getTimestamp("shop_response_due_at")),
                         rs.getString("shop_response"), rs.getString("shop_response_note"), instant(rs.getTimestamp("opened_at")),
-                        instant(rs.getTimestamp("decided_at")), decidedBy(rs.getString("decided_by_type")), rs.getString("reason"), lines(caseId), photos(caseId)))
+                        instant(rs.getTimestamp("decided_at")), decidedBy(rs.getString("decided_by_type")), rs.getString("reason"), lines(caseId), photos(caseId),
+                        forShop ? rs.getString("customer_name") : null, forShop ? Math.max(rs.getInt("refund_amount") - rs.getInt("commission_amount"), 0) : null))
                 .single();
     }
 

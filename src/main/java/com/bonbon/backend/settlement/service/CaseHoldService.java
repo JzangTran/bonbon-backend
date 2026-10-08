@@ -14,10 +14,20 @@ class CaseHoldService implements CaseHolds {
 
     private final JdbcClient jdbc;
     private final Clock clock;
+    private final LedgerService ledger;
 
-    CaseHoldService(JdbcClient jdbc, Clock clock) {
+    CaseHoldService(JdbcClient jdbc, Clock clock, LedgerService ledger) {
         this.jdbc = jdbc;
         this.clock = clock;
+        this.ledger = ledger;
+    }
+
+    @Override
+    @Transactional
+    public void bear(UUID caseId, UUID vendorId, UUID orderId, int refund, int commissionReversal, String note, com.bonbon.backend.common.persistence.ActorType by,
+            UUID actorId) {
+        ledger.postForCase(vendorId, caseId, orderId, refund, commissionReversal, note, by, actorId);
+        release(caseId);
     }
 
     @Override

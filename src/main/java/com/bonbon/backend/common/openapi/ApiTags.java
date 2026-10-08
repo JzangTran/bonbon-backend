@@ -38,6 +38,7 @@ public final class ApiTags {
     public static final String SELLER_MENU = "Người bán — Thực đơn";
     public static final String SELLER_OPTIONS = "Người bán — Nhóm lựa chọn";
     public static final String SELLER_ORDERS = "Người bán — Đơn hàng";
+    public static final String SELLER_ORDER_CASES = "Người bán — Khiếu nại đơn";
     public static final String SELLER_REVIEWS = "Người bán — Đánh giá";
     public static final String SELLER_EARNINGS = "Người bán — Thu nhập";
     public static final String SELLER_STATS = "Người bán — Thống kê";
@@ -59,7 +60,7 @@ public final class ApiTags {
         Map<String, List<String>> g = new LinkedHashMap<>();
         g.put("Chung", List.of(LOGIN, REGISTRATION, SESSION, ACCOUNT, NOTIFICATIONS, PUSH_DEVICES, ADDRESS_SUGGESTIONS, CATEGORIES, LEGAL, PAYMENT_WEBHOOK));
         g.put("Khách", List.of(CUSTOMER_ADDRESSES, CUSTOMER_BROWSE, CUSTOMER_ORDERS, CUSTOMER_ORDER_CASES, CUSTOMER_REVIEWS));
-        g.put("Người bán", List.of(SELLER_OPEN_SHOP, SELLER_SHOP, SELLER_MENU, SELLER_OPTIONS, SELLER_ORDERS, SELLER_REVIEWS, SELLER_EARNINGS, SELLER_STATS));
+        g.put("Người bán", List.of(SELLER_OPEN_SHOP, SELLER_SHOP, SELLER_MENU, SELLER_OPTIONS, SELLER_ORDERS, SELLER_ORDER_CASES, SELLER_REVIEWS, SELLER_EARNINGS, SELLER_STATS));
         g.put("Quản trị", List.of(ADMIN_AUTH, ADMIN_ADMINS, ADMIN_CATEGORIES, ADMIN_SHOP_REVIEW, ADMIN_REVIEWS, ADMIN_REFUNDS, ADMIN_COMMISSION, ADMIN_SETTLEMENT));
         return g;
     }
