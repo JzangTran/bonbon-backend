@@ -46,7 +46,11 @@ public final class PerformanceViews {
             String reason,
             @Schema(description = "ACTIVE hoặc WAIVED (đã được miễn).") String status,
             Instant issuedAt,
-            @Schema(description = "Hết hiệu lực sau 90 ngày kể từ khi cấp.") Instant expiresAt) {
+            @Schema(description = "Hết hiệu lực sau 90 ngày kể từ khi cấp.") Instant expiresAt,
+            @Schema(description = "Còn kháng nghị được: điểm đang hiệu lực, chưa kháng nghị, trong thời hạn 7 ngày.") boolean canAppeal,
+            @Schema(description = "Hạn kháng nghị.") Instant appealDeadline,
+            @Schema(description = "PENDING, ACCEPTED hoặc REJECTED; vắng mặt khi chưa kháng nghị.") String appealStatus,
+            @Schema(description = "Lý do quản trị viên quyết định kháng nghị hoặc miễn điểm.") String decisionReason) {
     }
 
     @Schema(name = "ShopFault")

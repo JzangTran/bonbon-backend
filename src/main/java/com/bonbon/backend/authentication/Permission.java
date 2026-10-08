@@ -35,6 +35,7 @@ public enum Permission {
     HELP_CENTER_WRITE("help-center:write"),
     PLATFORM_STATS_READ("platform-stats:read"),
     ADMIN_WRITE("admin:write"),
+    SHOP_PENALTY_READ("shop-penalty:read"),
     SHOP_PENALTY_WRITE("shop-penalty:write"),
     REVIEW_MODERATE("review:moderate"),
     ORDER_CASE_READ("order-case:read"),

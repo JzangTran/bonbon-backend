@@ -197,10 +197,17 @@ public class PerformanceService {
                     finished == 0 ? BigDecimal.ZERO : BigDecimal.valueOf(faults * 100.0 / finished).setScale(1, RoundingMode.HALF_UP), finished >= r.minOrders(), penalised, i == 0));
         }
         List<PerformanceViews.Penalty> penalties = jdbc.sql("""
-                select id, points, source, week_start, reason, status, issued_at, expires_at from shop_penalties where vendor_id = :v order by issued_at desc, id limit 50""")
-                .param("v", vendor).query((rs, n) -> new PerformanceViews.Penalty(rs.getObject("id", UUID.class), rs.getInt("points"), rs.getString("source"),
-                        rs.getDate("week_start") == null ? null : rs.getDate("week_start").toLocalDate(), rs.getString("reason"), rs.getString("status"),
-                        rs.getTimestamp("issued_at").toInstant(), rs.getTimestamp("expires_at").toInstant())).list();
+                select id, points, source, week_start, reason, status, issued_at, expires_at, appeal_status, coalesce(appeal_decision_reason, decision_reason) as decision
+                from shop_penalties where vendor_id = :v order by issued_at desc, id limit 50""")
+                .param("v", vendor).query((rs, n) -> {
+                    Instant issued = rs.getTimestamp("issued_at").toInstant();
+                    Instant deadline = issued.plus(Duration.ofDays(settings.getLong("appeal_window_days", 7)));
+                    boolean canAppeal = "ACTIVE".equals(rs.getString("status")) && rs.getString("appeal_status") == null && now.isBefore(deadline)
+                            && rs.getTimestamp("expires_at").toInstant().isAfter(now);
+                    return new PerformanceViews.Penalty(rs.getObject("id", UUID.class), rs.getInt("points"), rs.getString("source"),
+                            rs.getDate("week_start") == null ? null : rs.getDate("week_start").toLocalDate(), rs.getString("reason"), rs.getString("status"), issued,
+                            rs.getTimestamp("expires_at").toInstant(), canAppeal, deadline, rs.getString("appeal_status"), rs.getString("decision"));
+                }).list();
         return new PerformanceViews.Summary(standingOf(vendor, now, r), weeks, penalties, r.thresholdPercent(), r.minOrders());
     }
 
