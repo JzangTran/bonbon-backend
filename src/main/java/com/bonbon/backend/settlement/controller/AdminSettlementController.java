@@ -6,8 +6,11 @@ import java.util.UUID;
 import com.bonbon.backend.common.openapi.ApiError;
 import com.bonbon.backend.common.openapi.ApiTags;
 import com.bonbon.backend.common.security.CurrentPrincipal;
+import com.bonbon.backend.settlement.dto.DebtRequests;
+import com.bonbon.backend.settlement.dto.DebtViews;
 import com.bonbon.backend.settlement.dto.SettlementRequests;
 import com.bonbon.backend.settlement.dto.SettlementViews;
+import com.bonbon.backend.settlement.service.CommissionDebtService;
 import com.bonbon.backend.settlement.service.SettlementService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -36,9 +39,11 @@ import org.springframework.web.bind.annotation.RestController;
 class AdminSettlementController {
 
     private final SettlementService settlement;
+    private final CommissionDebtService debt;
 
-    AdminSettlementController(SettlementService settlement) {
+    AdminSettlementController(SettlementService settlement, CommissionDebtService debt) {
         this.settlement = settlement;
+        this.debt = debt;
     }
 
     @Operation(operationId = "getSettlementOverview", summary = "Tổng quan đối soát", description = "Số liệu toàn nền tảng (hoa hồng đã tính gồm phần ròng và VAT, tiền đang nợ các quán, tiền các quán nợ) và bảng các quán với số dư, số có thể chi trả, lần chi trả gần nhất, tỷ lệ hoa hồng thực tế và cờ `lowRate` khi thấp hơn hẳn mức chung (dấu hiệu xếp món vào ngành rẻ hơn). `status` lọc quán nền tảng nợ (`OWED_TO_SHOP`) hoặc nợ nền tảng (`OWED_BY_SHOP`).")
@@ -100,5 +105,25 @@ class AdminSettlementController {
             @Valid @RequestBody SettlementRequests.Entry request) {
         SettlementService.Recorded recorded = settlement.record(principal, id, idempotencyKey, request);
         return ResponseEntity.status(recorded.created() ? HttpStatus.CREATED : HttpStatus.OK).body(recorded.entry());
+    }
+
+    @Operation(operationId = "getVendorCommissionStatements", summary = "Sao kê hoa hồng của một quán", description = "Các sao kê hoa hồng đã lập cho quán và tình trạng nợ hiện tại (giai đoạn `stage`, số quá hạn, các mốc hạn chế). Giai đoạn `REVIEW` nghĩa là nợ quá 30 ngày: nên xem xét khoá quán, nhưng hệ thống không bao giờ tự khoá.")
+    @ApiError(status = 404, code = "VENDOR_NOT_FOUND", when = "Không có quán với id này.")
+    @GetMapping("/vendors/{id}/commission-statements")
+    @PreAuthorize("hasAuthority('settlement:read')")
+    DebtViews.Statements commissionStatements(@PathVariable UUID id) {
+        settlement.vendor(id);
+        return debt.view(id);
+    }
+
+    @Operation(operationId = "extendCommissionStatement", summary = "Gia hạn sao kê hoa hồng", description = "Dời hạn trả của một sao kê chưa trả đủ, bắt buộc có lý do (được ghi lại cùng quản trị viên). Hạn mới phải sau hạn hiện tại và không quá 30 ngày kể từ bây giờ. Đồng hồ quá hạn tính lại từ hạn mới, nên các hạn chế do quá hạn được gỡ nếu sao kê không còn quá hạn.")
+    @ApiError(status = 404, code = "STATEMENT_NOT_FOUND", when = "Không có sao kê với id này.")
+    @ApiError(status = 409, code = "STATEMENT_PAID", when = "Sao kê đã trả đủ.")
+    @ApiError(status = 400, code = "DUE_DATE_INVALID", when = "Hạn mới không sau hạn hiện tại.")
+    @ApiError(status = 400, code = "DUE_DATE_TOO_FAR", when = "Hạn mới quá 30 ngày kể từ bây giờ.")
+    @PostMapping("/statements/{id}/extend")
+    @PreAuthorize("hasAuthority('settlement:write')")
+    DebtViews.Statement extend(CurrentPrincipal principal, @PathVariable UUID id, @Valid @RequestBody DebtRequests.Extend request) {
+        return debt.extend(principal, id, request);
     }
 }

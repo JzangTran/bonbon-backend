@@ -43,7 +43,8 @@ public final class SettlementViews {
             long commission,
             @Schema(description = "Hoa hồng chia giá trị món, phần trăm; vắng mặt khi chưa có đơn.") BigDecimal effectiveRate,
             @Schema(description = "Tỷ lệ thực tế thấp hơn hẳn mức chung: dấu hiệu món xếp sai ngành rẻ hơn.") boolean lowRate,
-            @Schema(description = "Lần chi trả gần nhất.") Instant lastPayoutAt) {
+            @Schema(description = "Lần chi trả gần nhất.") Instant lastPayoutAt,
+            @Schema(description = "Giai đoạn nợ hoa hồng quá hạn: NONE, OVERDUE, RESTRICTED, PAUSED hoặc REVIEW (chờ quản trị viên xem xét khoá quán).") String commissionStage) {
     }
 
     @Schema(name = "SettlementShopPage")

@@ -88,6 +88,10 @@ public class ShopProfileService {
     @Transactional
     public ShopApplicationView setAcceptingOrders(CurrentPrincipal owner, boolean accepting) {
         Vendor vendor = approvedShop(owner.id());
+        if (accepting && vendor.getCommissionStage().pausesOrders()) {
+            throw new BusinessException(HttpStatus.CONFLICT, "PAUSED_FOR_COMMISSION",
+                    "Quán đang bị tạm ngưng nhận đơn vì chưa trả hoa hồng quá hạn. Trả khoản nợ để nhận đơn trở lại.");
+        }
         vendor.setAcceptingOrders(accepting, owner.actorType(), owner.id(), Instant.now());
         return views.toView(vendors.save(vendor));
     }

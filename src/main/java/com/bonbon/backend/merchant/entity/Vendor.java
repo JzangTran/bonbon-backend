@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.bonbon.backend.common.persistence.ActorType;
+import com.bonbon.backend.merchant.ShopCommissionStanding;
 import com.bonbon.backend.merchant.VendorStatus;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -85,6 +86,10 @@ public class Vendor {
 
     @Column(name = "rating_count", nullable = false, insertable = false, updatable = false)
     private int ratingCount;
+
+    /** Set by settlement through {@code ShopCommissionStanding}; never written through the entity. */
+    @Column(name = "commission_stage", nullable = false, insertable = false, updatable = false, columnDefinition = "text")
+    private String commissionStage = "NONE";
 
     @Column(name = "accepting_orders", nullable = false)
     private boolean acceptingOrders = true;
@@ -270,6 +275,10 @@ public class Vendor {
 
     public int getRatingCount() {
         return ratingCount;
+    }
+
+    public ShopCommissionStanding.Stage getCommissionStage() {
+        return ShopCommissionStanding.Stage.valueOf(commissionStage);
     }
 
     public boolean isAcceptingOrders() {
