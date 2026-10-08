@@ -52,6 +52,7 @@ public final class ApiTags {
     public static final String ADMIN_REFUNDS = "Quản trị — Hoàn tiền";
     public static final String ADMIN_COMMISSION = "Quản trị — Hoa hồng";
     public static final String ADMIN_SETTLEMENT = "Quản trị — Đối soát";
+    public static final String ADMIN_ORDER_CASES = "Quản trị — Khiếu nại đơn";
 
     /** Sidebar groups of the reference (the {@code x-tagGroups} extension Scalar reads), in display order. */
     public static final Map<String, List<String>> GROUPS = groups();
@@ -61,7 +62,7 @@ public final class ApiTags {
         g.put("Chung", List.of(LOGIN, REGISTRATION, SESSION, ACCOUNT, NOTIFICATIONS, PUSH_DEVICES, ADDRESS_SUGGESTIONS, CATEGORIES, LEGAL, PAYMENT_WEBHOOK));
         g.put("Khách", List.of(CUSTOMER_ADDRESSES, CUSTOMER_BROWSE, CUSTOMER_ORDERS, CUSTOMER_ORDER_CASES, CUSTOMER_REVIEWS));
         g.put("Người bán", List.of(SELLER_OPEN_SHOP, SELLER_SHOP, SELLER_MENU, SELLER_OPTIONS, SELLER_ORDERS, SELLER_ORDER_CASES, SELLER_REVIEWS, SELLER_EARNINGS, SELLER_STATS));
-        g.put("Quản trị", List.of(ADMIN_AUTH, ADMIN_ADMINS, ADMIN_CATEGORIES, ADMIN_SHOP_REVIEW, ADMIN_REVIEWS, ADMIN_REFUNDS, ADMIN_COMMISSION, ADMIN_SETTLEMENT));
+        g.put("Quản trị", List.of(ADMIN_AUTH, ADMIN_ADMINS, ADMIN_CATEGORIES, ADMIN_SHOP_REVIEW, ADMIN_REVIEWS, ADMIN_REFUNDS, ADMIN_COMMISSION, ADMIN_SETTLEMENT, ADMIN_ORDER_CASES));
         return g;
     }
 }

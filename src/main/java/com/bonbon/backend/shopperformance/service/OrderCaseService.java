@@ -55,9 +55,11 @@ public class OrderCaseService {
     private final ObjectStorage storage;
     private final RateLimiter limiter;
     private final ApplicationEventPublisher events;
+    private final CaseLog log;
 
     OrderCaseService(JdbcClient jdbc, Clock clock, SystemSettingsService settings, OrderIncidents orders, CaseHolds holds, ObjectStorage storage,
-            RateLimiter limiter, ApplicationEventPublisher events) {
+            RateLimiter limiter, ApplicationEventPublisher events, CaseLog log) {
+        this.log = log;
         this.jdbc = jdbc;
         this.clock = clock;
         this.settings = settings;
@@ -173,7 +175,7 @@ public class OrderCaseService {
         return share(line.lineTotal() - line.allocatedDiscount(), claimed, line.quantity());
     }
 
-    private static int share(int amount, int claimed, int ordered) {
+    static int share(int amount, int claimed, int ordered) {
         return BigDecimal.valueOf(amount).multiply(BigDecimal.valueOf(claimed)).divide(BigDecimal.valueOf(ordered), 0, RoundingMode.HALF_UP).intValue();
     }
 
@@ -239,6 +241,7 @@ public class OrderCaseService {
             jdbc.sql("insert into order_case_photos (case_id, file_key, uploaded_by_type, created_at) values (:c, :k, :by, :at)")
                     .param("c", id).param("k", key).param("by", ActorType.CUSTOMER.name()).param("at", Timestamp.from(now)).update();
         }
+        log.add(id, "FILED", ActorType.CUSTOMER, customerId, type);
         orders.setIncidentHold(order.id(), true);
         holds.place(id, order.vendorId(), Math.max(refund - commission, 0));
         events.publishEvent(new OrderCaseOpened(id, order.id(), order.number(), customerId, order.vendorId(), type, refund, due));

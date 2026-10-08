@@ -24,6 +24,12 @@ class CaseHoldService implements CaseHolds {
 
     @Override
     @Transactional
+    public void reverse(UUID caseId, UUID vendorId, UUID orderId, String note, com.bonbon.backend.common.persistence.ActorType by, UUID actorId) {
+        ledger.reverseForCase(vendorId, caseId, orderId, note, by, actorId);
+    }
+
+    @Override
+    @Transactional
     public void bear(UUID caseId, UUID vendorId, UUID orderId, int refund, int commissionReversal, String note, com.bonbon.backend.common.persistence.ActorType by,
             UUID actorId) {
         ledger.postForCase(vendorId, caseId, orderId, refund, commissionReversal, note, by, actorId);
@@ -33,7 +39,7 @@ class CaseHoldService implements CaseHolds {
     @Override
     @Transactional
     public void place(UUID caseId, UUID vendorId, int amount) {
-        jdbc.sql("insert into settlement_case_holds (case_id, vendor_id, amount, created_at) values (:c, :v, :a, :at) on conflict (case_id) do nothing")
+        jdbc.sql("insert into settlement_case_holds (case_id, vendor_id, amount, created_at) values (:c, :v, :a, :at) on conflict (case_id) do update set amount = excluded.amount, released_at = null")
                 .param("c", caseId).param("v", vendorId).param("a", amount).param("at", Timestamp.from(clock.instant())).update();
     }
 
