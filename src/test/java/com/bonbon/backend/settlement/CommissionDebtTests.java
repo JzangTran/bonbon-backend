@@ -116,16 +116,19 @@ class CommissionDebtTests {
     double lat;
     double lng;
     int keySeq;
+    /** Part of the shop name, so a search finds only this test's shop whatever other tests left at the same spot. */
+    String word;
 
     @BeforeEach
     void setUp() throws Exception {
         String leaf = jdbc.sql("select id from categories where level = 3 and active order by name limit 1").query(UUID.class).single().toString();
         lat = -70 + (System.nanoTime() % 1000) * 0.01;
         lng = 151.2;
+        word = "q" + Long.toString(System.nanoTime(), 36);
         UUID sellerId = newUser("seller", Role.SELLER);
         seller = tokenOf(sellerId, Role.SELLER);
         String place = geocoder.autocomplete("Toà S2", null, null).get(0).placeId();
-        call(seller, put("/api/merchant/shop/steps/1"), Map.of("name", "Quán Nợ Phở", "phone", "0912345678", "email", "q@example.com", "placeId", place));
+        call(seller, put("/api/merchant/shop/steps/1"), Map.of("name", "Quán Nợ " + word, "phone", "0912345678", "email", "q@example.com", "placeId", place));
         call(seller, put("/api/merchant/shop/steps/2"), Map.of("openingHours", allWeek(), "deliveryRadiusKm", 2, "deliveryFee", 10000));
         jdbc.sql("update vendors set status = 'APPROVED', decided_at = now(), lat = :la, lng = :ln where owner_user_id = :o")
                 .param("la", lat).param("ln", lng).param("o", sellerId).update();
@@ -234,7 +237,7 @@ class CommissionDebtTests {
                 .andExpect(jsonPath("$.standing.restrictAt").value(at("2031-03-24T00:00").toString()))
                 .andExpect(jsonPath("$.standing.pauseAt").value(at("2031-03-31T00:00").toString()));
         assertThat(notifications("COMMISSION_OVERDUE")).isEqualTo(1);
-        assertThat(searchFinds("Phở")).isTrue();
+        assertThat(searchFinds(word)).isTrue();
 
         clock.set(at("2031-03-23T00:10"));            // 6 days overdue: still visible
         debt.runDaily(clock.instant());
@@ -243,7 +246,7 @@ class CommissionDebtTests {
         clock.set(at("2031-03-24T00:10"));            // 7 days overdue and the notice is 6 days old
         debt.runDaily(clock.instant());
         stage("RESTRICTED");
-        assertThat(searchFinds("Phở")).isFalse();     // gone from search
+        assertThat(searchFinds(word)).isFalse();     // gone from search
         assertThat(listed()).isTrue();                // but the plain area list still has it
         assertThat(opensNow()).isTrue();              // and it still takes orders
         assertThat(notifications("COMMISSION_RESTRICTED")).isEqualTo(1);
@@ -285,7 +288,7 @@ class CommissionDebtTests {
         collect(100_000);                              // no job needed: the credit itself lifts everything
         stage("NONE");
         call(seller, get("/api/merchant/settlement/statements"), null).andExpect(jsonPath("$.standing.overdueSince").doesNotExist());
-        assertThat(searchFinds("Phở")).isTrue();
+        assertThat(searchFinds(word)).isTrue();
         call(seller, put("/api/merchant/shop/accepting-orders"), Map.of("accepting", true)).andExpect(status().isOk());
         assertThat(opensNow()).isTrue();
         assertThat(notifications("COMMISSION_CLEARED")).isEqualTo(1);
@@ -397,15 +400,15 @@ class CommissionDebtTests {
     }
 
     private boolean listed() throws Exception {
-        return areaList(null).contains("Quán Nợ Phở");
+        return areaList(null).contains(word);
     }
 
-    private boolean searchFinds(String word) throws Exception {
-        return areaList(word).contains("Quán Nợ Phở");
+    private boolean searchFinds(String query) throws Exception {
+        return areaList(query).contains(word);
     }
 
     private String areaList(String q) throws Exception {
-        MockHttpServletRequestBuilder request = get("/api/vendors").param("lat", String.valueOf(lat + 0.003)).param("lng", String.valueOf(lng));
+        MockHttpServletRequestBuilder request = get("/api/vendors").param("lat", String.valueOf(lat + 0.003)).param("lng", String.valueOf(lng)).param("size", "50");
         if (q != null) {
             request.param("q", q);
         }
