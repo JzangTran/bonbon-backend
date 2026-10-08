@@ -42,7 +42,26 @@ public final class CaseViews {
             @Schema(description = "Ai quyết: SHOP (quán chấp nhận), ADMIN, SYSTEM hoặc CUSTOMER.") String decidedBy,
             @Schema(description = "Lý do của quyết định, cả hai bên đều thấy.") String reason,
             List<Line> lines,
-            List<Photo> photos) {
+            List<Photo> photos,
+            @Schema(description = "Tên người nhận ghi trên đơn. Chỉ quán và quản trị viên thấy.") String customerName,
+            @Schema(description = "Số tiền quán phải chịu nếu khiếu nại được chấp nhận: tiền hoàn trừ hoa hồng nền tảng hoàn lại. Chỉ quán và quản trị viên thấy.") Integer shopBears) {
+    }
+
+    @Schema(name = "OrderCaseSummary")
+    public record Summary(
+            UUID id,
+            UUID orderId,
+            long orderNumber,
+            String type,
+            String status,
+            int refundAmount,
+            @Schema(description = "Số tiền quán phải chịu nếu được chấp nhận.") int shopBears,
+            Instant shopResponseDueAt,
+            Instant openedAt) {
+    }
+
+    @Schema(name = "OrderCasePage")
+    public record Page(List<Summary> items, int page, int size, long total) {
     }
 
     @Schema(name = "OrderCaseQuote", description = "Số tiền hoàn tính trước khi gửi khiếu nại.")

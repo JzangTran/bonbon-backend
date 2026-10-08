@@ -60,6 +60,36 @@ public class LedgerService {
         return written;
     }
 
+    /**
+     * Posts what an upheld order case costs the shop: the refund it bears (negative) and, in the other direction, the
+     * commission the platform gives back on that part of the order. Once per case, whoever decides it.
+     */
+    @Transactional
+    public boolean postForCase(UUID vendorId, UUID caseId, UUID orderId, int refund, int commissionReversal, String note, ActorType by, UUID actorId) {
+        Timestamp at = Timestamp.from(clock.instant());
+        int rows = 0;
+        if (refund > 0) {
+            rows += jdbc.sql("""
+                    insert into ledger_entries (vendor_id, type, amount, order_id, case_id, note, acted_by_type, acted_by_id, created_at)
+                    values (:vendor, 'CASE_REFUND', :amount, :order, :case, :note, :by, :actor, :at)
+                    on conflict (case_id, type) where case_id is not null do nothing""")
+                    .param("vendor", vendorId).param("amount", -refund).param("order", orderId).param("case", caseId).param("note", note)
+                    .param("by", by.name()).param("actor", actorId).param("at", at).update();
+        }
+        if (commissionReversal > 0) {
+            rows += jdbc.sql("""
+                    insert into ledger_entries (vendor_id, type, amount, order_id, case_id, note, acted_by_type, acted_by_id, created_at)
+                    values (:vendor, 'CASE_COMMISSION_REVERSAL', :amount, :order, :case, :note, :by, :actor, :at)
+                    on conflict (case_id, type) where case_id is not null do nothing""")
+                    .param("vendor", vendorId).param("amount", commissionReversal).param("order", orderId).param("case", caseId).param("note", note)
+                    .param("by", by.name()).param("actor", actorId).param("at", at).update();
+        }
+        if (rows > 0) {
+            events.publishEvent(new Posted(vendorId, commissionReversal - refund));
+        }
+        return rows > 0;
+    }
+
     /** The order figures an entry was posted from, kept on it so statements never need the order tables. */
     public record OrderFigures(int itemsTotal, int discount, int deliveryFee, int commission) {
     }

@@ -36,6 +36,10 @@ public final class CaseRequests {
             @Schema(description = "Ghi chú thêm (không bắt buộc).") @Size(max = 500) String note) {
     }
 
+    @Schema(name = "DisputeOrderCaseRequest")
+    public record Dispute(@Schema(description = "Lý do quán không đồng ý; quản trị viên và khách đều thấy.") @jakarta.validation.constraints.NotBlank @Size(max = 500) String note) {
+    }
+
     @Schema(name = "QuoteIncidentRequest")
     public record Quote(@NotEmpty @Size(max = 50) List<@Valid Line> lines) {
     }

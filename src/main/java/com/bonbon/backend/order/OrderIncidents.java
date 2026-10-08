@@ -20,7 +20,7 @@ public interface OrderIncidents {
      * {@code deliveredAt} is when the order reached its final status; {@code deliveredBy} is CUSTOMER (confirmed receipt),
      * SHOP or SYSTEM (after the automatic wait). {@code commission} is VAT-inclusive and covers the food only.
      */
-    record IncidentOrder(UUID id, long number, UUID customerId, UUID vendorId, String status, String paymentMethod, Instant deliveredAt,
+    record IncidentOrder(UUID id, long number, UUID customerId, String customerName, UUID vendorId, String status, String paymentMethod, Instant deliveredAt,
             String deliveredBy, int itemsTotal, int discount, int deliveryFee, int grandTotal, int commission, List<IncidentLine> lines) {
     }
 

@@ -19,6 +19,8 @@ import com.bonbon.backend.settlement.CommissionStageChanged;
 import com.bonbon.backend.settlement.CommissionStatementIssued;
 import com.bonbon.backend.settlement.CommissionStatementReminder;
 import com.bonbon.backend.settlement.PayoutRecorded;
+import com.bonbon.backend.shopperformance.OrderCaseDecided;
+import com.bonbon.backend.shopperformance.OrderCaseEscalated;
 import com.bonbon.backend.shopperformance.OrderCaseOpened;
 import com.bonbon.backend.payment.RefundNeedsDestination;
 import org.springframework.context.ApplicationEventPublisher;
@@ -171,6 +173,30 @@ public class NotificationService {
                 "Hãy xem và trả lời trong " + java.time.Duration.between(java.time.Instant.now(), e.responseDueAt()).toHours() + " giờ tới. Nếu không, quản trị viên sẽ quyết định.");
         raise(e.customerId(), "ORDER_CASE_RECEIVED", e.orderId(), e.orderNumber(), "Đã gửi báo cáo đơn #" + e.orderNumber(),
                 "Quán sẽ trả lời sớm. Nếu hai bên không đồng ý, quản trị viên sẽ xem xét.");
+    }
+
+    /** The shop disagreed or ran out of time: the customer is told an administrator decides now. */
+    @EventListener
+    void onOrderCaseEscalated(OrderCaseEscalated e) {
+        raise(e.customerId(), "ORDER_CASE_ESCALATED", e.orderId(), e.orderNumber(), "Báo cáo đơn #" + e.orderNumber() + " đang được xem xét",
+                "DISPUTED".equals(e.why()) ? "Quán không đồng ý với báo cáo của bạn. Quản trị viên sẽ xem và quyết định."
+                        : "Quán chưa trả lời kịp. Quản trị viên sẽ xem và quyết định.");
+    }
+
+    /** A case was settled: the customer hears the outcome and the reason; the shop hears it when it did not decide itself. */
+    @EventListener
+    void onOrderCaseDecided(OrderCaseDecided e) {
+        boolean upheld = "UPHELD".equals(e.outcome());
+        raise(e.customerId(), upheld ? "ORDER_CASE_UPHELD" : "ORDER_CASE_DISMISSED", e.orderId(), e.orderNumber(),
+                upheld ? "Báo cáo đơn #" + e.orderNumber() + " được chấp nhận" : "Báo cáo đơn #" + e.orderNumber() + " không được chấp nhận",
+                upheld ? "Bạn sẽ được hoàn " + vnd(e.refundAmount()) + ". " + (e.reason() == null ? "" : e.reason())
+                        : (e.reason() == null ? "Báo cáo của bạn không được chấp nhận." : e.reason()));
+        if (!"SHOP".equals(e.decidedBy())) {
+            toShop(e.vendorId(), upheld ? "ORDER_CASE_UPHELD" : "ORDER_CASE_DISMISSED", e.orderId(), e.orderNumber(),
+                    upheld ? "Báo cáo đơn #" + e.orderNumber() + " được chấp nhận" : "Báo cáo đơn #" + e.orderNumber() + " bị bác bỏ",
+                    upheld ? "Quán chịu " + vnd(e.refundAmount()) + " (hoa hồng phần này được hoàn lại). " + (e.reason() == null ? "" : e.reason())
+                            : (e.reason() == null ? "Khiếu nại của khách không được chấp nhận." : e.reason()));
+        }
     }
 
     private void toShop(UUID vendorId, String type, String title, String body) {
