@@ -310,7 +310,7 @@ public class OrderService {
     }
 
     OrderViews.Detail detail(Order o) {
-        List<OrderViews.Line> lines = o.getItems().stream().map(i -> new OrderViews.Line(i.getMenuItemId(), i.getName(),
+        List<OrderViews.Line> lines = o.getItems().stream().map(i -> new OrderViews.Line(i.getId(), i.getMenuItemId(), i.getName(),
                 i.getQuantity(), i.getUnitPrice(), i.getLineTotal(), i.getNote(),
                 i.getOptions().stream().map(op -> new OrderViews.Option(op.getGroupName(), op.getOptionName(), op.getPriceDelta())).toList()))
                 .toList();
