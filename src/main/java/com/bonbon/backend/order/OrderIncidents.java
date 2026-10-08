@@ -2,8 +2,11 @@ package com.bonbon.backend.order;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+
+import com.bonbon.backend.common.persistence.ActorType;
 
 /**
  * What the order cases need from an order: its snapshot (lines, money) and who moved it to delivered, and the flag that
@@ -24,7 +27,13 @@ public interface OrderIncidents {
      * NOT_DELIVERED or CANCELLED) as {@code by}. A cancelled order that was paid online is refunded in full, and a cash order
      * that ends DELIVERED counts as collected. Fails when the order is no longer out for delivery.
      */
-    void endNoShow(UUID orderId, String to, com.bonbon.backend.common.persistence.ActorType by, UUID actorId, String reason);
+    void endNoShow(UUID orderId, String to, ActorType by, UUID actorId, String reason);
+
+    /**
+     * Orders that reached PLACED and ended from the first instant (inclusive) to the second (exclusive), per shop, or only one shop when
+     * a shop id is given: the denominator of a shop's failure rate. An order that never got past waiting for payment does not count.
+     */
+    Map<UUID, Long> finishedOrders(Instant from, Instant to, UUID vendorId);
 
     /** Raises or clears the hold: while it is set the shop keeps seeing the customer's delivery details. */
     void setIncidentHold(UUID orderId, boolean hold);
