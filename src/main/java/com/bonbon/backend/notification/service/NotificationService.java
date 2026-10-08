@@ -19,6 +19,7 @@ import com.bonbon.backend.settlement.CommissionStageChanged;
 import com.bonbon.backend.settlement.CommissionStatementIssued;
 import com.bonbon.backend.settlement.CommissionStatementReminder;
 import com.bonbon.backend.settlement.PayoutRecorded;
+import com.bonbon.backend.shopperformance.OrderCaseOpened;
 import com.bonbon.backend.payment.RefundNeedsDestination;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -163,9 +164,22 @@ public class NotificationService {
         }
     }
 
+    /** A customer filed a case: the shop has until the due time to answer, and the customer sees it was received. */
+    @EventListener
+    void onOrderCaseOpened(OrderCaseOpened e) {
+        toShop(e.vendorId(), "ORDER_CASE_OPENED", e.orderId(), e.orderNumber(), "Khách báo vấn đề với đơn #" + e.orderNumber(),
+                "Hãy xem và trả lời trong " + java.time.Duration.between(java.time.Instant.now(), e.responseDueAt()).toHours() + " giờ tới. Nếu không, quản trị viên sẽ quyết định.");
+        raise(e.customerId(), "ORDER_CASE_RECEIVED", e.orderId(), e.orderNumber(), "Đã gửi báo cáo đơn #" + e.orderNumber(),
+                "Quán sẽ trả lời sớm. Nếu hai bên không đồng ý, quản trị viên sẽ xem xét.");
+    }
+
     private void toShop(UUID vendorId, String type, String title, String body) {
+        toShop(vendorId, type, null, null, title, body);
+    }
+
+    private void toShop(UUID vendorId, String type, UUID orderId, Long orderNumber, String title, String body) {
         shops.shop(vendorId).map(ShopOrdering.OrderableShop::ownerUserId).ifPresent(owner -> {
-            Notification n = new Notification(owner, SHOP, type, null, null, title, body);
+            Notification n = new Notification(owner, SHOP, type, orderId, orderNumber, title, body);
             notifications.save(n);
             events.publishEvent(new Created(List.of(n)));
         });
