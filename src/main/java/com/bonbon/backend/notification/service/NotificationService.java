@@ -24,6 +24,8 @@ import com.bonbon.backend.shopperformance.OrderCaseEscalated;
 import com.bonbon.backend.shopperformance.NoShowReported;
 import com.bonbon.backend.shopperformance.OrderCaseOpened;
 import com.bonbon.backend.shopperformance.OrderCaseReopened;
+import com.bonbon.backend.shopperformance.ShopPenaltyIssued;
+import com.bonbon.backend.shopperformance.ShopRestrictionChanged;
 import com.bonbon.backend.payment.RefundNeedsDestination;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -242,6 +244,28 @@ public class NotificationService {
                 "Quản trị viên mở lại báo cáo của bạn để xem xét. " + e.reason());
         toShop(e.vendorId(), "ORDER_CASE_REOPENED", e.orderId(), e.orderNumber(), "Khiếu nại đơn #" + e.orderNumber() + " được xem lại",
                 "Quản trị viên mở lại khiếu nại để xem xét. " + e.reason());
+    }
+
+    /** The weekly evaluation found too many failed orders: a point, and a warning when it is only one or two. */
+    @EventListener
+    void onShopPenaltyIssued(ShopPenaltyIssued e) {
+        toShop(e.vendorId(), "SHOP_PENALTY", "Quán bị cộng 1 điểm phạt",
+                "Tuần " + e.weekStart().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM")) + " có " + String.format(java.util.Locale.forLanguageTag("vi-VN"), "%.1f", e.ratePercent())
+                        + "% đơn thất bại do quán. Quán đang có " + e.activePoints() + " điểm"
+                        + (e.activePoints() >= 3 ? ": quán sẽ bị hạn chế hiển thị." : ", chỉ là cảnh báo. Từ 3 điểm quán bị hạn chế hiển thị."));
+    }
+
+    /** What penalty points do to the shop's visibility: the notice first (never less than 5 days ahead), then the start, or the end of it. */
+    @EventListener
+    void onShopRestrictionChanged(ShopRestrictionChanged e) {
+        switch (e.status()) {
+            case "SCHEDULED" -> toShop(e.vendorId(), "SHOP_RESTRICTION_SCHEDULED", "Quán sắp bị hạn chế hiển thị",
+                    "Quán có " + e.activePoints() + " điểm phạt. Từ " + day(e.startsAt()) + " quán sẽ không hiện khi khách tìm kiếm và xếp cuối danh sách, nhưng vẫn nhận đơn từ khách mở thẳng quán. Điểm giảm dưới 3 trước ngày đó thì không bị hạn chế.");
+            case "APPLIED" -> toShop(e.vendorId(), "SHOP_RESTRICTED", "Quán đang bị hạn chế hiển thị",
+                    "Quán có " + e.activePoints() + " điểm phạt nên không hiện khi tìm kiếm và xếp cuối danh sách. Hạn chế được gỡ ngay khi điểm xuống dưới 3.");
+            case "LIFTED" -> toShop(e.vendorId(), "SHOP_RESTRICTION_LIFTED", "Đã gỡ hạn chế hiển thị", "Điểm phạt đã xuống dưới 3. Quán hiển thị bình thường.");
+            default -> toShop(e.vendorId(), "SHOP_RESTRICTION_CANCELLED", "Không còn bị hạn chế hiển thị", "Điểm phạt đã xuống dưới 3 trước ngày hạn chế bắt đầu.");
+        }
     }
 
     private void toShop(UUID vendorId, String type, String title, String body) {

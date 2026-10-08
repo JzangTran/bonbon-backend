@@ -28,6 +28,20 @@ class OrderIncidentsService implements OrderIncidents {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public java.util.Map<UUID, Long> finishedOrders(java.time.Instant from, java.time.Instant to, UUID vendorId) {
+        java.util.Map<UUID, Long> result = new java.util.HashMap<>();
+        jdbc.sql("""
+                select o.vendor_id, count(*) as n from orders o
+                where o.finished_at >= :from and o.finished_at < :to and (cast(:v as uuid) is null or o.vendor_id = :v)
+                  and exists (select 1 from order_status_history h where h.order_id = o.id and h.to_status = 'PLACED')
+                group by o.vendor_id""")
+                .param("from", java.sql.Timestamp.from(from)).param("to", java.sql.Timestamp.from(to)).param("v", vendorId)
+                .query((rs, n) -> result.put(rs.getObject("vendor_id", UUID.class), rs.getLong("n"))).list();
+        return result;
+    }
+
+    @Override
     @Transactional
     public boolean holdIfOutForDelivery(UUID orderId) {
         return jdbc.sql("update orders set incident_hold = true where id = :o and status = 'OUT_FOR_DELIVERY' and incident_hold = false")
