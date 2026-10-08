@@ -117,6 +117,19 @@ public class AdminCaseService {
         if (!"OPEN".equals(found[0])) {
             throw BusinessException.conflict("CASE_NOT_OPEN", "Khiếu nại này không ở hàng đợi quản trị: chưa đến lượt hoặc đã được quyết.").withProperty("status", found[0]);
         }
+        boolean noShow = "CUSTOMER_NO_SHOW".equals(found[1]);
+        if (noShow != (request.noShowOutcome() != null)) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, noShow ? "NO_SHOW_OUTCOME_REQUIRED" : "NO_SHOW_OUTCOME_NOT_ALLOWED",
+                    noShow ? "Báo cáo khách vắng mặt cần chọn kết cục." : "Kết cục khách vắng mặt chỉ dùng cho báo cáo khách vắng mặt.");
+        }
+        if (noShow) {
+            if (uphold != "CUSTOMER_AT_FAULT".equals(request.noShowOutcome()) || (request.lines() != null && !request.lines().isEmpty())) {
+                throw new BusinessException(HttpStatus.BAD_REQUEST, "OUTCOME_MISMATCH", "Kết cục không khớp với UPHELD/DISMISSED, hoặc có dòng món trong báo cáo không có tiền.");
+            }
+            decisions.decideNoShow(caseId, List.of("OPEN"), request.noShowOutcome(), ActorType.ADMIN, admin.id(), request.reason().strip())
+                    .orElseThrow(() -> BusinessException.conflict("CASE_NOT_OPEN", "Khiếu nại này vừa được người khác quyết."));
+            return cases.viewForShop(caseId);
+        }
         boolean narrow = request.lines() != null && !request.lines().isEmpty();
         if (narrow) {
             if (!uphold || "NOT_RECEIVED".equals(found[1]) || reopened(caseId)) {

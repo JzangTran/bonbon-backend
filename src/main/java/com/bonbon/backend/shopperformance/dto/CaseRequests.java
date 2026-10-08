@@ -36,6 +36,19 @@ public final class CaseRequests {
             @Schema(description = "Ghi chú thêm (không bắt buộc).") @Size(max = 500) String note) {
     }
 
+    @Schema(name = "ReportNoShowRequest")
+    public record NoShow(
+            @Schema(description = "Đã làm gì để liên lạc: gọi, gõ cửa, chờ bao lâu.") @jakarta.validation.constraints.NotBlank @Size(max = 500) String note,
+            @Schema(description = "Khoá ảnh đã tải lên qua `POST /api/merchant/orders/{id}/no-show-photo` (không bắt buộc).") @Size(max = 200) String photoKey) {
+    }
+
+    @Schema(name = "AnswerNoShowRequest")
+    public record NoShowAnswer(
+            @Schema(description = "UNABLE (tôi không nhận được hoặc không muốn nhận: đơn kết thúc, tính vào bộ đếm lạm dụng), RECEIVED (tôi đã nhận: đơn thành đã giao) hoặc SHOP_NEVER_CAME (quán không đến hoặc không gọi: quản trị viên quyết, cần ghi chú).")
+            @NotNull @Pattern(regexp = "UNABLE|RECEIVED|SHOP_NEVER_CAME", message = "Câu trả lời phải là UNABLE, RECEIVED hoặc SHOP_NEVER_CAME.") String answer,
+            @Size(max = 500) String note) {
+    }
+
     @Schema(name = "DisputeOrderCaseRequest")
     public record Dispute(@Schema(description = "Lý do quán không đồng ý; quản trị viên và khách đều thấy.") @jakarta.validation.constraints.NotBlank @Size(max = 500) String note) {
     }

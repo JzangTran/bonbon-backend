@@ -3,6 +3,7 @@ package com.bonbon.backend.shopperformance.service;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -57,12 +58,12 @@ public class OrderCaseDecisionService {
         Optional<Decided> decided = jdbc.sql("""
                 update order_cases set status = :outcome, decided_by_type = :by, decided_by_id = :actor, decided_at = :at, reason = :reason, version = version + 1
                 where id = :id and status in (:from)
-                returning id, order_id, order_number, customer_id, vendor_id, type, refund_amount, commission_amount""")
+                returning id, order_id, order_number, customer_id, vendor_id, type, refund_amount, commission_amount, no_show_outcome""")
                 .param("outcome", outcome).param("by", by.name()).param("actor", actorId).param("at", Timestamp.from(clock.instant())).param("reason", reason)
                 .param("id", caseId).param("from", from)
                 .query((rs, n) -> new Decided(rs.getObject("id", UUID.class), rs.getObject("order_id", UUID.class), rs.getLong("order_number"),
                         rs.getObject("customer_id", UUID.class), rs.getObject("vendor_id", UUID.class), rs.getString("type"), rs.getInt("refund_amount"),
-                        rs.getInt("commission_amount")))
+                        rs.getInt("commission_amount"), rs.getString("no_show_outcome")))
                 .optional();
         if (decided.isEmpty()) {
             return decided;
@@ -84,12 +85,41 @@ public class OrderCaseDecisionService {
         if (!waiting) {
             orders.setIncidentHold(d.orderId(), false);
         }
-        events.publishEvent(new OrderCaseDecided(d.caseId(), d.orderId(), d.orderNumber(), d.customerId(), d.vendorId(), outcome, decidedBy(by),
-                uphold ? d.refundAmount() : 0, reason));
+        events.publishEvent(new OrderCaseDecided(d.caseId(), d.orderId(), d.orderNumber(), d.customerId(), d.vendorId(), d.type(), outcome, decidedBy(by),
+                uphold ? d.refundAmount() : 0, reason, d.noShowOutcome()));
         return decided;
     }
 
-    public record Decided(UUID caseId, UUID orderId, long orderNumber, UUID customerId, UUID vendorId, String type, int refundAmount, int commissionAmount) {
+    /**
+     * Settles a no-show case and ends the order the way the outcome says: the customer was at fault (NOT_DELIVERED), did receive
+     * it (DELIVERED) or the shop never came (CANCELLED, paid online orders refunded in full). Nothing is claimed in money, so
+     * only the order moves. Empty when the case is no longer in one of {@code from}.
+     */
+    @Transactional
+    public Optional<Decided> decideNoShow(UUID caseId, Collection<String> from, String noShowOutcome, ActorType by, UUID actorId, String reason) {
+        Optional<Decided> decided = settleNoShow(caseId, from, noShowOutcome, by, actorId, reason);
+        decided.ifPresent(d -> orders.endNoShow(d.orderId(), switch (noShowOutcome) {
+            case "CUSTOMER_AT_FAULT" -> "NOT_DELIVERED";
+            case "CUSTOMER_RECEIVED" -> "DELIVERED";
+            default -> "CANCELLED";
+        }, by, actorId, reason));
+        return decided;
+    }
+
+    /** The order was already delivered by someone: the case is closed as "the customer received it" and the order is left alone. */
+    @Transactional
+    public Optional<Decided> decideNoShowWithoutMovingOrder(UUID caseId, String noShowOutcome, ActorType by, UUID actorId, String reason) {
+        return settleNoShow(caseId, List.of("AWAITING_CUSTOMER", "OPEN"), noShowOutcome, by, actorId, reason);
+    }
+
+    private Optional<Decided> settleNoShow(UUID caseId, Collection<String> from, String noShowOutcome, ActorType by, UUID actorId, String reason) {
+        int marked = jdbc.sql("update order_cases set no_show_outcome = :o where id = :id and type = 'CUSTOMER_NO_SHOW' and status in (:from)")
+                .param("o", noShowOutcome).param("id", caseId).param("from", from).update();
+        return marked == 0 ? Optional.empty() : decide(caseId, from, "CUSTOMER_AT_FAULT".equals(noShowOutcome), by, actorId, reason);
+    }
+
+    public record Decided(UUID caseId, UUID orderId, long orderNumber, UUID customerId, UUID vendorId, String type, int refundAmount, int commissionAmount,
+            String noShowOutcome) {
     }
 
     private static String decidedBy(ActorType by) {

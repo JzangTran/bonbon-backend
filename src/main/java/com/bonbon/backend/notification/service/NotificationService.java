@@ -21,6 +21,7 @@ import com.bonbon.backend.settlement.CommissionStatementReminder;
 import com.bonbon.backend.settlement.PayoutRecorded;
 import com.bonbon.backend.shopperformance.OrderCaseDecided;
 import com.bonbon.backend.shopperformance.OrderCaseEscalated;
+import com.bonbon.backend.shopperformance.NoShowReported;
 import com.bonbon.backend.shopperformance.OrderCaseOpened;
 import com.bonbon.backend.shopperformance.OrderCaseReopened;
 import com.bonbon.backend.payment.RefundNeedsDestination;
@@ -176,9 +177,22 @@ public class NotificationService {
                 "Quán sẽ trả lời sớm. Nếu hai bên không đồng ý, quản trị viên sẽ xem xét.");
     }
 
+    /** The shop could not reach the customer at the door: the customer is asked to answer, with the time they have. */
+    @EventListener
+    void onNoShowReported(NoShowReported e) {
+        raise(e.customerId(), "NO_SHOW_REPORTED", e.orderId(), e.orderNumber(), "Quán không liên lạc được với bạn (đơn #" + e.orderNumber() + ")",
+                "Hãy cho biết bạn đã nhận được hay chưa, trước " + day(e.answerDueAt()) + " " + java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+                        .withZone(java.time.ZoneId.of("Asia/Ho_Chi_Minh")).format(e.answerDueAt()) + ".");
+    }
+
     /** The shop disagreed or ran out of time: the customer is told an administrator decides now. */
     @EventListener
     void onOrderCaseEscalated(OrderCaseEscalated e) {
+        if ("SHOP_NEVER_CAME".equals(e.why()) || "CUSTOMER_NO_REPLY".equals(e.why())) {
+            toShop(e.vendorId(), "NO_SHOW_ESCALATED", e.orderId(), e.orderNumber(), "Báo cáo khách vắng mặt đơn #" + e.orderNumber() + " đang được xem xét",
+                    "SHOP_NEVER_CAME".equals(e.why()) ? "Khách nói quán không đến hoặc không gọi. Quản trị viên sẽ xem và quyết định." : "Khách chưa trả lời kịp. Quản trị viên sẽ xem và quyết định.");
+            return;
+        }
         raise(e.customerId(), "ORDER_CASE_ESCALATED", e.orderId(), e.orderNumber(), "Báo cáo đơn #" + e.orderNumber() + " đang được xem xét",
                 "DISPUTED".equals(e.why()) ? "Quán không đồng ý với báo cáo của bạn. Quản trị viên sẽ xem và quyết định."
                         : "Quán chưa trả lời kịp. Quản trị viên sẽ xem và quyết định.");
@@ -187,6 +201,27 @@ public class NotificationService {
     /** A case was settled: the customer hears the outcome and the reason; the shop hears it when it did not decide itself. */
     @EventListener
     void onOrderCaseDecided(OrderCaseDecided e) {
+        if ("CUSTOMER_NO_SHOW".equals(e.type())) {
+            String title;
+            String body;
+            switch (e.noShowOutcome() == null ? "" : e.noShowOutcome()) {
+                case "CUSTOMER_AT_FAULT" -> {
+                    title = "Đơn #" + e.orderNumber() + " kết thúc: chưa giao được";
+                    body = "Đơn được ghi nhận là không giao được vì không có người nhận. Quán vẫn được tính tiền món nếu bạn đã trả online.";
+                }
+                case "SHOP_NEVER_CAME" -> {
+                    title = "Đơn #" + e.orderNumber() + " bị huỷ";
+                    body = "Quản trị viên xác nhận quán không đến. Nếu bạn đã trả online, bạn được hoàn đủ. " + (e.reason() == null ? "" : e.reason());
+                }
+                default -> {
+                    title = "Đơn #" + e.orderNumber() + " đã được ghi nhận là đã giao";
+                    body = e.reason() == null ? "" : e.reason();
+                }
+            }
+            raise(e.customerId(), "NO_SHOW_DECIDED", e.orderId(), e.orderNumber(), title, body);
+            toShop(e.vendorId(), "NO_SHOW_DECIDED", e.orderId(), e.orderNumber(), title, body);
+            return;
+        }
         boolean upheld = "UPHELD".equals(e.outcome());
         raise(e.customerId(), upheld ? "ORDER_CASE_UPHELD" : "ORDER_CASE_DISMISSED", e.orderId(), e.orderNumber(),
                 upheld ? "Báo cáo đơn #" + e.orderNumber() + " được chấp nhận" : "Báo cáo đơn #" + e.orderNumber() + " không được chấp nhận",

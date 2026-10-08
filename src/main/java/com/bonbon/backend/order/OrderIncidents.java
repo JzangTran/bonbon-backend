@@ -13,6 +13,19 @@ public interface OrderIncidents {
 
     Optional<IncidentOrder> find(UUID orderId);
 
+    /**
+     * Raises the hold only if the order is still out for delivery and not held, so a shop's no-show report and the customer
+     * pressing "received" cannot both win. The hold also keeps the automatic "delivered after 3 hours" away from the order.
+     */
+    boolean holdIfOutForDelivery(UUID orderId);
+
+    /**
+     * Ends an order out for delivery after a no-show case: clears the hold, then moves it to {@code to} (DELIVERED,
+     * NOT_DELIVERED or CANCELLED) as {@code by}. A cancelled order that was paid online is refunded in full, and a cash order
+     * that ends DELIVERED counts as collected. Fails when the order is no longer out for delivery.
+     */
+    void endNoShow(UUID orderId, String to, com.bonbon.backend.common.persistence.ActorType by, UUID actorId, String reason);
+
     /** Raises or clears the hold: while it is set the shop keeps seeing the customer's delivery details. */
     void setIncidentHold(UUID orderId, boolean hold);
 
@@ -21,7 +34,7 @@ public interface OrderIncidents {
      * SHOP or SYSTEM (after the automatic wait). {@code commission} is VAT-inclusive and covers the food only.
      */
     record IncidentOrder(UUID id, long number, UUID customerId, String customerName, UUID vendorId, String status, String paymentMethod, Instant deliveredAt,
-            String deliveredBy, int itemsTotal, int discount, int deliveryFee, int grandTotal, int commission, List<IncidentLine> lines) {
+            String deliveredBy, Instant outForDeliveryAt, boolean held, int itemsTotal, int discount, int deliveryFee, int grandTotal, int commission, List<IncidentLine> lines) {
     }
 
     /** {@code lineTotal} includes the chosen options; {@code allocatedDiscount} is this line's share of the voucher. */

@@ -21,7 +21,9 @@ public final class AdminCaseRequests {
             @NotNull @Pattern(regexp = "UPHELD|DISMISSED", message = "Kết quả phải là UPHELD hoặc DISMISSED.") String outcome,
             @Schema(description = "Lý do; cả khách và quán đều thấy.") @NotBlank @Size(max = 500) String reason,
             @Schema(description = "Chấp nhận ít hơn đã báo: chỉ các dòng này, mỗi dòng số phần từ 1 đến số khách báo; tiền tính lại theo tỷ lệ từ số đã lưu. Chỉ với UPHELD và các loại thiếu món, sai món, chất lượng.")
-            @Size(max = 50) List<@Valid Line> lines) {
+            @Size(max = 50) List<@Valid Line> lines,
+            @Schema(description = "Chỉ với báo cáo khách vắng mặt, bắt buộc: CUSTOMER_AT_FAULT (UPHELD, đơn kết thúc NOT_DELIVERED), CUSTOMER_RECEIVED (DISMISSED, đơn thành DELIVERED) hoặc SHOP_NEVER_CAME (DISMISSED, đơn bị huỷ, hoàn tiền đầy đủ nếu đã trả online, quán bị ghi lỗi).")
+            @Pattern(regexp = "CUSTOMER_AT_FAULT|CUSTOMER_RECEIVED|SHOP_NEVER_CAME", message = "Kết cục không hợp lệ.") String noShowOutcome) {
     }
 
     @Schema(name = "ReopenOrderCaseRequest")

@@ -7,6 +7,7 @@ import com.bonbon.backend.common.openapi.ApiTags;
 import com.bonbon.backend.common.security.CurrentPrincipal;
 import com.bonbon.backend.shopperformance.dto.CaseRequests;
 import com.bonbon.backend.shopperformance.dto.CaseViews;
+import com.bonbon.backend.shopperformance.service.NoShowService;
 import com.bonbon.backend.shopperformance.service.OrderCaseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -34,9 +35,11 @@ import org.springframework.web.multipart.MultipartFile;
 class CustomerOrderCaseController {
 
     private final OrderCaseService cases;
+    private final NoShowService noShows;
 
-    CustomerOrderCaseController(OrderCaseService cases) {
+    CustomerOrderCaseController(OrderCaseService cases, NoShowService noShows) {
         this.cases = cases;
+        this.noShows = noShows;
     }
 
     @Operation(operationId = "reportOrderNotReceived", summary = "Báo chưa nhận được đơn", description = "Cho đơn đã giao trong vòng 24 giờ kể từ khi giao và khách chưa tự xác nhận đã nhận. Hoàn lại toàn bộ số đã trả, gồm phí giao, nếu khiếu nại được chấp nhận. Quán được báo và có 12 giờ để trả lời.")
@@ -94,6 +97,23 @@ class CustomerOrderCaseController {
     @PostMapping(path = "/case-photos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     CaseViews.Upload photo(CurrentPrincipal principal, @PathVariable UUID id, @RequestPart("file") MultipartFile file) {
         return cases.uploadPhoto(principal.id(), id, file);
+    }
+
+    @Operation(operationId = "getOrderNoShow", summary = "Xem báo cáo khách vắng mặt của đơn", description = "Báo cáo quán gửi khi không liên lạc được với khách: ghi chú, ảnh (liên kết ngắn hạn), hạn trả lời và kết cục nếu đã có.")
+    @ApiError(status = 404, code = "CASE_NOT_FOUND", when = "Đơn này chưa có báo cáo khách vắng mặt (hoặc không phải của người gọi).")
+    @GetMapping("/no-show")
+    CaseViews.Case noShow(CurrentPrincipal principal, @PathVariable UUID id) {
+        return noShows.caseOf(principal.id(), id);
+    }
+
+    @Operation(operationId = "answerNoShow", summary = "Trả lời báo cáo khách vắng mặt", description = "`UNABLE`: không nhận được hoặc không muốn nhận, đơn kết thúc ngay (đơn online vẫn tính cho quán như đã giao, đơn tiền mặt không phát sinh gì) và tính vào bộ đếm lạm dụng. `RECEIVED`: đã nhận, đơn thành đã giao như khi bấm đã nhận. `SHOP_NEVER_CAME`: quán không đến hoặc không gọi, bắt buộc ghi chú, quản trị viên quyết định. Không trả lời trong 2 giờ thì quản trị viên quyết, và im lặng không bị coi là thừa nhận.")
+    @ApiError(status = 404, code = "CASE_NOT_FOUND", when = "Đơn này chưa có báo cáo khách vắng mặt (hoặc không phải của người gọi).")
+    @ApiError(status = 409, code = "CASE_ALREADY_ANSWERED", when = "Báo cáo không còn chờ khách trả lời.")
+    @ApiError(status = 400, code = "NOTE_REQUIRED", when = "`SHOP_NEVER_CAME` thiếu ghi chú.")
+    @ApiError(status = 409, code = "ORDER_ALREADY_CHANGED", when = "Đơn vừa đổi trạng thái; tải lại để xem.")
+    @PostMapping("/no-show-answer")
+    CaseViews.Case answer(CurrentPrincipal principal, @PathVariable UUID id, @Valid @RequestBody CaseRequests.NoShowAnswer request) {
+        return noShows.answer(principal.id(), id, request.answer(), request.note());
     }
 
     @Operation(operationId = "getOrderCase", summary = "Xem khiếu nại của đơn", description = "Khiếu nại khách đã gửi cho đơn này kèm trạng thái, các dòng món, ảnh, câu trả lời của quán và quyết định (nếu có).")
