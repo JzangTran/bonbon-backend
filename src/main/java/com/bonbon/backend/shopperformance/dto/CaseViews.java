@@ -44,7 +44,11 @@ public final class CaseViews {
             List<Line> lines,
             List<Photo> photos,
             @Schema(description = "Tên người nhận ghi trên đơn. Chỉ quán và quản trị viên thấy.") String customerName,
-            @Schema(description = "Số tiền quán phải chịu nếu khiếu nại được chấp nhận: tiền hoàn trừ hoa hồng nền tảng hoàn lại. Chỉ quán và quản trị viên thấy.") Integer shopBears) {
+            @Schema(description = "Số tiền quán phải chịu nếu khiếu nại được chấp nhận: tiền hoàn trừ hoa hồng nền tảng hoàn lại. Chỉ quán và quản trị viên thấy.") Integer shopBears,
+            @Schema(description = "Báo cáo khách vắng mặt: câu trả lời của khách (UNABLE, RECEIVED hoặc SHOP_NEVER_CAME).") String customerAnswer,
+            String customerAnswerNote,
+            @Schema(description = "Hạn khách trả lời; quá hạn thì chuyển cho quản trị viên.") Instant customerAnswerDueAt,
+            @Schema(description = "Kết cục của báo cáo khách vắng mặt: CUSTOMER_AT_FAULT, CUSTOMER_RECEIVED hoặc SHOP_NEVER_CAME.") String noShowOutcome) {
     }
 
     @Schema(name = "OrderCaseSummary")

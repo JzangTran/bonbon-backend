@@ -263,13 +263,14 @@ public class OrderCaseService {
     private CaseViews.Case load(UUID caseId, boolean forShop) {
         return jdbc.sql("""
                 select id, order_id, order_number, customer_name, type, status, refund_amount, commission_amount, note, shop_response_due_at, shop_response,
-                       shop_response_note, opened_at, decided_at, decided_by_type, reason
+                       shop_response_note, opened_at, decided_at, decided_by_type, reason, customer_answer, customer_answer_note, customer_answer_due_at, no_show_outcome
                 from order_cases where id = :id""").param("id", caseId)
                 .query((rs, n) -> new CaseViews.Case(rs.getObject("id", UUID.class), rs.getObject("order_id", UUID.class), rs.getLong("order_number"), rs.getString("type"),
                         rs.getString("status"), rs.getInt("refund_amount"), rs.getString("note"), instant(rs.getTimestamp("shop_response_due_at")),
                         rs.getString("shop_response"), rs.getString("shop_response_note"), instant(rs.getTimestamp("opened_at")),
                         instant(rs.getTimestamp("decided_at")), decidedBy(rs.getString("decided_by_type")), rs.getString("reason"), lines(caseId), photos(caseId),
-                        forShop ? rs.getString("customer_name") : null, forShop ? Math.max(rs.getInt("refund_amount") - rs.getInt("commission_amount"), 0) : null))
+                        forShop ? rs.getString("customer_name") : null, forShop ? Math.max(rs.getInt("refund_amount") - rs.getInt("commission_amount"), 0) : null,
+                        rs.getString("customer_answer"), rs.getString("customer_answer_note"), instant(rs.getTimestamp("customer_answer_due_at")), rs.getString("no_show_outcome")))
                 .single();
     }
 

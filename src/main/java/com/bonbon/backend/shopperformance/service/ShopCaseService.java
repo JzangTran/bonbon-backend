@@ -36,9 +36,11 @@ public class ShopCaseService {
     private final OrderCaseDecisionService decisions;
     private final ApplicationEventPublisher events;
     private final CaseLog log;
+    private final NoShowService noShows;
 
-    ShopCaseService(JdbcClient jdbc, Clock clock, ShopOrdering shops, OrderCaseService cases, OrderCaseDecisionService decisions, ApplicationEventPublisher events, CaseLog log) {
+    ShopCaseService(JdbcClient jdbc, Clock clock, ShopOrdering shops, OrderCaseService cases, OrderCaseDecisionService decisions, ApplicationEventPublisher events, CaseLog log, NoShowService noShows) {
         this.log = log;
+        this.noShows = noShows;
         this.jdbc = jdbc;
         this.clock = clock;
         this.shops = shops;
@@ -109,7 +111,7 @@ public class ShopCaseService {
             log.add(id, "NO_RESPONSE", com.bonbon.backend.common.persistence.ActorType.SYSTEM, null, null);
             escalated(id, "NO_RESPONSE");
         });
-        return overdue.size();
+        return overdue.size() + noShows.escalateNoReply(now);
     }
 
     // --- internals

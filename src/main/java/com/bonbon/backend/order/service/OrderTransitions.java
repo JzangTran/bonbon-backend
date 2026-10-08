@@ -3,6 +3,7 @@ package com.bonbon.backend.order.service;
 import static com.bonbon.backend.order.OrderStatus.CANCELLED;
 import static com.bonbon.backend.order.OrderStatus.CONFIRMED;
 import static com.bonbon.backend.order.OrderStatus.DELIVERED;
+import static com.bonbon.backend.order.OrderStatus.NOT_DELIVERED;
 import static com.bonbon.backend.order.OrderStatus.OUT_FOR_DELIVERY;
 import static com.bonbon.backend.order.OrderStatus.PENDING_PAYMENT;
 import static com.bonbon.backend.order.OrderStatus.PLACED;
@@ -58,7 +59,7 @@ class OrderTransitions {
                 PENDING_PAYMENT, Set.of(CANCELLED),
                 PLACED, Set.of(CANCELLED),
                 CONFIRMED, Set.of(CANCELLED),
-                OUT_FOR_DELIVERY, Set.of(DELIVERED)));
+                OUT_FOR_DELIVERY, Set.of(DELIVERED, NOT_DELIVERED)));
         ALLOWED.put(Actor.SHOP, Map.of(
                 PLACED, Set.of(CONFIRMED, REJECTED),
                 CONFIRMED, Set.of(PREPARING, CANCELLED),
@@ -70,7 +71,8 @@ class OrderTransitions {
                 PLACED, Set.of(REJECTED),
                 CONFIRMED, Set.of(CANCELLED),
                 PREPARING, Set.of(CANCELLED),
-                OUT_FOR_DELIVERY, Set.of(DELIVERED)));
+                // A no-show case ends it: the customer did not take it, did take it, or the shop never came.
+                OUT_FOR_DELIVERY, Set.of(DELIVERED, NOT_DELIVERED, CANCELLED)));
     }
 
     private final OrderRepository orders;
@@ -122,7 +124,7 @@ class OrderTransitions {
         }
         Instant now = Instant.now();
         String paymentStatus = null;
-        boolean cashCollected = to == DELIVERED && "COD".equals(order.getPaymentMethod()) && !order.isIncidentHold();
+        boolean cashCollected = to == DELIVERED && "COD".equals(order.getPaymentMethod());
         if (cashCollected) {
             paymentStatus = "PAID";
         }
