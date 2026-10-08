@@ -3,6 +3,7 @@ package com.bonbon.backend.settlement.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -15,6 +16,7 @@ import java.util.UUID;
 import com.bonbon.backend.common.exception.BusinessException;
 import com.bonbon.backend.common.security.CurrentPrincipal;
 import com.bonbon.backend.common.settings.SystemSettingsService;
+import com.bonbon.backend.merchant.ShopCommissionStanding;
 import com.bonbon.backend.merchant.ShopNames;
 import com.bonbon.backend.order.OrderMoney;
 import com.bonbon.backend.settlement.PayoutRecorded;
@@ -46,9 +48,13 @@ public class SettlementService {
     private final CommissionRateService commission;
     private final SystemSettingsService settings;
     private final ApplicationEventPublisher events;
+    private final Clock clock;
+    private final ShopCommissionStanding standing;
 
     SettlementService(JdbcClient jdbc, ShopNames shopNames, OrderMoney orders, CommissionRateService commission, SystemSettingsService settings,
-            ApplicationEventPublisher events) {
+            ApplicationEventPublisher events, Clock clock, ShopCommissionStanding standing) {
+        this.clock = clock;
+        this.standing = standing;
         this.jdbc = jdbc;
         this.shopNames = shopNames;
         this.orders = orders;
@@ -97,6 +103,7 @@ public class SettlementService {
                 .query((rs, n) -> new Raw(rs.getObject("vendor_id", UUID.class), rs.getLong("balance"), rs.getLong("orders"), rs.getLong("food"),
                         rs.getLong("commission"), rs.getTimestamp("last_payout") == null ? null : rs.getTimestamp("last_payout").toInstant())).list();
         Map<UUID, String> names = shopNames.names(rows.stream().map(Raw::vendorId).toList());
+        Map<UUID, ShopCommissionStanding.Stage> stages = standing.stages(rows.stream().map(Raw::vendorId).toList());
         BigDecimal ratio = new BigDecimal(settings.getString(LOW_RATE_RATIO_KEY, "0.5"));
         long minOrders = settings.getLong(LOW_RATE_MIN_ORDERS_KEY, 5);
         List<SettlementViews.ShopRow> items = new ArrayList<>();
@@ -105,7 +112,8 @@ public class SettlementService {
             boolean low = effective != null && average != null && r.orders() >= minOrders
                     && effective.compareTo(average.multiply(ratio)) < 0;
             items.add(new SettlementViews.ShopRow(r.vendorId(), names.getOrDefault(r.vendorId(), "(đã xoá)"), r.balance(), payable(r.balance()),
-                    Math.max(-r.balance(), 0), r.orders(), r.food(), r.commission(), effective, low, r.lastPayout()));
+                    Math.max(-r.balance(), 0), r.orders(), r.food(), r.commission(), effective, low, r.lastPayout(),
+                    stages.getOrDefault(r.vendorId(), ShopCommissionStanding.Stage.NONE).name()));
         }
         SettlementViews.Totals view = new SettlementViews.Totals(totals.shops(), totals.orders(), totals.food(), totals.commission(), net,
                 totals.commission() - net, average, totals.owedTo(), totals.owedBy());
@@ -279,13 +287,15 @@ public class SettlementService {
             }
         }
         UUID id = jdbc.sql("""
-                insert into ledger_entries (vendor_id, type, amount, reference, note, acted_by_type, acted_by_id, idempotency_key)
-                values (:v, :type, :amount, :ref, :note, :by, :actor, :key) returning id""")
+                insert into ledger_entries (vendor_id, type, amount, reference, note, acted_by_type, acted_by_id, idempotency_key, created_at)
+                values (:v, :type, :amount, :ref, :note, :by, :actor, :key, :at) returning id""")
+                .param("at", Timestamp.from(clock.instant()))
                 .param("v", vendorId).param("type", request.type()).param("amount", signed).param("ref", reference).param("note", note)
                 .param("by", admin.actorType().name()).param("actor", admin.id()).param("key", idempotencyKey).query(UUID.class).single();
         if ("PAYOUT".equals(request.type())) {
             events.publishEvent(new PayoutRecorded(vendorId, (int) amount, reference));
         }
+        events.publishEvent(new LedgerService.Posted(vendorId, signed));
         return new Recorded(existing(admin.id(), idempotencyKey).orElseThrow(), true);
     }
 

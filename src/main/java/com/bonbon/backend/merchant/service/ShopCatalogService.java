@@ -85,6 +85,10 @@ class ShopCatalogService implements ShopCatalog {
         } else {
             sql.append("\n  and ").append(dish.formatted(""));
         }
+        // A shop restricted for unpaid commission only shows in the plain area list, not in a search or a category.
+        if (hasQuery || hasCategory) {
+            sql.append("\n  and v.commission_stage in ('NONE', 'OVERDUE')");
+        }
         if (hasQuery) {
             sql.append("""
 
@@ -103,11 +107,14 @@ class ShopCatalogService implements ShopCatalog {
         List<UUID> candidates = spec.query(UUID.class).list();
 
         ZonedDateTime now = ZonedDateTime.now();
-        return vendors.findAllById(candidates).stream()
+        List<Vendor> found = vendors.findAllById(candidates);
+        Set<UUID> restricted = found.stream().filter(v -> v.getCommissionStage().restrictsVisibility()).map(Vendor::getId)
+                .collect(java.util.stream.Collectors.toSet());
+        return found.stream()
                 .filter(v -> v.getStatus() == VendorStatus.APPROVED)
                 .filter(v -> GeoDistance.haversineKm(lat, lng, v.getLat(), v.getLng()) <= v.getDeliveryRadiusKm().doubleValue())
                 .map(v -> shop(v, GeoDistance.haversineKm(lat, lng, v.getLat(), v.getLng()), now))
-                .sorted(Comparator.comparing((Shop s) -> !s.open()).thenComparing(Shop::distanceKm)
+                .sorted(Comparator.comparing((Shop s) -> restricted.contains(s.id())).thenComparing((Shop s) -> !s.open()).thenComparing(Shop::distanceKm)
                         .thenComparing(Shop::name))
                 .toList();
     }

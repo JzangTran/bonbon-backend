@@ -1,10 +1,13 @@
 package com.bonbon.backend.settlement.service;
 
+import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
 import com.bonbon.backend.common.persistence.ActorType;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,9 +21,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class LedgerService {
 
     private final JdbcClient jdbc;
+    private final Clock clock;
+    private final ApplicationEventPublisher events;
 
-    LedgerService(JdbcClient jdbc) {
+    LedgerService(JdbcClient jdbc, Clock clock, ApplicationEventPublisher events) {
         this.jdbc = jdbc;
+        this.clock = clock;
+        this.events = events;
+    }
+
+    /** Something was posted to a shop's ledger; commission debt follows it in the same transaction. */
+    record Posted(UUID vendorId, int amount) {
     }
 
     public record Entry(UUID id, UUID vendorId, String type, int amount, UUID orderId, String reference, String note, String actedByType,
@@ -35,13 +46,18 @@ public class LedgerService {
      */
     @Transactional
     public boolean postForOrder(UUID vendorId, String type, int amount, UUID orderId, OrderFigures figures, ActorType by, UUID actorId) {
-        return jdbc.sql("""
-                insert into ledger_entries (vendor_id, type, amount, order_id, items_total, discount, delivery_fee, commission, acted_by_type, acted_by_id)
-                values (:vendor, :type, :amount, :order, :items, :discount, :fee, :commission, :by, :actor)
+        boolean written = jdbc.sql("""
+                insert into ledger_entries (vendor_id, type, amount, order_id, items_total, discount, delivery_fee, commission, acted_by_type, acted_by_id, created_at)
+                values (:vendor, :type, :amount, :order, :items, :discount, :fee, :commission, :by, :actor, :at)
                 on conflict (order_id, type) where order_id is not null and case_id is null do nothing""")
                 .param("vendor", vendorId).param("type", type).param("amount", amount).param("order", orderId)
                 .param("items", figures.itemsTotal()).param("discount", figures.discount()).param("fee", figures.deliveryFee())
-                .param("commission", figures.commission()).param("by", by.name()).param("actor", actorId).update() > 0;
+                .param("commission", figures.commission()).param("by", by.name()).param("actor", actorId)
+                .param("at", Timestamp.from(clock.instant())).update() > 0;
+        if (written) {
+            events.publishEvent(new Posted(vendorId, amount));
+        }
+        return written;
     }
 
     /** The order figures an entry was posted from, kept on it so statements never need the order tables. */
