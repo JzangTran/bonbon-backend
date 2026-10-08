@@ -22,6 +22,7 @@ import com.bonbon.backend.settlement.PayoutRecorded;
 import com.bonbon.backend.shopperformance.OrderCaseDecided;
 import com.bonbon.backend.shopperformance.OrderCaseEscalated;
 import com.bonbon.backend.shopperformance.OrderCaseOpened;
+import com.bonbon.backend.shopperformance.OrderCaseReopened;
 import com.bonbon.backend.payment.RefundNeedsDestination;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -197,6 +198,15 @@ public class NotificationService {
                     upheld ? "Quán chịu " + vnd(e.refundAmount()) + " (hoa hồng phần này được hoàn lại). " + (e.reason() == null ? "" : e.reason())
                             : (e.reason() == null ? "Khiếu nại của khách không được chấp nhận." : e.reason()));
         }
+    }
+
+    /** A decided case is being looked at again: both sides are told, so a second decision is never a surprise. */
+    @EventListener
+    void onOrderCaseReopened(OrderCaseReopened e) {
+        raise(e.customerId(), "ORDER_CASE_REOPENED", e.orderId(), e.orderNumber(), "Báo cáo đơn #" + e.orderNumber() + " được xem lại",
+                "Quản trị viên mở lại báo cáo của bạn để xem xét. " + e.reason());
+        toShop(e.vendorId(), "ORDER_CASE_REOPENED", e.orderId(), e.orderNumber(), "Khiếu nại đơn #" + e.orderNumber() + " được xem lại",
+                "Quản trị viên mở lại khiếu nại để xem xét. " + e.reason());
     }
 
     private void toShop(UUID vendorId, String type, String title, String body) {

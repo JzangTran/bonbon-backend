@@ -35,8 +35,10 @@ public class ShopCaseService {
     private final OrderCaseService cases;
     private final OrderCaseDecisionService decisions;
     private final ApplicationEventPublisher events;
+    private final CaseLog log;
 
-    ShopCaseService(JdbcClient jdbc, Clock clock, ShopOrdering shops, OrderCaseService cases, OrderCaseDecisionService decisions, ApplicationEventPublisher events) {
+    ShopCaseService(JdbcClient jdbc, Clock clock, ShopOrdering shops, OrderCaseService cases, OrderCaseDecisionService decisions, ApplicationEventPublisher events, CaseLog log) {
+        this.log = log;
         this.jdbc = jdbc;
         this.clock = clock;
         this.shops = shops;
@@ -83,6 +85,7 @@ public class ShopCaseService {
     public CaseViews.Case accept(CurrentPrincipal caller, UUID caseId) {
         UUID vendor = vendorOf(caller);
         answer(vendor, caseId, "ACCEPTED", null, "AWAITING_SHOP");
+        log.add(caseId, "SHOP_ACCEPTED", caller.actorType(), caller.id(), null);
         decisions.decide(caseId, List.of("AWAITING_SHOP"), true, caller.actorType(), caller.id(), "Quán đã chấp nhận khiếu nại");
         return cases.viewForShop(caseId);
     }
@@ -92,6 +95,7 @@ public class ShopCaseService {
     public CaseViews.Case dispute(CurrentPrincipal caller, UUID caseId, String note) {
         UUID vendor = vendorOf(caller);
         answer(vendor, caseId, "DISPUTED", note.strip(), "OPEN");
+        log.add(caseId, "SHOP_DISPUTED", caller.actorType(), caller.id(), note.strip());
         escalated(caseId, "DISPUTED");
         return cases.viewForShop(caseId);
     }
@@ -101,7 +105,10 @@ public class ShopCaseService {
     public int escalateOverdue(Instant now) {
         List<UUID> overdue = jdbc.sql("update order_cases set status = 'OPEN', version = version + 1 where status = 'AWAITING_SHOP' and shop_response_due_at <= :now returning id")
                 .param("now", Timestamp.from(now)).query(UUID.class).list();
-        overdue.forEach(id -> escalated(id, "NO_RESPONSE"));
+        overdue.forEach(id -> {
+            log.add(id, "NO_RESPONSE", com.bonbon.backend.common.persistence.ActorType.SYSTEM, null, null);
+            escalated(id, "NO_RESPONSE");
+        });
         return overdue.size();
     }
 

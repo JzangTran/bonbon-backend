@@ -35,8 +35,10 @@ public class OrderCaseDecisionService {
     private final OnlinePayments payments;
     private final OrderIncidents orders;
     private final ApplicationEventPublisher events;
+    private final CaseLog caseLog;
 
-    OrderCaseDecisionService(JdbcClient jdbc, Clock clock, CaseHolds holds, OnlinePayments payments, OrderIncidents orders, ApplicationEventPublisher events) {
+    OrderCaseDecisionService(JdbcClient jdbc, Clock clock, CaseHolds holds, OnlinePayments payments, OrderIncidents orders, ApplicationEventPublisher events, CaseLog caseLog) {
+        this.caseLog = caseLog;
         this.jdbc = jdbc;
         this.clock = clock;
         this.holds = holds;
@@ -66,6 +68,7 @@ public class OrderCaseDecisionService {
             return decided;
         }
         Decided d = decided.get();
+        caseLog.add(d.caseId(), outcome, by, actorId, reason);
         if (uphold) {
             holds.bear(d.caseId(), d.vendorId(), d.orderId(), d.refundAmount(), d.commissionAmount(), "Khiếu nại đơn #" + d.orderNumber() + " được chấp nhận", by, actorId);
             if (d.refundAmount() > 0 && payments.refundForCase(d.orderId(), d.caseId(), d.refundAmount()).isEmpty()) {
@@ -73,6 +76,8 @@ public class OrderCaseDecisionService {
             }
         } else {
             holds.release(d.caseId());
+            // A case that was upheld, reopened and now dismissed: what it cost the shop is given back by an opposite entry.
+            holds.reverse(d.caseId(), d.vendorId(), d.orderId(), "Khiếu nại đơn #" + d.orderNumber() + " được xem lại và bác bỏ", by, actorId);
         }
         boolean waiting = jdbc.sql("select exists (select 1 from order_cases where order_id = :o and status in ('AWAITING_SHOP', 'AWAITING_CUSTOMER', 'OPEN'))")
                 .param("o", d.orderId()).query(Boolean.class).single();

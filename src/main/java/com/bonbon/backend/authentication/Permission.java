@@ -37,6 +37,7 @@ public enum Permission {
     ADMIN_WRITE("admin:write"),
     SHOP_PENALTY_WRITE("shop-penalty:write"),
     REVIEW_MODERATE("review:moderate"),
+    ORDER_CASE_READ("order-case:read"),
     ORDER_CASE_DECIDE("order-case:decide"),
     TICKET_READ("ticket:read"),
     TICKET_REPLY("ticket:reply"),
