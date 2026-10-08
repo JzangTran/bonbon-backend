@@ -286,6 +286,12 @@ class OrderCaseTests {
         assertThat(caseCount(order)).isZero();
     }
 
+    @Test
+    void theCustomersOrderShowsTheLineIdsTheReportNeeds() throws Exception {
+        String order = deliverByShop(placeCod(1));
+        call(customer, get("/api/orders/" + order), null).andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(itemOf(order)));
+    }
+
     // --- case helpers
 
     private static final byte[] PNG = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, 'I', 'H', 'D', 'R'};
