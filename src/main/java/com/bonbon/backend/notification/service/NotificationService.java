@@ -24,6 +24,7 @@ import com.bonbon.backend.shopperformance.OrderCaseEscalated;
 import com.bonbon.backend.shopperformance.NoShowReported;
 import com.bonbon.backend.shopperformance.OrderCaseOpened;
 import com.bonbon.backend.shopperformance.OrderCaseReopened;
+import com.bonbon.backend.shopperformance.ShopPenaltyDecided;
 import com.bonbon.backend.shopperformance.ShopPenaltyIssued;
 import com.bonbon.backend.shopperformance.ShopRestrictionChanged;
 import com.bonbon.backend.payment.RefundNeedsDestination;
@@ -253,6 +254,18 @@ public class NotificationService {
                 "Tuần " + e.weekStart().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM")) + " có " + String.format(java.util.Locale.forLanguageTag("vi-VN"), "%.1f", e.ratePercent())
                         + "% đơn thất bại do quán. Quán đang có " + e.activePoints() + " điểm"
                         + (e.activePoints() >= 3 ? ": quán sẽ bị hạn chế hiển thị." : ", chỉ là cảnh báo. Từ 3 điểm quán bị hạn chế hiển thị."));
+    }
+
+    /** An administrator waived, added or ruled on a point: the shop reads what happened and why. */
+    @EventListener
+    void onShopPenaltyDecided(ShopPenaltyDecided e) {
+        String reason = e.reason() == null ? "" : " Lý do: " + e.reason();
+        switch (e.kind()) {
+            case "WAIVED" -> toShop(e.vendorId(), "SHOP_PENALTY_WAIVED", "Một điểm phạt đã được miễn", "Quán còn " + e.activePoints() + " điểm." + reason);
+            case "APPEAL_ACCEPTED" -> toShop(e.vendorId(), "SHOP_APPEAL_ACCEPTED", "Kháng nghị được chấp nhận", "Điểm phạt đã được miễn, quán còn " + e.activePoints() + " điểm." + reason);
+            case "APPEAL_REJECTED" -> toShop(e.vendorId(), "SHOP_APPEAL_REJECTED", "Kháng nghị không được chấp nhận", "Điểm phạt được giữ nguyên, quán có " + e.activePoints() + " điểm." + reason);
+            default -> toShop(e.vendorId(), "SHOP_PENALTY_ADDED", "Quán bị cộng điểm phạt", "Quản trị viên cộng điểm phạt, quán có " + e.activePoints() + " điểm." + reason);
+        }
     }
 
     /** What penalty points do to the shop's visibility: the notice first (never less than 5 days ahead), then the start, or the end of it. */
