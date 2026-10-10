@@ -38,7 +38,7 @@ public class MerchantOrderService {
     }
 
     private UUID vendorOf(CurrentPrincipal caller) {
-        return shops.approvedVendorOwnedBy(caller.id()).orElseThrow(() -> new BusinessException(HttpStatus.CONFLICT, "SHOP_NOT_APPROVED",
+        return shops.operatingVendorOwnedBy(caller.id()).orElseThrow(() -> new BusinessException(HttpStatus.CONFLICT, "SHOP_NOT_APPROVED",
                 "Bạn chưa có cửa hàng được duyệt."));
     }
 }

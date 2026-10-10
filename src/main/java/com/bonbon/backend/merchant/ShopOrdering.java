@@ -15,6 +15,15 @@ public interface ShopOrdering {
     /** The approved shop this user owns, if any. */
     Optional<UUID> approvedVendorOwnedBy(UUID ownerUserId);
 
+    /**
+     * The shop this user owns while it is approved or suspended: a suspended shop takes no new orders but can still finish the ones
+     * in progress and read what it earns and why it was suspended.
+     */
+    Optional<UUID> operatingVendorOwnedBy(UUID ownerUserId);
+
+    /** The user who owns this shop, whatever its status (to tell them something). */
+    Optional<UUID> ownerOf(UUID vendorId);
+
     /** The shop, or empty when it does not exist or is not approved. */
     Optional<OrderableShop> shop(UUID vendorId);
 

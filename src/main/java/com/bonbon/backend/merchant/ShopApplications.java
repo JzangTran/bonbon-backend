@@ -31,6 +31,20 @@ public interface ShopApplications {
      */
     Decided approve(UUID vendorId);
 
+    /**
+     * APPROVED → SUSPENDED: the shop disappears from customers and takes no new orders; orders in progress can still be finished.
+     *
+     * @throws com.bonbon.backend.common.exception.BusinessException 409 SHOP_NOT_APPROVED
+     */
+    Decided suspend(UUID vendorId);
+
+    /**
+     * SUSPENDED → APPROVED.
+     *
+     * @throws com.bonbon.backend.common.exception.BusinessException 409 SHOP_NOT_SUSPENDED
+     */
+    Decided reinstate(UUID vendorId);
+
     /** PENDING → REJECTED with the reason the seller will see. */
     Decided reject(UUID vendorId, String reason);
 

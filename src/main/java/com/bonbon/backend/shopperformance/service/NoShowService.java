@@ -192,7 +192,7 @@ public class NoShowService {
     // --- internals
 
     private OrderIncidents.IncidentOrder ownOrder(CurrentPrincipal caller, UUID orderId) {
-        UUID vendor = shops.approvedVendorOwnedBy(caller.id()).orElseThrow(() -> new BusinessException(HttpStatus.CONFLICT, "SHOP_NOT_APPROVED", "Bạn chưa có cửa hàng được duyệt."));
+        UUID vendor = shops.operatingVendorOwnedBy(caller.id()).orElseThrow(() -> new BusinessException(HttpStatus.CONFLICT, "SHOP_NOT_APPROVED", "Bạn chưa có cửa hàng được duyệt."));
         return orders.find(orderId).filter(o -> o.vendorId().equals(vendor)).orElseThrow(() -> BusinessException.notFound("ORDER_NOT_FOUND", "Không tìm thấy đơn hàng."));
     }
 

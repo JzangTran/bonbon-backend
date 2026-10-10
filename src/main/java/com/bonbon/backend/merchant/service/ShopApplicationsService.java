@@ -111,6 +111,28 @@ class ShopApplicationsService implements ShopApplications {
         return decided(vendors.save(vendor));
     }
 
+    @Override
+    @Transactional
+    public Decided suspend(UUID vendorId) {
+        return move(vendorId, VendorStatus.APPROVED, VendorStatus.SUSPENDED, "SHOP_NOT_APPROVED", "Cửa hàng này không ở trạng thái đang hoạt động.");
+    }
+
+    @Override
+    @Transactional
+    public Decided reinstate(UUID vendorId) {
+        return move(vendorId, VendorStatus.SUSPENDED, VendorStatus.APPROVED, "SHOP_NOT_SUSPENDED", "Cửa hàng này không bị đình chỉ.");
+    }
+
+    /** A conditional update, so two administrators (or the job and an administrator) cannot both move the same shop. */
+    private Decided move(UUID vendorId, VendorStatus from, VendorStatus to, String code, String message) {
+        Vendor vendor = vendors.findById(vendorId).orElseThrow(() -> BusinessException.notFound("SHOP_NOT_FOUND", "Không tìm thấy cửa hàng."));
+        int changed = vendors.changeStatus(vendorId, from, to);
+        if (changed == 0) {
+            throw new BusinessException(HttpStatus.CONFLICT, code, message).withProperty("status", vendor.getStatus().name());
+        }
+        return new Decided(vendor.getId(), vendor.getOwnerUserId(), vendor.getName(), to);
+    }
+
     private Vendor pending(UUID vendorId) {
         Vendor vendor = vendors.findById(vendorId).orElseThrow(() -> BusinessException.notFound("SHOP_NOT_FOUND",
                 "Không tìm thấy cửa hàng."));

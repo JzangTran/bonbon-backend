@@ -21,6 +21,7 @@ import com.bonbon.backend.settlement.CommissionStatementReminder;
 import com.bonbon.backend.settlement.PayoutRecorded;
 import com.bonbon.backend.shopperformance.OrderCaseDecided;
 import com.bonbon.backend.shopperformance.OrderCaseEscalated;
+import com.bonbon.backend.merchantapproval.ShopSuspensionChanged;
 import com.bonbon.backend.shopperformance.NoShowReported;
 import com.bonbon.backend.shopperformance.OrderCaseOpened;
 import com.bonbon.backend.shopperformance.OrderCaseReopened;
@@ -133,7 +134,7 @@ public class NotificationService {
     /** The admin recorded a payout to this shop: the owner is told, with the bank reference to check against their statement. */
     @EventListener
     void onPayoutRecorded(PayoutRecorded e) {
-        shops.shop(e.vendorId()).map(ShopOrdering.OrderableShop::ownerUserId).ifPresent(owner -> {
+        shops.ownerOf(e.vendorId()).ifPresent(owner -> {
             Notification n = new Notification(owner, SHOP, "PAYOUT_RECORDED", null, null, "Đã chuyển " + e.amount() + " ₫ cho quán",
                     "Mã giao dịch " + e.reference() + ". Kiểm tra trong sao kê ngân hàng của bạn.");
             notifications.save(n);
@@ -256,6 +257,20 @@ public class NotificationService {
                         + (e.activePoints() >= 3 ? ": quán sẽ bị hạn chế hiển thị." : ", chỉ là cảnh báo. Từ 3 điểm quán bị hạn chế hiển thị."));
     }
 
+    /** A suspension: the notice first (the shop keeps working until the date), then its start, or its end. */
+    @EventListener
+    void onShopSuspensionChanged(ShopSuspensionChanged e) {
+        String reason = e.reason() == null ? "" : " Lý do: " + e.reason();
+        switch (e.status()) {
+            case "SCHEDULED" -> toShop(e.vendorId(), "SHOP_SUSPENSION_SCHEDULED", "Quán sẽ bị đình chỉ",
+                    "Từ " + day(e.effectiveAt()) + " quán sẽ bị đình chỉ: khách không tìm thấy và không đặt thêm được. Quán vẫn hoạt động bình thường đến lúc đó." + reason);
+            case "APPLIED" -> toShop(e.vendorId(), "SHOP_SUSPENDED", "Quán đang bị đình chỉ",
+                    "Khách không tìm thấy quán và không đặt thêm được. Quán vẫn hoàn tất các đơn đang làm và xem được thu nhập." + reason);
+            case "CANCELLED" -> toShop(e.vendorId(), "SHOP_SUSPENSION_CANCELLED", "Đã huỷ lịch đình chỉ", "Quán tiếp tục hoạt động bình thường." + reason);
+            default -> toShop(e.vendorId(), "SHOP_REINSTATED", "Quán đã được khôi phục", "Quán hiển thị với khách và nhận đơn trở lại." + reason);
+        }
+    }
+
     /** An administrator waived, added or ruled on a point: the shop reads what happened and why. */
     @EventListener
     void onShopPenaltyDecided(ShopPenaltyDecided e) {
@@ -286,7 +301,7 @@ public class NotificationService {
     }
 
     private void toShop(UUID vendorId, String type, UUID orderId, Long orderNumber, String title, String body) {
-        shops.shop(vendorId).map(ShopOrdering.OrderableShop::ownerUserId).ifPresent(owner -> {
+        shops.ownerOf(vendorId).ifPresent(owner -> {
             Notification n = new Notification(owner, SHOP, type, orderId, orderNumber, title, body);
             notifications.save(n);
             events.publishEvent(new Created(List.of(n)));
@@ -323,7 +338,7 @@ public class NotificationService {
     }
 
     private Optional<UUID> shop(OrderStatusChanged e) {
-        return shops.shop(e.vendorId()).map(ShopOrdering.OrderableShop::ownerUserId);
+        return shops.ownerOf(e.vendorId());
     }
 
     private static void toCustomer(List<Notification> drafts, OrderStatusChanged e, String type, String title, String body) {
