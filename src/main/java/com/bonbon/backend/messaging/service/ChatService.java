@@ -18,6 +18,7 @@ import com.bonbon.backend.common.storage.ObjectStorage.Visibility;
 import com.bonbon.backend.common.storage.ValidatedFile;
 import com.bonbon.backend.merchant.ShopNames;
 import com.bonbon.backend.merchant.ShopOrdering;
+import com.bonbon.backend.messaging.ConversationOpenedByAdmin;
 import com.bonbon.backend.messaging.MessageSent;
 import com.bonbon.backend.messaging.dto.ChatRequests;
 import com.bonbon.backend.messaging.dto.ChatViews;
@@ -205,6 +206,38 @@ public class ChatService {
         return new ChatViews.Upload(key, storage.signedUrl(key, IMAGE_URL_TTL));
     }
 
+    // --- administrators (view-any-conversation.md): read only, and every opening is announced so it can be audited
+
+    @Transactional(readOnly = true)
+    public ChatViews.AdminConversation adminConversation(UUID conversationId) {
+        return jdbc.sql("select id, customer_id, vendor_id, created_at, last_message_at from conversations where id = :id").param("id", conversationId)
+                .query((rs, n) -> new ChatViews.AdminConversation(rs.getObject("id", UUID.class), rs.getObject("vendor_id", UUID.class),
+                        shopNames.names(List.of(rs.getObject("vendor_id", UUID.class))).getOrDefault(rs.getObject("vendor_id", UUID.class), "Cửa hàng"),
+                        rs.getObject("customer_id", UUID.class), userNames.names(List.of(rs.getObject("customer_id", UUID.class))).getOrDefault(rs.getObject("customer_id", UUID.class), "Khách"),
+                        rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("last_message_at").toInstant()))
+                .optional().orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "CONVERSATION_NOT_FOUND", "Không tìm thấy cuộc trò chuyện."));
+    }
+
+    /** Messages newest first, none of them "mine". Opening the first page is what gets audited. */
+    @Transactional
+    public ChatViews.Messages adminMessages(UUID adminId, UUID conversationId, Instant before, int size) {
+        if (size < 1 || size > MAX_PAGE_SIZE) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "INVALID_PAGE", "Kích thước trang không hợp lệ.");
+        }
+        ChatViews.AdminConversation conversation = adminConversation(conversationId);
+        if (before == null) {
+            events.publishEvent(new ConversationOpenedByAdmin(adminId, conversationId, conversation.customerId(), conversation.vendorId(), clock.instant()));
+        }
+        List<ChatViews.Message> found = jdbc.sql(MESSAGE_SELECT + """
+                where m.conversation_id = :c and (cast(:before as timestamptz) is null or m.created_at < :before)
+                order by m.created_at desc, m.id desc limit :limit""")
+                .param("c", conversationId).param("before", before == null ? null : Timestamp.from(before)).param("limit", size + 1)
+                .query((rs, n) -> toMessage(rs, (String) null)).list();
+        boolean more = found.size() > size;
+        List<ChatViews.Message> items = more ? new ArrayList<>(found.subList(0, size)) : found;
+        return new ChatViews.Messages(items, more, more ? items.get(items.size() - 1).createdAt() : null);
+    }
+
     // --- internals
 
     private ChatViews.Message post(Side side, UUID senderId, UUID conversationId, ChatRequests.Send request) {
@@ -284,11 +317,16 @@ public class ChatService {
             """;
 
     private ChatViews.Message toMessage(java.sql.ResultSet rs, Side side) throws java.sql.SQLException {
+        return toMessage(rs, side.name());
+    }
+
+    /** {@code mine} is the sender side the caller speaks for, or null when the caller is on neither (an administrator). */
+    private ChatViews.Message toMessage(java.sql.ResultSet rs, String mine) throws java.sql.SQLException {
         String image = rs.getString("image_key");
         ChatViews.Reply reply = rs.getObject("reply_id", UUID.class) == null ? null
                 : new ChatViews.Reply(rs.getObject("reply_id", UUID.class), rs.getString("reply_text"), rs.getBoolean("reply_has_image"), rs.getString("reply_sender"));
         String sender = rs.getString("sender_type");
-        return new ChatViews.Message(rs.getObject("id", UUID.class), rs.getObject("conversation_id", UUID.class), sender, sender.equals(side.name()),
+        return new ChatViews.Message(rs.getObject("id", UUID.class), rs.getObject("conversation_id", UUID.class), sender, sender.equals(mine),
                 rs.getString("text"), image == null ? null : storage.signedUrl(image, IMAGE_URL_TTL), reply, rs.getTimestamp("created_at").toInstant());
     }
 
