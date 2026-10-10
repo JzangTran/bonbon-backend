@@ -121,6 +121,11 @@ class PaymentService implements OnlinePayments {
     }
 
     @Override
+    public Optional<UUID> refundForCase(UUID orderId, UUID caseId, int amount) {
+        return refunds.queueForCase(orderId, caseId, amount);
+    }
+
+    @Override
     public Optional<RefundSummary> refundOf(UUID orderId) {
         return jdbc.sql("""
                 select r.status, r.mode, r.amount, r.failure_reason, r.destination_last4

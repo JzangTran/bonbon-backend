@@ -296,7 +296,7 @@ public class CommissionDebtService {
     /** The shop's own view: where it stands and every statement, newest first. */
     @Transactional(readOnly = true)
     public DebtViews.Statements statementsFor(CurrentPrincipal caller) {
-        UUID vendor = shops.approvedVendorOwnedBy(caller.id()).orElseThrow(() -> new BusinessException(HttpStatus.CONFLICT, "SHOP_NOT_APPROVED",
+        UUID vendor = shops.operatingVendorOwnedBy(caller.id()).orElseThrow(() -> new BusinessException(HttpStatus.CONFLICT, "SHOP_NOT_APPROVED",
                 "Bạn chưa có cửa hàng được duyệt."));
         return view(vendor);
     }

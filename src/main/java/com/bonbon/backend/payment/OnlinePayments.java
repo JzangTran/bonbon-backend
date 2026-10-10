@@ -33,6 +33,13 @@ public interface OnlinePayments {
     /** The newest attempt of the order's online payment, if there is one. */
     Optional<Attempt> currentAttempt(UUID orderId);
 
+    /**
+     * An order case was upheld: gives {@code amount} back to the customer, once per case. Online payments go back through
+     * MoMo; cash orders and amounts MoMo cannot take go to the manual bank-transfer queue and the customer is asked for an
+     * account. Empty when nothing could be queued (no successful payment, or more than was paid). Runs in the caller's transaction.
+     */
+    Optional<UUID> refundForCase(UUID orderId, UUID caseId, int amount);
+
     /** Money arrived for an order that can no longer use it: queue the refund (idempotent per payment). */
     void requestLateRefund(UUID paymentId);
 

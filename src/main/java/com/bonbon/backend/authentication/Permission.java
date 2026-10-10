@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 public enum Permission {
     ORDER_CREATE("order:create"),
     ORDER_CANCEL("order:cancel"),
+    ORDER_REPORT("order:report"),
     ORDER_READ("order:read"),
     ORDER_WRITE("order:write"),
     REVIEW_CREATE("review:create"),
@@ -34,8 +35,10 @@ public enum Permission {
     HELP_CENTER_WRITE("help-center:write"),
     PLATFORM_STATS_READ("platform-stats:read"),
     ADMIN_WRITE("admin:write"),
+    SHOP_PENALTY_READ("shop-penalty:read"),
     SHOP_PENALTY_WRITE("shop-penalty:write"),
     REVIEW_MODERATE("review:moderate"),
+    ORDER_CASE_READ("order-case:read"),
     ORDER_CASE_DECIDE("order-case:decide"),
     TICKET_READ("ticket:read"),
     TICKET_REPLY("ticket:reply"),

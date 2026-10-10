@@ -19,6 +19,15 @@ import com.bonbon.backend.settlement.CommissionStageChanged;
 import com.bonbon.backend.settlement.CommissionStatementIssued;
 import com.bonbon.backend.settlement.CommissionStatementReminder;
 import com.bonbon.backend.settlement.PayoutRecorded;
+import com.bonbon.backend.shopperformance.OrderCaseDecided;
+import com.bonbon.backend.shopperformance.OrderCaseEscalated;
+import com.bonbon.backend.merchantapproval.ShopSuspensionChanged;
+import com.bonbon.backend.shopperformance.NoShowReported;
+import com.bonbon.backend.shopperformance.OrderCaseOpened;
+import com.bonbon.backend.shopperformance.OrderCaseReopened;
+import com.bonbon.backend.shopperformance.ShopPenaltyDecided;
+import com.bonbon.backend.shopperformance.ShopPenaltyIssued;
+import com.bonbon.backend.shopperformance.ShopRestrictionChanged;
 import com.bonbon.backend.payment.RefundNeedsDestination;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -125,7 +134,7 @@ public class NotificationService {
     /** The admin recorded a payout to this shop: the owner is told, with the bank reference to check against their statement. */
     @EventListener
     void onPayoutRecorded(PayoutRecorded e) {
-        shops.shop(e.vendorId()).map(ShopOrdering.OrderableShop::ownerUserId).ifPresent(owner -> {
+        shops.ownerOf(e.vendorId()).ifPresent(owner -> {
             Notification n = new Notification(owner, SHOP, "PAYOUT_RECORDED", null, null, "Đã chuyển " + e.amount() + " ₫ cho quán",
                     "Mã giao dịch " + e.reference() + ". Kiểm tra trong sao kê ngân hàng của bạn.");
             notifications.save(n);
@@ -163,9 +172,137 @@ public class NotificationService {
         }
     }
 
+    /** A customer filed a case: the shop has until the due time to answer, and the customer sees it was received. */
+    @EventListener
+    void onOrderCaseOpened(OrderCaseOpened e) {
+        toShop(e.vendorId(), "ORDER_CASE_OPENED", e.orderId(), e.orderNumber(), "Khách báo vấn đề với đơn #" + e.orderNumber(),
+                "Hãy xem và trả lời trong " + java.time.Duration.between(java.time.Instant.now(), e.responseDueAt()).toHours() + " giờ tới. Nếu không, quản trị viên sẽ quyết định.");
+        raise(e.customerId(), "ORDER_CASE_RECEIVED", e.orderId(), e.orderNumber(), "Đã gửi báo cáo đơn #" + e.orderNumber(),
+                "Quán sẽ trả lời sớm. Nếu hai bên không đồng ý, quản trị viên sẽ xem xét.");
+    }
+
+    /** The shop could not reach the customer at the door: the customer is asked to answer, with the time they have. */
+    @EventListener
+    void onNoShowReported(NoShowReported e) {
+        raise(e.customerId(), "NO_SHOW_REPORTED", e.orderId(), e.orderNumber(), "Quán không liên lạc được với bạn (đơn #" + e.orderNumber() + ")",
+                "Hãy cho biết bạn đã nhận được hay chưa, trước " + day(e.answerDueAt()) + " " + java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+                        .withZone(java.time.ZoneId.of("Asia/Ho_Chi_Minh")).format(e.answerDueAt()) + ".");
+    }
+
+    /** The shop disagreed or ran out of time: the customer is told an administrator decides now. */
+    @EventListener
+    void onOrderCaseEscalated(OrderCaseEscalated e) {
+        if ("SHOP_NEVER_CAME".equals(e.why()) || "CUSTOMER_NO_REPLY".equals(e.why())) {
+            toShop(e.vendorId(), "NO_SHOW_ESCALATED", e.orderId(), e.orderNumber(), "Báo cáo khách vắng mặt đơn #" + e.orderNumber() + " đang được xem xét",
+                    "SHOP_NEVER_CAME".equals(e.why()) ? "Khách nói quán không đến hoặc không gọi. Quản trị viên sẽ xem và quyết định." : "Khách chưa trả lời kịp. Quản trị viên sẽ xem và quyết định.");
+            return;
+        }
+        raise(e.customerId(), "ORDER_CASE_ESCALATED", e.orderId(), e.orderNumber(), "Báo cáo đơn #" + e.orderNumber() + " đang được xem xét",
+                "DISPUTED".equals(e.why()) ? "Quán không đồng ý với báo cáo của bạn. Quản trị viên sẽ xem và quyết định."
+                        : "Quán chưa trả lời kịp. Quản trị viên sẽ xem và quyết định.");
+    }
+
+    /** A case was settled: the customer hears the outcome and the reason; the shop hears it when it did not decide itself. */
+    @EventListener
+    void onOrderCaseDecided(OrderCaseDecided e) {
+        if ("CUSTOMER_NO_SHOW".equals(e.type())) {
+            String title;
+            String body;
+            switch (e.noShowOutcome() == null ? "" : e.noShowOutcome()) {
+                case "CUSTOMER_AT_FAULT" -> {
+                    title = "Đơn #" + e.orderNumber() + " kết thúc: chưa giao được";
+                    body = "Đơn được ghi nhận là không giao được vì không có người nhận. Quán vẫn được tính tiền món nếu bạn đã trả online.";
+                }
+                case "SHOP_NEVER_CAME" -> {
+                    title = "Đơn #" + e.orderNumber() + " bị huỷ";
+                    body = "Quản trị viên xác nhận quán không đến. Nếu bạn đã trả online, bạn được hoàn đủ. " + (e.reason() == null ? "" : e.reason());
+                }
+                default -> {
+                    title = "Đơn #" + e.orderNumber() + " đã được ghi nhận là đã giao";
+                    body = e.reason() == null ? "" : e.reason();
+                }
+            }
+            raise(e.customerId(), "NO_SHOW_DECIDED", e.orderId(), e.orderNumber(), title, body);
+            toShop(e.vendorId(), "NO_SHOW_DECIDED", e.orderId(), e.orderNumber(), title, body);
+            return;
+        }
+        boolean upheld = "UPHELD".equals(e.outcome());
+        raise(e.customerId(), upheld ? "ORDER_CASE_UPHELD" : "ORDER_CASE_DISMISSED", e.orderId(), e.orderNumber(),
+                upheld ? "Báo cáo đơn #" + e.orderNumber() + " được chấp nhận" : "Báo cáo đơn #" + e.orderNumber() + " không được chấp nhận",
+                upheld ? "Bạn sẽ được hoàn " + vnd(e.refundAmount()) + ". " + (e.reason() == null ? "" : e.reason())
+                        : (e.reason() == null ? "Báo cáo của bạn không được chấp nhận." : e.reason()));
+        if (!"SHOP".equals(e.decidedBy())) {
+            toShop(e.vendorId(), upheld ? "ORDER_CASE_UPHELD" : "ORDER_CASE_DISMISSED", e.orderId(), e.orderNumber(),
+                    upheld ? "Báo cáo đơn #" + e.orderNumber() + " được chấp nhận" : "Báo cáo đơn #" + e.orderNumber() + " bị bác bỏ",
+                    upheld ? "Quán chịu " + vnd(e.refundAmount()) + " (hoa hồng phần này được hoàn lại). " + (e.reason() == null ? "" : e.reason())
+                            : (e.reason() == null ? "Khiếu nại của khách không được chấp nhận." : e.reason()));
+        }
+    }
+
+    /** A decided case is being looked at again: both sides are told, so a second decision is never a surprise. */
+    @EventListener
+    void onOrderCaseReopened(OrderCaseReopened e) {
+        raise(e.customerId(), "ORDER_CASE_REOPENED", e.orderId(), e.orderNumber(), "Báo cáo đơn #" + e.orderNumber() + " được xem lại",
+                "Quản trị viên mở lại báo cáo của bạn để xem xét. " + e.reason());
+        toShop(e.vendorId(), "ORDER_CASE_REOPENED", e.orderId(), e.orderNumber(), "Khiếu nại đơn #" + e.orderNumber() + " được xem lại",
+                "Quản trị viên mở lại khiếu nại để xem xét. " + e.reason());
+    }
+
+    /** The weekly evaluation found too many failed orders: a point, and a warning when it is only one or two. */
+    @EventListener
+    void onShopPenaltyIssued(ShopPenaltyIssued e) {
+        toShop(e.vendorId(), "SHOP_PENALTY", "Quán bị cộng 1 điểm phạt",
+                "Tuần " + e.weekStart().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM")) + " có " + String.format(java.util.Locale.forLanguageTag("vi-VN"), "%.1f", e.ratePercent())
+                        + "% đơn thất bại do quán. Quán đang có " + e.activePoints() + " điểm"
+                        + (e.activePoints() >= 3 ? ": quán sẽ bị hạn chế hiển thị." : ", chỉ là cảnh báo. Từ 3 điểm quán bị hạn chế hiển thị."));
+    }
+
+    /** A suspension: the notice first (the shop keeps working until the date), then its start, or its end. */
+    @EventListener
+    void onShopSuspensionChanged(ShopSuspensionChanged e) {
+        String reason = e.reason() == null ? "" : " Lý do: " + e.reason();
+        switch (e.status()) {
+            case "SCHEDULED" -> toShop(e.vendorId(), "SHOP_SUSPENSION_SCHEDULED", "Quán sẽ bị đình chỉ",
+                    "Từ " + day(e.effectiveAt()) + " quán sẽ bị đình chỉ: khách không tìm thấy và không đặt thêm được. Quán vẫn hoạt động bình thường đến lúc đó." + reason);
+            case "APPLIED" -> toShop(e.vendorId(), "SHOP_SUSPENDED", "Quán đang bị đình chỉ",
+                    "Khách không tìm thấy quán và không đặt thêm được. Quán vẫn hoàn tất các đơn đang làm và xem được thu nhập." + reason);
+            case "CANCELLED" -> toShop(e.vendorId(), "SHOP_SUSPENSION_CANCELLED", "Đã huỷ lịch đình chỉ", "Quán tiếp tục hoạt động bình thường." + reason);
+            default -> toShop(e.vendorId(), "SHOP_REINSTATED", "Quán đã được khôi phục", "Quán hiển thị với khách và nhận đơn trở lại." + reason);
+        }
+    }
+
+    /** An administrator waived, added or ruled on a point: the shop reads what happened and why. */
+    @EventListener
+    void onShopPenaltyDecided(ShopPenaltyDecided e) {
+        String reason = e.reason() == null ? "" : " Lý do: " + e.reason();
+        switch (e.kind()) {
+            case "WAIVED" -> toShop(e.vendorId(), "SHOP_PENALTY_WAIVED", "Một điểm phạt đã được miễn", "Quán còn " + e.activePoints() + " điểm." + reason);
+            case "APPEAL_ACCEPTED" -> toShop(e.vendorId(), "SHOP_APPEAL_ACCEPTED", "Kháng nghị được chấp nhận", "Điểm phạt đã được miễn, quán còn " + e.activePoints() + " điểm." + reason);
+            case "APPEAL_REJECTED" -> toShop(e.vendorId(), "SHOP_APPEAL_REJECTED", "Kháng nghị không được chấp nhận", "Điểm phạt được giữ nguyên, quán có " + e.activePoints() + " điểm." + reason);
+            default -> toShop(e.vendorId(), "SHOP_PENALTY_ADDED", "Quán bị cộng điểm phạt", "Quản trị viên cộng điểm phạt, quán có " + e.activePoints() + " điểm." + reason);
+        }
+    }
+
+    /** What penalty points do to the shop's visibility: the notice first (never less than 5 days ahead), then the start, or the end of it. */
+    @EventListener
+    void onShopRestrictionChanged(ShopRestrictionChanged e) {
+        switch (e.status()) {
+            case "SCHEDULED" -> toShop(e.vendorId(), "SHOP_RESTRICTION_SCHEDULED", "Quán sắp bị hạn chế hiển thị",
+                    "Quán có " + e.activePoints() + " điểm phạt. Từ " + day(e.startsAt()) + " quán sẽ không hiện khi khách tìm kiếm và xếp cuối danh sách, nhưng vẫn nhận đơn từ khách mở thẳng quán. Điểm giảm dưới 3 trước ngày đó thì không bị hạn chế.");
+            case "APPLIED" -> toShop(e.vendorId(), "SHOP_RESTRICTED", "Quán đang bị hạn chế hiển thị",
+                    "Quán có " + e.activePoints() + " điểm phạt nên không hiện khi tìm kiếm và xếp cuối danh sách. Hạn chế được gỡ ngay khi điểm xuống dưới 3.");
+            case "LIFTED" -> toShop(e.vendorId(), "SHOP_RESTRICTION_LIFTED", "Đã gỡ hạn chế hiển thị", "Điểm phạt đã xuống dưới 3. Quán hiển thị bình thường.");
+            default -> toShop(e.vendorId(), "SHOP_RESTRICTION_CANCELLED", "Không còn bị hạn chế hiển thị", "Điểm phạt đã xuống dưới 3 trước ngày hạn chế bắt đầu.");
+        }
+    }
+
     private void toShop(UUID vendorId, String type, String title, String body) {
-        shops.shop(vendorId).map(ShopOrdering.OrderableShop::ownerUserId).ifPresent(owner -> {
-            Notification n = new Notification(owner, SHOP, type, null, null, title, body);
+        toShop(vendorId, type, null, null, title, body);
+    }
+
+    private void toShop(UUID vendorId, String type, UUID orderId, Long orderNumber, String title, String body) {
+        shops.ownerOf(vendorId).ifPresent(owner -> {
+            Notification n = new Notification(owner, SHOP, type, orderId, orderNumber, title, body);
             notifications.save(n);
             events.publishEvent(new Created(List.of(n)));
         });
@@ -201,7 +338,7 @@ public class NotificationService {
     }
 
     private Optional<UUID> shop(OrderStatusChanged e) {
-        return shops.shop(e.vendorId()).map(ShopOrdering.OrderableShop::ownerUserId);
+        return shops.ownerOf(e.vendorId());
     }
 
     private static void toCustomer(List<Notification> drafts, OrderStatusChanged e, String type, String title, String body) {

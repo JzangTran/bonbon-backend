@@ -111,7 +111,7 @@ public class SettlementService {
             BigDecimal effective = rate(r.commission(), r.food());
             boolean low = effective != null && average != null && r.orders() >= minOrders
                     && effective.compareTo(average.multiply(ratio)) < 0;
-            items.add(new SettlementViews.ShopRow(r.vendorId(), names.getOrDefault(r.vendorId(), "(đã xoá)"), r.balance(), payable(r.balance()),
+            items.add(new SettlementViews.ShopRow(r.vendorId(), names.getOrDefault(r.vendorId(), "(đã xoá)"), r.balance(), payable(r.vendorId(), r.balance()),
                     Math.max(-r.balance(), 0), r.orders(), r.food(), r.commission(), effective, low, r.lastPayout(),
                     stages.getOrDefault(r.vendorId(), ShopCommissionStanding.Stage.NONE).name()));
         }
@@ -132,7 +132,7 @@ public class SettlementService {
     public SettlementViews.Vendor vendor(UUID vendorId) {
         String name = nameOf(vendorId);
         long balance = balance(vendorId);
-        return new SettlementViews.Vendor(vendorId, name, balance, payable(balance), heldForCases(vendorId), Math.max(-balance, 0));
+        return new SettlementViews.Vendor(vendorId, name, balance, payable(vendorId, balance), heldForCases(vendorId), Math.max(-balance, 0));
     }
 
     /** Newest first; {@code type} narrows to one kind of entry. */
@@ -272,7 +272,7 @@ public class SettlementService {
         }
         long balance = balance(vendorId);
         if ("PAYOUT".equals(request.type())) {
-            long payable = payable(balance);
+            long payable = payable(vendorId, balance);
             if (amount > payable) {
                 throw BusinessException.conflict("PAYOUT_EXCEEDS_PAYABLE", "Số tiền chi trả vượt quá số có thể trả cho quán.")
                         .withProperty("balance", balance).withProperty("heldForCases", heldForCases(vendorId)).withProperty("payable", payable);
@@ -301,13 +301,15 @@ public class SettlementService {
 
     // --- internals
 
-    /** Money set aside for undecided order cases; order cases do not exist yet, so nothing is held. */
+    /** Money set aside for undecided order cases (what the shop would bear if each one is upheld). */
     long heldForCases(UUID vendorId) {
-        return 0;
+        return jdbc.sql("select coalesce(sum(amount), 0) from settlement_case_holds where vendor_id = :v and released_at is null")
+                .param("v", vendorId).query(Long.class).single();
     }
 
-    long payable(long balance) {
-        return Math.max(balance, 0);
+    /** What can be paid out now: the balance minus the held amount, never below zero. */
+    long payable(UUID vendorId, long balance) {
+        return Math.max(balance - heldForCases(vendorId), 0);
     }
 
     private long balance(UUID vendorId) {

@@ -15,6 +15,12 @@ public interface VendorRepository extends JpaRepository<Vendor, UUID> {
 
     Optional<Vendor> findByOwnerUserId(UUID ownerUserId);
 
+    /** Moves the shop only if it is still in {@code from}, so two decisions cannot both win. */
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("update Vendor v set v.status = :to where v.id = :id and v.status = :from")
+    int changeStatus(@org.springframework.data.repository.query.Param("id") UUID id, @org.springframework.data.repository.query.Param("from") com.bonbon.backend.merchant.VendorStatus from,
+            @org.springframework.data.repository.query.Param("to") com.bonbon.backend.merchant.VendorStatus to);
+
     /** {@code pattern} is a lower-case LIKE pattern ({@code %} matches everything). */
     @Query("""
             select v from Vendor v

@@ -76,7 +76,9 @@ public final class OrderViews {
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @Schema(name = "OrderLine")
-    public record Line(UUID menuItemId, String name, int quantity, int unitPrice, int lineTotal, String note, List<Option> options) {
+    public record Line(
+            @Schema(description = "Id của dòng trong đơn; dùng khi báo vấn đề với món này (`orderItemId`).") UUID id,
+            UUID menuItemId, String name, int quantity, int unitPrice, int lineTotal, String note, List<Option> options) {
     }
 
     @Schema(name = "OrderLineOption")

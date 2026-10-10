@@ -57,6 +57,18 @@ class ShopOrderingService implements ShopOrdering {
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<UUID> operatingVendorOwnedBy(UUID ownerUserId) {
+        return vendors.findByOwnerUserId(ownerUserId).filter(v -> v.getStatus() == VendorStatus.APPROVED || v.getStatus() == VendorStatus.SUSPENDED).map(Vendor::getId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<UUID> ownerOf(UUID vendorId) {
+        return vendors.findById(vendorId).map(Vendor::getOwnerUserId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<OrderableShop> shop(UUID vendorId) {
         return vendors.findById(vendorId)
                 .filter(v -> v.getStatus() == VendorStatus.APPROVED && v.getLat() != null && v.getLng() != null

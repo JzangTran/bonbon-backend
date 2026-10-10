@@ -91,6 +91,10 @@ public class Vendor {
     @Column(name = "commission_stage", nullable = false, insertable = false, updatable = false, columnDefinition = "text")
     private String commissionStage = "NONE";
 
+    /** Set by shop performance through {@code ShopPerformanceStanding}; never written through the entity. */
+    @Column(name = "performance_restricted", nullable = false, insertable = false, updatable = false)
+    private boolean performanceRestricted;
+
     @Column(name = "accepting_orders", nullable = false)
     private boolean acceptingOrders = true;
 
@@ -275,6 +279,10 @@ public class Vendor {
 
     public int getRatingCount() {
         return ratingCount;
+    }
+
+    public boolean isPerformanceRestricted() {
+        return performanceRestricted;
     }
 
     public ShopCommissionStanding.Stage getCommissionStage() {

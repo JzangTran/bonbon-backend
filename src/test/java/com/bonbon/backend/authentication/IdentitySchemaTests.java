@@ -92,6 +92,6 @@ class IdentitySchemaTests {
     void customerGetsOnlyCustomerPermissions() {
         List<String> perms = rolePermissions.findPermissionCodes("CUSTOMER");
         assertThat(perms).containsExactlyInAnyOrder(
-                "order:create", "order:cancel", "review:create", "conversation:read", "conversation:write");
+                "order:create", "order:cancel", "order:report", "review:create", "conversation:read", "conversation:write");
     }
 }
