@@ -29,6 +29,10 @@ public final class ChatViews {
             @Schema(description = "Có tin của bên kia mới hơn lần đọc gần nhất của phía người gọi (khách, hoặc cả cửa hàng).") boolean unread) {
     }
 
+    @Schema(name = "AdminConversationView", description = "Một cuộc trò chuyện khách – cửa hàng, cho quản trị viên đọc.")
+    public record AdminConversation(UUID id, UUID vendorId, String shopName, UUID customerId, String customerName, Instant createdAt, Instant lastMessageAt) {
+    }
+
     @Schema(name = "ConversationPage")
     public record Page(
             List<Conversation> items,
