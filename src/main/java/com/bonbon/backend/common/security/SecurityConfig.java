@@ -68,6 +68,8 @@ class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
                         // Guests browse shops and menus before logging in (browse-vendors-in-area.md).
                         .requestMatchers(HttpMethod.GET, "/api/vendors", "/api/vendors/*/menu", "/api/vendors/*/reviews").permitAll()
+                        // The help centre can be read without logging in (browse-help-center.md).
+                        .requestMatchers(HttpMethod.GET, "/api/help-articles", "/api/help-articles/*").permitAll()
                         // MoMo calls this server to server; it carries no token, the signature is the trust (pay-online.md).
                         // The fake-pay pages exist only outside production (FakePayController).
                         .requestMatchers(HttpMethod.POST, "/api/payments/momo/ipn").permitAll()
