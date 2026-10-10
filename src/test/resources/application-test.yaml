@@ -9,6 +9,10 @@ bonbon:
       enabled: false
     refund:
       immediate: false
+  support:
+    tickets:
+      # Tests call SupportTicketService.closeStale with a time they choose.
+      enabled: false
   geo:
     fake-when-unconfigured: true
   captcha:

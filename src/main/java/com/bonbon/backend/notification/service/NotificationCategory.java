@@ -19,6 +19,8 @@ public enum NotificationCategory {
             Set.of("CUSTOMER"), channels("PUSH", true)),
     CHAT_MESSAGES("Tin nhắn", "Tin nhắn mới khi bạn không mở ứng dụng. Áp dụng cho mọi cuộc trò chuyện, không tắt riêng từng cuộc.", false,
             Set.of("CUSTOMER", "SELLER"), channels("PUSH", true, "EMAIL", false)),
+    SUPPORT_REPLIES("Phản hồi từ hỗ trợ", "Khi đội hỗ trợ trả lời phiếu của bạn.", false,
+            Set.of("CUSTOMER", "SELLER"), channels("PUSH", true, "EMAIL", true)),
     SHOP_NOTICES("Thông báo về cửa hàng", "Kết quả duyệt, tiền được chuyển, hoa hồng, điểm phạt và đình chỉ. Tắt đẩy vẫn còn trong ứng dụng.", false,
             Set.of("SELLER"), channels("PUSH", true));
 
@@ -60,6 +62,9 @@ public enum NotificationCategory {
 
     /** The category of a stored notification, by who it is for and what it is about. */
     public static NotificationCategory of(String audience, String type) {
+        if (type.equals("SUPPORT_REPLY")) {
+            return SUPPORT_REPLIES;
+        }
         if (NotificationService.SHOP.equals(audience)) {
             boolean notice = type.equals("PAYOUT_RECORDED") || type.startsWith("COMMISSION_") || type.startsWith("SHOP_");
             return notice ? SHOP_NOTICES : ORDER_ALERTS;
