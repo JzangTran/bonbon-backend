@@ -179,7 +179,7 @@ public class PenaltyService {
 
     @Transactional
     public void appeal(CurrentPrincipal caller, UUID penaltyId, String reason) {
-        UUID vendor = shops.approvedVendorOwnedBy(caller.id()).orElseThrow(() -> new BusinessException(HttpStatus.CONFLICT, "SHOP_NOT_APPROVED", "Bạn chưa có cửa hàng được duyệt."));
+        UUID vendor = shops.operatingVendorOwnedBy(caller.id()).orElseThrow(() -> new BusinessException(HttpStatus.CONFLICT, "SHOP_NOT_APPROVED", "Bạn chưa có cửa hàng được duyệt."));
         var row = jdbc.sql("select status, issued_at, appeal_status from shop_penalties where id = :id and vendor_id = :v").param("id", penaltyId).param("v", vendor)
                 .query((rs, n) -> new Object[] { rs.getString("status"), rs.getTimestamp("issued_at").toInstant(), rs.getString("appeal_status") }).optional()
                 .orElseThrow(() -> BusinessException.notFound("PENALTY_NOT_FOUND", "Không tìm thấy điểm phạt."));

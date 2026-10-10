@@ -110,7 +110,7 @@ class OrderSocketHandler extends TextWebSocketHandler {
             channels.add("customer");
         }
         if (principal.can("order:read")) {
-            shops.approvedVendorOwnedBy(principal.id()).ifPresent(vendorId -> {
+            shops.operatingVendorOwnedBy(principal.id()).ifPresent(vendorId -> {
                 registry.subscribe(vendorChannel(vendorId), new OrderSocketRegistry.Subscription(session, validUntil));
                 channels.add("shop");
             });
