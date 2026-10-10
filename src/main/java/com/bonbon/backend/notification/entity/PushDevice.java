@@ -88,6 +88,18 @@ public class PushDevice {
         return token;
     }
 
+    public String getPlatform() {
+        return platform;
+    }
+
+    public String getAppVersion() {
+        return appVersion;
+    }
+
+    public Instant getLastSeenAt() {
+        return lastSeenAt;
+    }
+
     public Status getStatus() {
         return status;
     }
