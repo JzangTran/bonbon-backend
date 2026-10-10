@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import com.bonbon.backend.messaging.MessageSent;
 import com.bonbon.backend.order.OrderStatus;
 import com.bonbon.backend.order.OrderStatusChanged;
 import org.springframework.stereotype.Component;
@@ -35,6 +36,18 @@ class OrderSocketBroadcaster {
         }
     }
 
+    /** A chat message reaches the other side's open sockets; the sender already has it from the request. */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    void onMessage(MessageSent event) {
+        boolean toShop = "CUSTOMER".equals(event.sender());
+        Map<String, Object> message = new LinkedHashMap<>();
+        message.put("type", "message");
+        message.put("channel", toShop ? "shop" : "customer");
+        message.put("conversationId", event.conversationId());
+        message.put("messageId", event.messageId());
+        deliver(toShop ? OrderSocketHandler.vendorChannel(event.vendorId()) : OrderSocketHandler.customerChannel(event.customerId()), message);
+    }
+
     private void push(String channel, String audience, OrderStatusChanged event) {
         Map<String, Object> message = new LinkedHashMap<>();
         message.put("type", "order");
@@ -43,6 +56,10 @@ class OrderSocketBroadcaster {
         message.put("number", event.number());
         message.put("from", event.from());
         message.put("to", event.to());
+        deliver(channel, message);
+    }
+
+    private void deliver(String channel, Map<String, Object> message) {
         Instant now = Instant.now();
         for (OrderSocketRegistry.Subscription s : registry.listeners(channel)) {
             if (now.isAfter(s.validUntil())) {
