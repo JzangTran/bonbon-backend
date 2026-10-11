@@ -59,6 +59,7 @@ public final class ApiTags {
     public static final String ADMIN_ORDER_CASES = "Quản trị — Khiếu nại đơn";
     public static final String ADMIN_PENALTIES = "Quản trị — Điểm phạt";
     public static final String ADMIN_CONVERSATIONS = "Quản trị — Đọc trò chuyện";
+    public static final String ADMIN_PLATFORM_STATS = "Quản trị — Thống kê hệ thống";
     public static final String ADMIN_HELP = "Quản trị — Trợ giúp";
     public static final String ADMIN_TICKETS = "Quản trị — Phiếu hỗ trợ";
     public static final String ADMIN_LOOKUP = "Quản trị — Tra cứu đơn & khách";
@@ -71,7 +72,7 @@ public final class ApiTags {
         g.put("Chung", List.of(LOGIN, REGISTRATION, SESSION, ACCOUNT, NOTIFICATIONS, CHAT, HELP_CENTER, SUPPORT_TICKETS, PUSH_DEVICES, ADDRESS_SUGGESTIONS, CATEGORIES, LEGAL, PAYMENT_WEBHOOK));
         g.put("Khách", List.of(CUSTOMER_ADDRESSES, CUSTOMER_BROWSE, CUSTOMER_ORDERS, CUSTOMER_ORDER_CASES, CUSTOMER_REVIEWS));
         g.put("Người bán", List.of(SELLER_OPEN_SHOP, SELLER_SHOP, SELLER_MENU, SELLER_OPTIONS, SELLER_ORDERS, SELLER_ORDER_CASES, SELLER_PERFORMANCE, SELLER_REVIEWS, SELLER_EARNINGS, SELLER_STATS));
-        g.put("Quản trị", List.of(ADMIN_AUTH, ADMIN_ADMINS, ADMIN_CATEGORIES, ADMIN_SHOP_REVIEW, ADMIN_REVIEWS, ADMIN_REFUNDS, ADMIN_COMMISSION, ADMIN_SETTLEMENT, ADMIN_ORDER_CASES, ADMIN_PENALTIES, ADMIN_CONVERSATIONS, ADMIN_LOOKUP, ADMIN_HELP, ADMIN_TICKETS));
+        g.put("Quản trị", List.of(ADMIN_AUTH, ADMIN_ADMINS, ADMIN_CATEGORIES, ADMIN_SHOP_REVIEW, ADMIN_REVIEWS, ADMIN_REFUNDS, ADMIN_COMMISSION, ADMIN_SETTLEMENT, ADMIN_ORDER_CASES, ADMIN_PENALTIES, ADMIN_CONVERSATIONS, ADMIN_LOOKUP, ADMIN_HELP, ADMIN_TICKETS, ADMIN_PLATFORM_STATS));
         return g;
     }
 }
