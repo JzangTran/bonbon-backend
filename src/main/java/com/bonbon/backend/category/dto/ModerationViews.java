@@ -1,5 +1,6 @@
 package com.bonbon.backend.category.dto;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -40,5 +41,25 @@ public final class ModerationViews {
 
     @Schema(name = "DishCategoryCasePage")
     public record Page(List<Case> items, int page, int size, long total) {
+    }
+
+    @Schema(name = "ShopDishCategory")
+    public record ShopDish(
+            UUID id,
+            String name,
+            int price,
+            UUID categoryId,
+            @Schema(description = "Đường đi từ ngành cấp 2 đến ngành lá, ví dụ `Đồ uống › Cà phê`.") String categoryPath,
+            @Schema(description = "Tỷ lệ hoa hồng riêng của ngành hoặc kế thừa từ ngành cha; rỗng khi áp dụng tỷ lệ mặc định chung.") BigDecimal commissionRate,
+            @Schema(description = "Đang bị ẩn khỏi tìm kiếm vì sai ngành.") boolean restricted,
+            @Schema(description = "Vụ sai ngành chưa đóng của món, nếu có.") OpenCase openCase) {
+    }
+
+    @Schema(name = "ShopDishOpenCase")
+    public record OpenCase(UUID id, String status) {
+    }
+
+    @Schema(name = "ShopDishCategoryList", description = "Các món đang bán của một cửa hàng với ngành và hoa hồng, để tìm món xếp sai ngành.")
+    public record ShopDishes(UUID vendorId, String shopName, List<ShopDish> items) {
     }
 }

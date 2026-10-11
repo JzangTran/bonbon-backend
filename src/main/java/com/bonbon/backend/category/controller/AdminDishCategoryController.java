@@ -85,4 +85,11 @@ class AdminDishCategoryController {
     ModerationViews.Case decide(CurrentPrincipal principal, @PathVariable UUID id, @Valid @RequestBody ModerationRequests.Decide request) {
         return moderation.decide(principal, id, request);
     }
+
+    @Operation(operationId = "listShopDishesForModeration", summary = "Món của một cửa hàng và ngành của chúng", description = "Các món đang bán, theo tên: ngành lá và đường đi của ngành, tỷ lệ hoa hồng của ngành (rỗng nếu áp dụng mức mặc định chung), món có đang bị ẩn không và vụ sai ngành chưa đóng nếu có. Chỗ quản trị viên tìm món xếp vào ngành rẻ hơn để đánh dấu.")
+    @ApiError(status = 404, code = "SHOP_NOT_FOUND", when = "Không có cửa hàng này.")
+    @GetMapping("/merchants/{vendorId}/dishes")
+    ModerationViews.ShopDishes shopDishes(@PathVariable UUID vendorId) {
+        return moderation.dishesOf(vendorId);
+    }
 }

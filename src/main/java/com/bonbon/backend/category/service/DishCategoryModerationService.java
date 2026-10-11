@@ -15,6 +15,7 @@ import com.bonbon.backend.category.DishCategoryCases;
 import com.bonbon.backend.category.DishCategoryGateway;
 import com.bonbon.backend.category.dto.ModerationRequests;
 import com.bonbon.backend.category.dto.ModerationViews;
+import com.bonbon.backend.category.entity.Category;
 import com.bonbon.backend.category.repository.CategoryRepository;
 import com.bonbon.backend.common.exception.BusinessException;
 import com.bonbon.backend.common.security.CurrentPrincipal;
@@ -151,6 +152,29 @@ public class DishCategoryModerationService implements DishCategoryCases {
         }
         events.publishEvent(new DishCategoryCaseChanged(id, row.vendorId(), row.dishId(), row.dishName(), accept ? "APPEAL_ACCEPTED" : "APPEAL_REJECTED", nameOf(target), null, request.reason().strip()));
         return view(id);
+    }
+
+    /** A shop's current dishes with their category path, commission rate and any open case: where an administrator finds a misfiled dish. */
+    @Transactional(readOnly = true)
+    public ModerationViews.ShopDishes dishesOf(UUID vendorId) {
+        String shopName = dishes.shopName(vendorId).orElseThrow(() -> BusinessException.notFound("SHOP_NOT_FOUND", "Không tìm thấy cửa hàng."));
+        java.util.Map<UUID, Category> byId = categories.findAllInTreeOrder().stream().collect(java.util.stream.Collectors.toMap(Category::getId, c -> c));
+        java.util.Map<UUID, ModerationViews.OpenCase> open = new java.util.HashMap<>();
+        jdbc.sql("select dish_id, id, status from dish_category_cases where vendor_id = :v and status in ('RESTRICTED', 'AUTO_CORRECTED', 'APPEALED')").param("v", vendorId)
+                .query((rs, n) -> java.util.Map.entry(rs.getObject("dish_id", UUID.class), new ModerationViews.OpenCase(rs.getObject("id", UUID.class), rs.getString("status")))).list()
+                .forEach(e -> open.put(e.getKey(), e.getValue()));
+        List<ModerationViews.ShopDish> items = dishes.dishesOf(vendorId).stream().map(d -> new ModerationViews.ShopDish(d.id(), d.name(), d.price(), d.categoryId(),
+                pathOf(byId, d.categoryId()), catalog.effectiveCommissionRate(d.categoryId()).orElse(null), d.restricted(), open.get(d.id()))).toList();
+        return new ModerationViews.ShopDishes(vendorId, shopName, items);
+    }
+
+    /** From the level-2 category down to the leaf; the fixed root says nothing. */
+    private static String pathOf(java.util.Map<UUID, Category> byId, UUID categoryId) {
+        java.util.LinkedList<String> names = new java.util.LinkedList<>();
+        for (Category c = byId.get(categoryId); c != null && c.getParentId() != null; c = byId.get(c.getParentId())) {
+            names.addFirst(c.getName());
+        }
+        return String.join(" › ", names);
     }
 
     // --- the seller
