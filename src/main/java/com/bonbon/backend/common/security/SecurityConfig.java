@@ -52,6 +52,7 @@ class SecurityConfig {
             "/api/public/**",
             "/api/auth/**",
             "/api/legal/documents/**",
+            "/api/app/config",
             "/api/admin/auth/**"
     };
 
