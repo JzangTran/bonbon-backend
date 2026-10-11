@@ -1,10 +1,16 @@
 package com.bonbon.backend.notification.controller;
 
+import java.util.UUID;
+
 import com.bonbon.backend.common.security.CurrentPrincipal;
+import com.bonbon.backend.notification.dto.PreferenceViews;
 import com.bonbon.backend.notification.dto.PushDeviceRequests;
 import com.bonbon.backend.notification.service.PushDeviceService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -41,5 +47,20 @@ class PushDeviceController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void revoke(CurrentPrincipal principal, @Valid @RequestBody PushDeviceRequests.Revoke request) {
         devices.revoke(principal.id(), request.token());
+    }
+
+    @Operation(operationId = "listPushDevices", summary = "Thiết bị đang nhận thông báo đẩy", description = "Các thiết bị đang hoạt động của tài khoản, lần dùng gần nhất trước, để người dùng gỡ máy đã mất.")
+    @GetMapping
+    PreferenceViews.Devices list(CurrentPrincipal principal) {
+        return new PreferenceViews.Devices(devices.activeOf(principal.id()).stream()
+                .map(d -> new PreferenceViews.Device(d.getId(), d.getPlatform(), d.getAppVersion(), d.getLastSeenAt())).toList());
+    }
+
+    @Operation(operationId = "removePushDevice", summary = "Gỡ một thiết bị", description = "Thiết bị thôi nhận thông báo đẩy của tài khoản này (đăng ký lại sẽ nhận lại). Thông báo trong ứng dụng không đổi.")
+    @ApiError(status = 404, code = "DEVICE_NOT_FOUND", when = "Không có thiết bị đang hoạt động này trong tài khoản của người gọi.")
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void remove(CurrentPrincipal principal, @PathVariable UUID id) {
+        devices.revokeById(principal.id(), id);
     }
 }

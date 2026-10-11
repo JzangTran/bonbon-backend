@@ -15,6 +15,7 @@ import com.bonbon.backend.notification.repository.NotificationRepository;
 import com.bonbon.backend.order.OrderStatus;
 import com.bonbon.backend.order.OrderStatusChanged;
 import com.bonbon.backend.payment.RefundCompleted;
+import com.bonbon.backend.support.TicketAnswered;
 import com.bonbon.backend.settlement.CommissionStageChanged;
 import com.bonbon.backend.settlement.CommissionStatementIssued;
 import com.bonbon.backend.settlement.CommissionStatementReminder;
@@ -329,6 +330,14 @@ public class NotificationService {
     void onRefundNeedsDestination(RefundNeedsDestination e) {
         raise(e.customerId(), "REFUND_NEEDS_ACCOUNT", e.orderId(), e.orderNumber(), "Cần tài khoản nhận hoàn tiền đơn #" + e.orderNumber(),
                 "Hãy nhập tài khoản ngân hàng để nhận lại " + e.amount() + " ₫.");
+    }
+
+    /** Support answered a ticket: the person hears it in the app (and by push or email, as they chose). */
+    @EventListener
+    void onTicketAnswered(TicketAnswered e) {
+        Notification n = new Notification(e.userId(), e.audience(), "SUPPORT_REPLY", null, null, "Hỗ trợ đã trả lời phiếu của bạn", "Phiếu: " + e.subject());
+        notifications.save(n);
+        events.publishEvent(new Created(List.of(n)));
     }
 
     private void raise(UUID customerId, String type, UUID orderId, long orderNumber, String title, String body) {

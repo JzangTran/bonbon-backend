@@ -34,12 +34,14 @@ class PushDispatcher {
     private final PushDeviceRepository devices;
     private final NotificationRepository notifications;
     private final PushGateway gateway;
+    private final PreferenceService preferences;
     private final TransactionTemplate tx;
 
-    PushDispatcher(PushDeviceRepository devices, NotificationRepository notifications, PushGateway gateway, PlatformTransactionManager transactions) {
+    PushDispatcher(PushDeviceRepository devices, NotificationRepository notifications, PushGateway gateway, PreferenceService preferences, PlatformTransactionManager transactions) {
         this.devices = devices;
         this.notifications = notifications;
         this.gateway = gateway;
+        this.preferences = preferences;
         this.tx = new TransactionTemplate(transactions);
     }
 
@@ -57,6 +59,10 @@ class PushDispatcher {
         List<PushGateway.PushMessage> messages = new ArrayList<>();
         Set<UUID> reached = new HashSet<>();
         for (Notification n : items) {
+            // A silenced push (or one held back by quiet hours) is still in the in-app list; an order alert is never silenced.
+            if (!preferences.allows(n.getRecipientId(), NotificationCategory.of(n.getAudience(), n.getType()), "PUSH")) {
+                continue;
+            }
             List<PushDevice> active = tx.execute(status -> devices.findActiveByUser(n.getRecipientId()));
             for (PushDevice d : active == null ? List.<PushDevice>of() : active) {
                 // Ids only: lock-screen text is visible to people other than the account holder.
@@ -76,5 +82,17 @@ class PushDispatcher {
                 devices.findByKindAndToken("EXPO", token).ifPresent(d -> d.mark(PushDevice.Status.INVALID));
             }
         });
+    }
+
+    /** A push that has no stored notification behind it (a chat message): ids only, to every active device of the user. */
+    void sendTo(UUID userId, String title, String body, Map<String, String> data) {
+        List<PushDevice> active = tx.execute(status -> devices.findActiveByUser(userId));
+        if (active == null || active.isEmpty()) {
+            return;
+        }
+        List<String> dead = gateway.send(active.stream().map(d -> new PushGateway.PushMessage(d.getToken(), title, body, data)).toList());
+        if (!dead.isEmpty()) {
+            tx.executeWithoutResult(status -> dead.forEach(token -> devices.findByKindAndToken("EXPO", token).ifPresent(d -> d.mark(PushDevice.Status.INVALID))));
+        }
     }
 }
