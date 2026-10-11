@@ -249,6 +249,23 @@ class DishCategoryModerationTests {
         mvc.perform(auth(get("/api/admin/category-cases"), shop.token)).andExpect(status().isForbidden());
     }
 
+    @Test
+    void anAdministratorFindsADishWithItsCategoryPathAndOpenCase() throws Exception {
+        Shop shop = shop("Quán A");
+        mvc.perform(auth(get("/api/admin/merchants/" + shop.id + "/dishes"), admin)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.shopName").value("Quán A")).andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].name").value(word + " Cơm")).andExpect(jsonPath("$.items[0].categoryId").value(cheap))
+                .andExpect(jsonPath("$.items[0].categoryPath").value(org.hamcrest.Matchers.containsString("›")))
+                .andExpect(jsonPath("$.items[0].restricted").value(false)).andExpect(jsonPath("$.items[0].openCase").doesNotExist());
+
+        String id = caseId(flag(shop.dish, pricey, "Sai ngành", null));
+        mvc.perform(auth(get("/api/admin/merchants/" + shop.id + "/dishes"), admin)).andExpect(jsonPath("$.items[0].restricted").value(true))
+                .andExpect(jsonPath("$.items[0].openCase.id").value(id)).andExpect(jsonPath("$.items[0].openCase.status").value("RESTRICTED"));
+
+        mvc.perform(auth(get("/api/admin/merchants/" + UUID.randomUUID() + "/dishes"), admin)).andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("SHOP_NOT_FOUND"));
+        mvc.perform(auth(get("/api/admin/merchants/" + shop.id + "/dishes"), shop.token)).andExpect(status().isForbidden());
+    }
+
     // --- helpers
 
     private record Shop(String id, String name, String dish, String token, UUID owner) {

@@ -1,5 +1,6 @@
 package com.bonbon.backend.category;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,4 +23,14 @@ public interface DishCategoryGateway {
 
     /** The shop this account owns while it is operating (approved, suspended or closing): the shop whose cases the person may see. */
     Optional<UUID> operatingShopOf(UUID ownerUserId);
+
+    /** A dish on a shop's menu with what moderation needs to judge it (archived dishes are left out). */
+    record ShopDish(UUID id, String name, int price, UUID categoryId, boolean restricted) {
+    }
+
+    /** The shop's name, empty when there is no such shop. */
+    Optional<String> shopName(UUID vendorId);
+
+    /** The shop's current dishes, by name. */
+    List<ShopDish> dishesOf(UUID vendorId);
 }

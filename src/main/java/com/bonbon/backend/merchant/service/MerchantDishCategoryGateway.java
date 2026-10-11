@@ -1,5 +1,6 @@
 package com.bonbon.backend.merchant.service;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -46,5 +47,17 @@ class MerchantDishCategoryGateway implements DishCategoryGateway {
     @Override
     public Optional<UUID> operatingShopOf(UUID ownerUserId) {
         return vendors.findByOwnerUserId(ownerUserId).filter(v -> v.getStatus() == VendorStatus.APPROVED).map(v -> v.getId());
+    }
+
+    @Override
+    public Optional<String> shopName(UUID vendorId) {
+        return jdbc.sql("select name from vendors where id = :id").param("id", vendorId).query(String.class).optional();
+    }
+
+    @Override
+    public List<ShopDish> dishesOf(UUID vendorId) {
+        return jdbc.sql("select id, name, price, category_id, category_restricted from menu_items where vendor_id = :v and archived_at is null order by name, id").param("v", vendorId)
+                .query((rs, n) -> new ShopDish(rs.getObject("id", UUID.class), rs.getString("name"), rs.getInt("price"), rs.getObject("category_id", UUID.class), rs.getBoolean("category_restricted")))
+                .list();
     }
 }
