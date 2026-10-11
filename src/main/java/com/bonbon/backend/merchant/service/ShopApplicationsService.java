@@ -140,6 +140,23 @@ class ShopApplicationsService implements ShopApplications {
 
     @Override
     @Transactional
+    public Decided finishClosing(UUID vendorId) {
+        Decided decided = move(vendorId, VendorStatus.CLOSING, VendorStatus.CLOSED, "SHOP_NOT_CLOSING", "Cửa hàng này không đang trong quá trình đóng.");
+        jdbc.sql("update vendors set closed_at = now() where id = :id").param("id", vendorId).update();
+        return decided;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Closing> closing() {
+        return jdbc.sql("select id, owner_user_id, name, closing_reason, closing_reason_text, closing_requested_at from vendors where status = 'CLOSING' order by closing_requested_at, id")
+                .query((rs, n) -> new Closing(rs.getObject("id", UUID.class), rs.getObject("owner_user_id", UUID.class), rs.getString("name"), rs.getString("closing_reason"),
+                        rs.getString("closing_reason_text"), rs.getTimestamp("closing_requested_at") == null ? null : rs.getTimestamp("closing_requested_at").toInstant()))
+                .list();
+    }
+
+    @Override
+    @Transactional
     public Decided reinstate(UUID vendorId) {
         return move(vendorId, VendorStatus.SUSPENDED, VendorStatus.APPROVED, "SHOP_NOT_SUSPENDED", "Cửa hàng này không bị đình chỉ.");
     }

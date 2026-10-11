@@ -55,6 +55,16 @@ public interface ShopApplications {
     /** PENDING → REJECTED with the reason the seller will see. */
     Decided reject(UUID vendorId, String reason);
 
+    /** CLOSING -> CLOSED: nothing is left to settle. @throws com.bonbon.backend.common.exception.BusinessException 409 SHOP_NOT_CLOSING */
+    Decided finishClosing(UUID vendorId);
+
+    /** The shops waiting to be closed, oldest request first. */
+    List<Closing> closing();
+
+    @Schema(name = "ClosingShop")
+    record Closing(UUID vendorId, UUID ownerUserId, String name, String reason, String reasonText, Instant requestedAt) {
+    }
+
     @Schema(name = "ShopApplicationSummary")
 
     record Summary(UUID vendorId, UUID ownerUserId, String name, String ward, String province, String businessType,

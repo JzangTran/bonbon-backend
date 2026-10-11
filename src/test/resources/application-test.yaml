@@ -9,6 +9,10 @@ bonbon:
       enabled: false
     refund:
       immediate: false
+  merchantapproval:
+    closures:
+      # Tests call ShopClosureService.finishReady themselves.
+      enabled: false
   legal:
     reminders:
       # Tests call LegalAdminService.remindDue with a time they choose.
