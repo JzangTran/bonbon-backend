@@ -21,6 +21,13 @@ public final class ShopProfileRequests {
     private ShopProfileRequests() {
     }
 
+    @Schema(name = "CloseShopRequest")
+    public record Close(
+            @Schema(description = "STOP_SELLING (không bán nữa), RELOCATING (chuyển đi), TOO_FEW_ORDERS (ít đơn) hoặc OTHER (khác, cần ghi rõ).")
+            @NotNull @Pattern(regexp = "STOP_SELLING|RELOCATING|TOO_FEW_ORDERS|OTHER", message = "Lý do không hợp lệ.") String reason,
+            @Schema(description = "Ghi rõ lý do; bắt buộc khi lý do là OTHER.") @Size(max = 500) String reasonText) {
+    }
+
     /**
      * Only the fields present change. A new {@code placeId} sends the shop back to review; everything else
      * applies at once. {@code clearFreeDeliveryThreshold} / {@code clearMinOrderValue} remove those options.

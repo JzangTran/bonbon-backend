@@ -22,6 +22,7 @@ import com.bonbon.backend.settlement.CommissionStatementReminder;
 import com.bonbon.backend.settlement.PayoutRecorded;
 import com.bonbon.backend.shopperformance.OrderCaseDecided;
 import com.bonbon.backend.shopperformance.OrderCaseEscalated;
+import com.bonbon.backend.merchant.ShopClosureChanged;
 import com.bonbon.backend.merchantapproval.ShopSuspensionChanged;
 import com.bonbon.backend.shopperformance.NoShowReported;
 import com.bonbon.backend.shopperformance.OrderCaseOpened;
@@ -338,6 +339,16 @@ public class NotificationService {
         Notification n = new Notification(e.userId(), e.audience(), "SUPPORT_REPLY", null, null, "Hỗ trợ đã trả lời phiếu của bạn", "Phiếu: " + e.subject());
         notifications.save(n);
         events.publishEvent(new Created(List.of(n)));
+    }
+
+    /** The owner is told the shop is closing, and again when it is closed. */
+    @EventListener
+    void onShopClosureChanged(ShopClosureChanged e) {
+        if ("CLOSING".equals(e.status())) {
+            toShop(e.vendorId(), "SHOP_CLOSING", "Quán đang đóng", "Quán không còn nhận đơn mới. Các đơn đang làm vẫn tiếp tục; quán đóng hẳn khi mọi đơn, khiếu nại và số dư đã xong.");
+        } else {
+            toShop(e.vendorId(), "SHOP_CLOSED", "Quán đã đóng", "Mọi việc đã xong và quán đã đóng. Muốn bán lại, hãy mở cửa hàng mới.");
+        }
     }
 
     private void raise(UUID customerId, String type, UUID orderId, long orderNumber, String title, String body) {
