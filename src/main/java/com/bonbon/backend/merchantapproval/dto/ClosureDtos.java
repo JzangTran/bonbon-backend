@@ -29,4 +29,8 @@ public final class ClosureDtos {
     @Schema(name = "ClosingShopList", description = "Cửa hàng đang đóng, yêu cầu cũ nhất trước.")
     public record Rows(List<Row> items) {
     }
+
+    @Schema(name = "MyClosureStatus", description = "Cửa hàng của người gọi đang đóng: lý do đã chọn và những gì còn chặn.")
+    public record Mine(String name, String reason, String reasonText, Instant requestedAt, Blockers blockers) {
+    }
 }

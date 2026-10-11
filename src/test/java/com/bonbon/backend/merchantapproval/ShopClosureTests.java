@@ -117,6 +117,11 @@ class ShopClosureTests {
         assertThat(call(customer, post("/api/orders"), body, "key-closing-" + System.nanoTime()).andReturn().getResponse().getStatus()).isBetween(400, 499);
         call(seller, get("/api/merchant/orders/" + inProgress), null).andExpect(status().isOk());
 
+        // The owner reads the same blockers while the shop is closing.
+        call(seller, get("/api/merchant/closure"), null).andExpect(status().isOk()).andExpect(jsonPath("$.reason").value("RELOCATING"))
+                .andExpect(jsonPath("$.blockers.ordersInProgress").value(1)).andExpect(jsonPath("$.blockers.ready").value(false));
+        call(customer, get("/api/merchant/closure"), null).andExpect(status().isForbidden());
+
         // The administrators see what stands in the way, and closing by hand is refused until it is clear.
         String listed = call(admin, get("/api/admin/merchants/closing"), null).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         List<Map<String, Object>> mine = JsonPath.read(listed, "$.items[?(@.vendorId=='" + vendorId + "')]");
