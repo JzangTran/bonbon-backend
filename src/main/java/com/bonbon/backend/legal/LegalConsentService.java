@@ -26,10 +26,12 @@ public class LegalConsentService {
 
     private final LegalDocumentRepository documents;
     private final ConsentRecordRepository consents;
+    private final java.time.Clock clock;
 
-    LegalConsentService(LegalDocumentRepository documents, ConsentRecordRepository consents) {
+    LegalConsentService(LegalDocumentRepository documents, ConsentRecordRepository consents, java.time.Clock clock) {
         this.documents = documents;
         this.consents = consents;
+        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
@@ -90,7 +92,7 @@ public class LegalConsentService {
     }
 
     private LegalDocument findCurrent(DocumentType type) {
-        return documents.findCurrent(type, Instant.now())
+        return documents.findCurrent(type, clock.instant())
                 .orElseThrow(() -> new IllegalStateException("No published " + type + " document"));
     }
 }

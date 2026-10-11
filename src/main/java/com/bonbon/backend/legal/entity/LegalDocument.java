@@ -12,7 +12,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-/** Read-only here; versions are created by the publishing flow (Sprint 9). */
+/** Read-only here; versions are created and published through {@code LegalAdminService}. */
 @Entity
 @Table(name = "legal_documents")
 public class LegalDocument {
@@ -47,6 +47,9 @@ public class LegalDocument {
 
     @Column(name = "effective_at")
     private Instant effectiveAt;
+
+    @Column(nullable = false, columnDefinition = "text")
+    private String status;
 
     protected LegalDocument() {
     }
