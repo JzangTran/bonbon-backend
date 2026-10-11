@@ -81,7 +81,7 @@ class ShopCatalogService implements ShopCatalog {
                 exists (select 1 from menu_items i where i.vendor_id = v.id and i.archived_at is null
                         and i.status = 'AVAILABLE' and (i.stock_quantity is null or i.stock_quantity > 0)%s)""";
         if (hasCategory) {
-            sql.append("\n  and ").append(dish.formatted(" and i.category_id in (:categories)"));
+            sql.append("\n  and ").append(dish.formatted(" and i.category_id in (:categories) and not i.category_restricted"));
         } else {
             sql.append("\n  and ").append(dish.formatted(""));
         }
@@ -93,7 +93,7 @@ class ShopCatalogService implements ShopCatalog {
             sql.append("""
 
                       and (unaccent(lower(v.name)) like unaccent(:pattern)
-                           or exists (select 1 from menu_items q where q.vendor_id = v.id and q.archived_at is null
+                           or exists (select 1 from menu_items q where q.vendor_id = v.id and q.archived_at is null and not q.category_restricted
                                       and unaccent(lower(q.name)) like unaccent(:pattern)))""");
         }
         JdbcClient.StatementSpec spec = jdbc.sql(sql.toString()).param("lat", lat).param("lng", lng)

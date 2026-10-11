@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.bonbon.backend.category.DishCategoryCaseChanged;
 import com.bonbon.backend.common.exception.BusinessException;
 import com.bonbon.backend.common.persistence.ActorType;
 import com.bonbon.backend.merchant.ShopOrdering;
@@ -348,6 +349,25 @@ public class NotificationService {
             toShop(e.vendorId(), "SHOP_CLOSING", "Quán đang đóng", "Quán không còn nhận đơn mới. Các đơn đang làm vẫn tiếp tục; quán đóng hẳn khi mọi đơn, khiếu nại và số dư đã xong.");
         } else {
             toShop(e.vendorId(), "SHOP_CLOSED", "Quán đã đóng", "Mọi việc đã xong và quán đã đóng. Muốn bán lại, hãy mở cửa hàng mới.");
+        }
+    }
+
+    /** A dish was flagged, corrected, moved or ruled on: the shop reads which dish, the category and why. */
+    @EventListener
+    void onDishCategoryCaseChanged(DishCategoryCaseChanged e) {
+        String reason = e.reason() == null || e.reason().isBlank() ? "" : " Lý do: " + e.reason();
+        String dish = "Món \"" + e.dishName() + "\"";
+        switch (e.kind()) {
+            case "FLAGGED" -> toShop(e.vendorId(), "SHOP_DISH_FLAGGED", "Món bị đánh dấu sai ngành",
+                    dish + " cần chuyển sang ngành \"" + e.categoryName() + "\" trước " + day(e.until()) + ". Trong lúc chờ món không hiện khi khách tìm kiếm; quá hạn hệ thống sẽ tự chuyển." + reason);
+            case "AUTO_CORRECTED" -> toShop(e.vendorId(), "SHOP_DISH_AUTO_CORRECTED", "Hệ thống đã chuyển ngành của món",
+                    dish + " đã được chuyển sang ngành \"" + e.categoryName() + "\" và hiện lại khi tìm kiếm. Quán có thể đồng ý hoặc kháng nghị đến " + day(e.until()) + ".");
+            case "APPEAL_ACCEPTED" -> toShop(e.vendorId(), "SHOP_DISH_APPEAL_ACCEPTED", "Kháng nghị ngành hàng được chấp nhận",
+                    dish + " chuyển sang ngành \"" + e.categoryName() + "\", áp dụng cho đơn đặt từ giờ." + reason);
+            case "APPEAL_REJECTED" -> toShop(e.vendorId(), "SHOP_DISH_APPEAL_REJECTED", "Kháng nghị ngành hàng không được chấp nhận",
+                    dish + " giữ ngành \"" + e.categoryName() + "\"." + reason);
+            default -> toShop(e.vendorId(), "SHOP_DISH_RECLASSIFIED", "Quản trị viên đã đổi ngành của món",
+                    dish + " được chuyển sang ngành \"" + e.categoryName() + "\", áp dụng cho đơn đặt từ giờ." + reason);
         }
     }
 

@@ -47,11 +47,13 @@ public final class ApiTags {
     public static final String SELLER_REVIEWS = "Người bán — Đánh giá";
     public static final String SELLER_EARNINGS = "Người bán — Thu nhập";
     public static final String SELLER_STATS = "Người bán — Thống kê";
+    public static final String SELLER_CATEGORY_CASES = "Người bán — Món sai ngành";
 
     // Quản trị
     public static final String ADMIN_AUTH = "Quản trị — Đăng nhập";
     public static final String ADMIN_ADMINS = "Quản trị — Quản trị viên";
     public static final String ADMIN_CATEGORIES = "Quản trị — Ngành hàng";
+    public static final String ADMIN_DISH_CATEGORIES = "Quản trị — Món sai ngành";
     public static final String ADMIN_SHOP_REVIEW = "Quản trị — Duyệt cửa hàng";
     public static final String ADMIN_REVIEWS = "Quản trị — Kiểm duyệt đánh giá";
     public static final String ADMIN_REFUNDS = "Quản trị — Hoàn tiền";
@@ -75,8 +77,8 @@ public final class ApiTags {
         Map<String, List<String>> g = new LinkedHashMap<>();
         g.put("Chung", List.of(LOGIN, REGISTRATION, SESSION, ACCOUNT, NOTIFICATIONS, CHAT, HELP_CENTER, SUPPORT_TICKETS, PUSH_DEVICES, ADDRESS_SUGGESTIONS, CATEGORIES, LEGAL, APP_CONFIG, PAYMENT_WEBHOOK));
         g.put("Khách", List.of(CUSTOMER_ADDRESSES, CUSTOMER_BROWSE, CUSTOMER_ORDERS, CUSTOMER_ORDER_CASES, CUSTOMER_REVIEWS));
-        g.put("Người bán", List.of(SELLER_OPEN_SHOP, SELLER_SHOP, SELLER_MENU, SELLER_OPTIONS, SELLER_ORDERS, SELLER_ORDER_CASES, SELLER_PERFORMANCE, SELLER_REVIEWS, SELLER_EARNINGS, SELLER_STATS));
-        g.put("Quản trị", List.of(ADMIN_AUTH, ADMIN_ADMINS, ADMIN_CATEGORIES, ADMIN_SHOP_REVIEW, ADMIN_REVIEWS, ADMIN_REFUNDS, ADMIN_COMMISSION, ADMIN_SETTLEMENT, ADMIN_ORDER_CASES, ADMIN_PENALTIES, ADMIN_CONVERSATIONS, ADMIN_LOOKUP, ADMIN_HELP, ADMIN_TICKETS, ADMIN_PLATFORM_STATS, ADMIN_MERCHANTS, ADMIN_LEGAL, ADMIN_APP_CONFIG));
+        g.put("Người bán", List.of(SELLER_OPEN_SHOP, SELLER_SHOP, SELLER_MENU, SELLER_OPTIONS, SELLER_ORDERS, SELLER_ORDER_CASES, SELLER_PERFORMANCE, SELLER_REVIEWS, SELLER_EARNINGS, SELLER_STATS, SELLER_CATEGORY_CASES));
+        g.put("Quản trị", List.of(ADMIN_AUTH, ADMIN_ADMINS, ADMIN_CATEGORIES, ADMIN_DISH_CATEGORIES, ADMIN_SHOP_REVIEW, ADMIN_REVIEWS, ADMIN_REFUNDS, ADMIN_COMMISSION, ADMIN_SETTLEMENT, ADMIN_ORDER_CASES, ADMIN_PENALTIES, ADMIN_CONVERSATIONS, ADMIN_LOOKUP, ADMIN_HELP, ADMIN_TICKETS, ADMIN_PLATFORM_STATS, ADMIN_MERCHANTS, ADMIN_LEGAL, ADMIN_APP_CONFIG));
         return g;
     }
 }
