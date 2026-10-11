@@ -25,6 +25,10 @@ bonbon:
     tickets:
       # Tests call SupportTicketService.closeStale with a time they choose.
       enabled: false
+  category:
+    moderation:
+      # Tests call DishCategoryModerationService.runDue with a time they choose.
+      enabled: false
   geo:
     fake-when-unconfigured: true
   captcha:
