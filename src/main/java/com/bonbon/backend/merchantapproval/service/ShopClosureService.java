@@ -4,6 +4,7 @@ import java.util.EnumSet;
 import java.util.UUID;
 
 import com.bonbon.backend.common.exception.BusinessException;
+import com.bonbon.backend.common.security.CurrentPrincipal;
 import com.bonbon.backend.merchant.ShopApplications;
 import com.bonbon.backend.merchant.ShopClosureChanged;
 import com.bonbon.backend.merchantapproval.dto.ClosureDtos;
@@ -57,6 +58,14 @@ public class ShopClosureService {
         long held = balances.heldForCases(vendorId);
         long balance = balances.balance(vendorId);
         return new ClosureDtos.Blockers(inProgress, openCases, appeals, held, balance, inProgress == 0 && openCases == 0 && appeals == 0 && held == 0 && balance == 0);
+    }
+
+    /** The caller's own shop while it is closing: the same blockers the administrators see, so the owner knows what to finish. */
+    @Transactional(readOnly = true)
+    public ClosureDtos.Mine mine(CurrentPrincipal caller) {
+        ShopApplications.Closing c = shops.closing().stream().filter(x -> caller.id().equals(x.ownerUserId())).findFirst()
+                .orElseThrow(() -> BusinessException.conflict("SHOP_NOT_CLOSING", "Cửa hàng của bạn không đang trong quá trình đóng."));
+        return new ClosureDtos.Mine(c.name(), c.reason(), c.reasonText(), c.requestedAt(), blockers(c.vendorId()));
     }
 
     /** An administrator closes a shop that is ready, now. */
