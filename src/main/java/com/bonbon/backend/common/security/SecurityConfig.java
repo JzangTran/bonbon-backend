@@ -52,6 +52,7 @@ class SecurityConfig {
             "/api/public/**",
             "/api/auth/**",
             "/api/legal/documents/**",
+            "/api/app/config",
             "/api/admin/auth/**"
     };
 
@@ -110,7 +111,7 @@ class SecurityConfig {
         CorsConfiguration cors = new CorsConfiguration();
         cors.setAllowedOrigins(props.allowedOrigins());
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        cors.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key", "X-Client-Channel", "X-App-Version"));
+        cors.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key", "X-Client-Channel", "X-App-Version", "X-App-Platform"));
         cors.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cors);

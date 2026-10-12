@@ -6,6 +6,9 @@ import com.bonbon.backend.merchant.dto.ShopProfileRequests;
 import com.bonbon.backend.merchant.service.ShopProfileService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -49,6 +52,17 @@ class ShopProfileController {
     @PutMapping("/opening-hours")
     ShopApplicationView openingHours(CurrentPrincipal principal, @Valid @RequestBody ShopProfileRequests.OpeningHours request) {
         return profiles.replaceOpeningHours(principal, request);
+    }
+
+    @Operation(operationId = "closeMyShop", summary = "Đóng cửa hàng", description = "Đóng hẳn cửa hàng, không mở lại được. Cần đăng nhập trong 10 phút gần nhất. Quán chuyển sang `CLOSING`: biến mất khỏi danh sách, không nhận đơn mới, nhưng các đơn đang làm vẫn làm tiếp và xem được thu nhập. Quán thành `CLOSED` khi không còn đơn đang làm, khiếu nại hoặc kháng nghị chưa xong, không còn tiền bị giữ và sổ cái đã về 0 (số dương được chi trả, số âm được thu hoặc xoá bởi quản trị viên). Muốn bán lại phải mở cửa hàng mới.")
+    @ApiError(status = 403, code = "REAUTH_REQUIRED", when = "Đăng nhập đã quá 10 phút.")
+    @ApiError(status = 400, code = "REASON_TEXT_REQUIRED", when = "Lý do OTHER thiếu ghi chú.")
+    @ApiError(status = 409, code = "SHOP_CANNOT_CLOSE", when = "Cửa hàng không ở trạng thái đang hoạt động hoặc bị đình chỉ; `status` cho biết trạng thái.")
+    @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người gọi chưa có cửa hàng.")
+    @PostMapping("/close")
+    ShopApplicationView close(CurrentPrincipal principal, @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody ShopProfileRequests.Close request) {
+        Object claim = jwt.getClaims().get(CurrentPrincipal.CLAIM_AUTH_TIME);
+        return profiles.requestClose(principal, claim instanceof Number n ? java.time.Instant.ofEpochSecond(n.longValue()) : null, request, java.time.Instant.now());
     }
 
     @Operation(operationId = "setAcceptingOrders", summary = "Tạm ngưng / nhận đơn lại", description = "Ghi đè lịch ngay lập tức; đơn đã nhận không bị ảnh hưởng. Ai bấm và lúc nào được ghi lại.")

@@ -12,6 +12,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.bonbon.backend.category.CategoryCatalog;
+import com.bonbon.backend.category.DishCategoryCases;
 import com.bonbon.backend.common.exception.BusinessException;
 import com.bonbon.backend.common.security.CurrentPrincipal;
 import com.bonbon.backend.common.storage.ObjectStorage;
@@ -51,9 +52,11 @@ public class MenuService {
     private final MenuItemRepository items;
     private final CategoryCatalog categories;
     private final ObjectStorage storage;
+    private final DishCategoryCases cases;
 
     MenuService(ApprovedShops shops, OptionService optionService, MenuSectionRepository sections,
-            MenuItemRepository items, CategoryCatalog categories, ObjectStorage storage) {
+            MenuItemRepository items, CategoryCatalog categories, ObjectStorage storage, DishCategoryCases cases) {
+        this.cases = cases;
         this.shops = shops;
         this.optionService = optionService;
         this.sections = sections;
@@ -163,6 +166,7 @@ public class MenuService {
         if (req.categoryId() != null && !req.categoryId().equals(item.getCategoryId())) {
             requireLeaf(req.categoryId());
             item.setCategoryId(req.categoryId());
+            cases.sellerChangedCategory(item.getId(), req.categoryId(), owner.id());
         }
         item.touchedBy(owner.actorType(), owner.id());
         items.save(item);

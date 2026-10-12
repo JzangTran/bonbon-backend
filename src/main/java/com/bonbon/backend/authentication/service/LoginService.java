@@ -35,15 +35,17 @@ public class LoginService {
     private final CaptchaVerifier captcha;
     private final TokenService tokens;
     private final RoleSelectionStore roleSelections;
+    private final com.bonbon.backend.authentication.AccountLifecycle lifecycle;
 
     LoginService(UserRepository users, PasswordEncoder passwords, LoginAttemptGuard guard, CaptchaVerifier captcha,
-            TokenService tokens, RoleSelectionStore roleSelections) {
+            TokenService tokens, RoleSelectionStore roleSelections, com.bonbon.backend.authentication.AccountLifecycle lifecycle) {
         this.users = users;
         this.passwords = passwords;
         this.guard = guard;
         this.captcha = captcha;
         this.tokens = tokens;
         this.roleSelections = roleSelections;
+        this.lifecycle = lifecycle;
     }
 
     @Transactional
@@ -57,14 +59,16 @@ public class LoginService {
      * a role-selection step.
      */
     LoginResponse complete(User user, Role requested, Instant authTime) {
+        // Signing in during the grace period of a deletion cancels it (delete-account.md step 4).
+        boolean restored = lifecycle.restoreIfPending(user.getId());
         Set<Role> roles = EnumSet.copyOf(user.getRoles());
         roles.retainAll(APP_ROLES);
         if (requested == null && roles.size() > 1) {
-            return LoginResponse.selectRole(roles, roleSelections.create(user.getId(), authTime));
+            return LoginResponse.selectRole(roles, roleSelections.create(user.getId(), authTime), restored);
         }
         Role role = requested != null ? requested : roles.iterator().next();
         requireRole(user, role);
-        return LoginResponse.signedIn(TokenResponse.of(tokens.issue(user, role, authTime)), UserSummary.of(user, role));
+        return LoginResponse.signedIn(TokenResponse.of(tokens.issue(user, role, authTime)), UserSummary.of(user, role), restored);
     }
 
     @Transactional

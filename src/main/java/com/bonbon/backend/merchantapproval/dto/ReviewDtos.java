@@ -34,6 +34,12 @@ public final class ReviewDtos {
     public record Application(ShopApplications.Detail shop, List<Decision> history) {
     }
 
+    /** A shop after the review: the application, its decisions, every suspension and the shops that look like it. */
+    @Schema(name = "AdminMerchantDetail")
+    public record MerchantDetail(ShopApplications.Detail shop, List<Decision> decisions, List<SuspensionDtos.Suspension> suspensions,
+            List<ShopApplications.Duplicate> duplicates) {
+    }
+
     @Schema(name = "ShopRejectRequest")
 
     public record RejectRequest(@NotBlank @Size(min = 5, max = 1000) String reason) {

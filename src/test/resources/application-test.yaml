@@ -9,9 +9,25 @@ bonbon:
       enabled: false
     refund:
       immediate: false
+  account:
+    deletions:
+      # Tests call AccountDeletionService.executeDue with a time they choose.
+      enabled: false
+  merchantapproval:
+    closures:
+      # Tests call ShopClosureService.finishReady themselves.
+      enabled: false
+  legal:
+    reminders:
+      # Tests call LegalAdminService.remindDue with a time they choose.
+      enabled: false
   support:
     tickets:
       # Tests call SupportTicketService.closeStale with a time they choose.
+      enabled: false
+  category:
+    moderation:
+      # Tests call DishCategoryModerationService.runDue with a time they choose.
       enabled: false
   geo:
     fake-when-unconfigured: true

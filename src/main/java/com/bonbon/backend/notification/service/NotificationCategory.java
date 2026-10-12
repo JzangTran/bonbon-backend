@@ -65,6 +65,9 @@ public enum NotificationCategory {
         if (type.equals("SUPPORT_REPLY")) {
             return SUPPORT_REPLIES;
         }
+        if (type.startsWith("LEGAL_")) {
+            return ACCOUNT_SECURITY;
+        }
         if (NotificationService.SHOP.equals(audience)) {
             boolean notice = type.equals("PAYOUT_RECORDED") || type.startsWith("COMMISSION_") || type.startsWith("SHOP_");
             return notice ? SHOP_NOTICES : ORDER_ALERTS;

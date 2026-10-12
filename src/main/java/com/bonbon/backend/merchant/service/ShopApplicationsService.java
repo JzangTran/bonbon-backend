@@ -22,6 +22,7 @@ import com.bonbon.backend.merchant.repository.VendorIdentityRepository;
 import com.bonbon.backend.merchant.repository.VendorRepository;
 import com.bonbon.backend.merchant.repository.VendorTaxInfoRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,15 +38,35 @@ class ShopApplicationsService implements ShopApplications {
     private final PayoutAccountRepository payouts;
     private final ObjectStorage storage;
     private final FieldCipher cipher;
+    private final JdbcClient jdbc;
 
     ShopApplicationsService(VendorRepository vendors, VendorTaxInfoRepository taxInfos, VendorIdentityRepository identities,
-            PayoutAccountRepository payouts, ObjectStorage storage, FieldCipher cipher) {
+            PayoutAccountRepository payouts, ObjectStorage storage, FieldCipher cipher, JdbcClient jdbc) {
         this.vendors = vendors;
         this.taxInfos = taxInfos;
         this.identities = identities;
         this.payouts = payouts;
         this.storage = storage;
         this.cipher = cipher;
+        this.jdbc = jdbc;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Duplicate> duplicatesOf(UUID vendorId) {
+        List<Duplicate> found = new java.util.ArrayList<>(jdbc.sql("""
+                select v.id, v.name, v.status from vendor_tax_info t join vendor_tax_info o on o.tax_code = t.tax_code and o.vendor_id <> t.vendor_id
+                join vendors v on v.id = o.vendor_id where t.vendor_id = :id and t.tax_code is not null and t.tax_code <> '' and v.status <> 'DRAFT'""")
+                .param("id", vendorId)
+                .query((rs, n) -> new Duplicate(rs.getObject("id", UUID.class), rs.getString("name"), VendorStatus.valueOf(rs.getString("status")), "TAX_CODE")).list());
+        jdbc.sql("""
+                select v.id, v.name, v.status from vendor_identity i join vendor_identity o on o.doc_number_last4 = i.doc_number_last4
+                       and lower(o.full_name) = lower(i.full_name) and o.vendor_id <> i.vendor_id
+                join vendors v on v.id = o.vendor_id where i.vendor_id = :id and i.doc_number_last4 is not null and i.full_name is not null and v.status <> 'DRAFT'""")
+                .param("id", vendorId)
+                .query((rs, n) -> new Duplicate(rs.getObject("id", UUID.class), rs.getString("name"), VendorStatus.valueOf(rs.getString("status")), "POSSIBLE_SAME_PERSON"))
+                .list().stream().filter(d -> found.stream().noneMatch(f -> f.vendorId().equals(d.vendorId()))).forEach(found::add);
+        return found;
     }
 
     @Override
@@ -115,6 +136,23 @@ class ShopApplicationsService implements ShopApplications {
     @Transactional
     public Decided suspend(UUID vendorId) {
         return move(vendorId, VendorStatus.APPROVED, VendorStatus.SUSPENDED, "SHOP_NOT_APPROVED", "Cửa hàng này không ở trạng thái đang hoạt động.");
+    }
+
+    @Override
+    @Transactional
+    public Decided finishClosing(UUID vendorId) {
+        Decided decided = move(vendorId, VendorStatus.CLOSING, VendorStatus.CLOSED, "SHOP_NOT_CLOSING", "Cửa hàng này không đang trong quá trình đóng.");
+        jdbc.sql("update vendors set closed_at = now() where id = :id").param("id", vendorId).update();
+        return decided;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Closing> closing() {
+        return jdbc.sql("select id, owner_user_id, name, closing_reason, closing_reason_text, closing_requested_at from vendors where status = 'CLOSING' order by closing_requested_at, id")
+                .query((rs, n) -> new Closing(rs.getObject("id", UUID.class), rs.getObject("owner_user_id", UUID.class), rs.getString("name"), rs.getString("closing_reason"),
+                        rs.getString("closing_reason_text"), rs.getTimestamp("closing_requested_at") == null ? null : rs.getTimestamp("closing_requested_at").toInstant()))
+                .list();
     }
 
     @Override

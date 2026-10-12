@@ -25,17 +25,20 @@ public class FaultService {
     private final JdbcClient jdbc;
     private final Clock clock;
     private final OrderIncidents orders;
+    private final com.bonbon.backend.appconfig.MaintenanceState maintenance;
 
-    FaultService(JdbcClient jdbc, Clock clock, OrderIncidents orders) {
+    FaultService(JdbcClient jdbc, Clock clock, OrderIncidents orders, com.bonbon.backend.appconfig.MaintenanceState maintenance) {
         this.jdbc = jdbc;
         this.clock = clock;
         this.orders = orders;
+        this.maintenance = maintenance;
     }
 
     @EventListener
     void onOrderStatusChanged(OrderStatusChanged e) {
         String type = typeOf(e);
-        if (type != null) {
+        // A shop that could not answer during announced maintenance is not at fault: the platform was.
+        if (type != null && !(e.by() == ActorType.SYSTEM && maintenance.active())) {
             record(e.vendorId(), e.orderId(), e.number(), type, null);
         }
     }

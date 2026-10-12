@@ -21,6 +21,13 @@ public interface ShopApplications {
 
     Optional<Detail> detail(UUID vendorId);
 
+    /**
+     * Other shops that look like this one for the reviewer: the same tax code, or an identity document with the same last four
+     * digits and the same holder name (the document number itself is encrypted, so it cannot be compared exactly). A warning for a
+     * person to look at, never a rejection.
+     */
+    List<Duplicate> duplicatesOf(UUID vendorId);
+
     /** Decrypted document number and short-lived photo URLs. Callers must check permission and log access. */
     Optional<IdentityDocuments> identityDocuments(UUID vendorId, Duration urlTtl);
 
@@ -48,6 +55,16 @@ public interface ShopApplications {
     /** PENDING → REJECTED with the reason the seller will see. */
     Decided reject(UUID vendorId, String reason);
 
+    /** CLOSING -> CLOSED: nothing is left to settle. @throws com.bonbon.backend.common.exception.BusinessException 409 SHOP_NOT_CLOSING */
+    Decided finishClosing(UUID vendorId);
+
+    /** The shops waiting to be closed, oldest request first. */
+    List<Closing> closing();
+
+    @Schema(name = "ClosingShop")
+    record Closing(UUID vendorId, UUID ownerUserId, String name, String reason, String reasonText, Instant requestedAt) {
+    }
+
     @Schema(name = "ShopApplicationSummary")
 
     record Summary(UUID vendorId, UUID ownerUserId, String name, String ward, String province, String businessType,
@@ -68,6 +85,10 @@ public interface ShopApplications {
             String businessName, String businessAddress, String taxCode, List<String> invoiceEmails,
             String businessLicenseUrl, String bankName, String accountLast4, String accountHolderName,
             Boolean payoutHolderMatchesIdentity, String identityDocType, String identityFullName) {
+    }
+
+    @Schema(name = "ShopDuplicateWarning")
+    record Duplicate(UUID vendorId, String name, VendorStatus status, @Schema(description = "TAX_CODE hoặc POSSIBLE_SAME_PERSON (cùng 4 số cuối giấy tờ và cùng họ tên).") String reason) {
     }
 
     @Schema(name = "ShopIdentityDocuments")
