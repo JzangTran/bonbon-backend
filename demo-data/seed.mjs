@@ -196,7 +196,7 @@ async function call(method, path, { body, token, form, headers = {} } = {}) {
 /** Deletes the per-IP registration counters in the stack's Redis (local/demo stacks only, never production). */
 function resetRegisterLimit() {
   const keys = execFileSync('docker', ['exec', REDIS_CONTAINER, 'redis-cli', '--scan', '--pattern', 'register_count:ip:*'], { encoding: 'utf8' })
-    .split(/s+/).filter(Boolean)
+    .split(/\s+/).filter(Boolean)
   if (keys.length) execFileSync('docker', ['exec', REDIS_CONTAINER, 'redis-cli', 'del', ...keys])
 }
 
