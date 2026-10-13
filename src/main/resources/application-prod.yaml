@@ -13,3 +13,10 @@ bonbon:
 springdoc:
   api-docs:
     enabled: false
+
+server:
+  # Behind Caddy on the compose network (the backend port is never published): trust its X-Forwarded-For/-Proto so
+  # client IPs (rate limits, consent records) and https links are the real ones.
+  forward-headers-strategy: native
+  # Finish in-flight requests on `docker compose stop` / redeploy.
+  shutdown: graceful
