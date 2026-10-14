@@ -3,6 +3,7 @@ package com.bonbon.backend.payment.service;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -93,11 +94,12 @@ public class RefundDesk {
             where = " where r.status = 'COMPLETED'";
             order = " order by r.completed_at desc, r.id";
         } else {
-            where = " where r.mode = 'MANUAL' and r.status = '" + status + "'";
+            where = " where r.mode = 'MANUAL' and r.status = :status";
         }
-        long total = jdbc.sql("select count(*) from payment_refunds r" + where).query(Long.class).single();
+        long total = jdbc.sql("select count(*) from payment_refunds r" + where).params(Map.of("status", String.valueOf(status)))
+                .query(Long.class).single();
         List<RefundViews.Row> items = new ArrayList<>(jdbc.sql(SELECT + where + order + " limit :limit offset :offset")
-                .param("limit", size).param("offset", (long) page * size).query((rs, n) -> row(rs)).list());
+                .param("status", String.valueOf(status)).param("limit", size).param("offset", (long) page * size).query((rs, n) -> row(rs)).list());
         return new RefundViews.Page(items, page, size, total);
     }
 
