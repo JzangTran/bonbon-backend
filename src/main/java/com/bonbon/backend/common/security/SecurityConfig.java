@@ -29,6 +29,10 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.header.writers.DelegatingRequestMatcherHeaderWriter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -56,10 +60,23 @@ class SecurityConfig {
             "/api/admin/auth/**"
     };
 
+    /** JSON responses never load anything; the dev-only HTML pages (API reference, fake MoMo checkout) are left alone. */
+    static final String API_CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
+
+    private static final RequestMatcher JSON_API = request -> {
+        String path = request.getRequestURI();
+        return !path.startsWith("/scalar") && !path.startsWith("/api/payments/fake");
+    };
+
     @Bean
     SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
+                // Spring's defaults (nosniff, frame DENY, no-store, HSTS over HTTPS) plus a referrer policy and a CSP.
+                .headers(headers -> headers
+                        .referrerPolicy(referrer -> referrer.policy(ReferrerPolicy.NO_REFERRER))
+                        .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(JSON_API,
+                                new StaticHeadersWriter("Content-Security-Policy", API_CSP))))
                 .cors(Customizer.withDefaults())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
