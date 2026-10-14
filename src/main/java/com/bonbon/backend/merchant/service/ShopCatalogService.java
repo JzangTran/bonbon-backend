@@ -32,7 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Browsing shops (browse-vendors-in-area.md, view-vendor-menu.md). Straight-line distance on stored
  * coordinates, never a map API: a SQL prefilter on each shop's own radius keeps the candidate set small, then
- * the exact Haversine check decides.
+ * the exact Haversine check decides. The prefilter starts with a latitude band as wide as the largest approved
+ * radius, which an index can serve (V0041), so the per-row bounding box only runs on nearby shops.
  */
 @Service
 class ShopCatalogService implements ShopCatalog {
@@ -73,6 +74,8 @@ class ShopCatalogService implements ShopCatalog {
                 select v.id from vendors v
                 where v.status = 'APPROVED' and v.lat is not null and v.lng is not null
                   and v.delivery_radius_km is not null
+                  and v.lat between :lat - (select max(r.delivery_radius_km) from vendors r where r.status = 'APPROVED') / :kmDeg
+                                and :lat + (select max(r.delivery_radius_km) from vendors r where r.status = 'APPROVED') / :kmDeg
                   and :lat between v.lat - v.delivery_radius_km / :kmDeg and v.lat + v.delivery_radius_km / :kmDeg
                   and :lng between v.lng - v.delivery_radius_km / (:kmDeg * greatest(cos(radians(v.lat)), 0.01))
                               and v.lng + v.delivery_radius_km / (:kmDeg * greatest(cos(radians(v.lat)), 0.01))""");
