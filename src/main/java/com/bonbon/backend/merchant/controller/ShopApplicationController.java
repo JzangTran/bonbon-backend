@@ -93,6 +93,9 @@ class ShopApplicationController {
     @ApiError(status = 400, code = "FILE_REQUIRED", when = "Không có tệp trong trường `file`.")
     @ApiError(status = 400, code = "FILE_UNREADABLE", when = "Không đọc được tệp.")
     @ApiError(status = 413, code = "FILE_TOO_LARGE", when = "Tệp vượt giới hạn dung lượng.")
+    @ApiError(status = 400, code = "IMAGE_INVALID", when = "Ảnh bị cắt dở hoặc không đúng cấu trúc tệp.")
+    @ApiError(status = 400, code = "IMAGE_DIMENSIONS_TOO_LARGE", when = "Ảnh dài hơn 10.000 px một cạnh hoặc quá 50 triệu điểm ảnh.")
+    @ApiError(status = 400, code = "PDF_ACTIVE_CONTENT", when = "Tệp PDF có script hoặc tệp đính kèm chạy được.")
     @ApiError(status = 415, code = "UNSUPPORTED_FILE_TYPE", when = "Định dạng không được nhận (kiểm tra theo nội dung tệp, không theo tên).")
     @PostMapping(path = "/files/{kind}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     ShopApplicationView upload(CurrentPrincipal principal, @PathVariable String kind, @RequestPart("file") MultipartFile file) {

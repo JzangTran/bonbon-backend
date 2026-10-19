@@ -105,6 +105,21 @@ class SecurityAndErrorHandlingTests {
                 .andExpect(jsonPath("$.errors[0].field").value("name"));
     }
 
+    @Test
+    void controlCharactersInAJsonStringAreRejectedBeforeTheyReachAnything() throws Exception {
+        for (String body : new String[] {
+                "{\"name\":\"a\\u0000b\"}",
+                "{\"name\":\"bell\\u0007\"}",
+                "{\"name\":\"flip\\u202Etext\"}"}) {
+            mvc.perform(post("/api/probe/validate").with(customerToken(List.of())).contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest());
+        }
+        // a line break and a tab are fine (multi-line fields)
+        mvc.perform(post("/api/probe/validate").with(customerToken(List.of())).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"two\\nlines with\\ttab\"}"))
+                .andExpect(status().isOk());
+    }
+
     private static org.springframework.test.web.servlet.request.RequestPostProcessor customerToken(List<String> perms) {
         return jwt()
                 .jwt(j -> j.subject(USER_ID.toString())
@@ -115,6 +130,27 @@ class SecurityAndErrorHandlingTests {
     }
 
     record NameBody(@NotBlank String name) {
+    }
+
+    @Test
+    void aNulCharacterThePersistenceLayerRefusesIsA400NotA500() throws Exception {
+        mvc.perform(get("/api/probe/nul").with(customerToken(List.of())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_CHARACTER"));
+    }
+
+    @Test
+    void aPageNumberWhoseOffsetOverflowsIsA400NotA500() throws Exception {
+        mvc.perform(get("/api/probe/offset").with(customerToken(List.of())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_PAGE"));
+    }
+
+    @Test
+    void anUnknownFailureStillAnswersWithAGenericProblem500() throws Exception {
+        mvc.perform(get("/api/probe/boom").with(customerToken(List.of())))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"));
     }
 
     @RestController
@@ -134,6 +170,21 @@ class SecurityAndErrorHandlingTests {
         @GetMapping("/api/probe/conflict")
         String conflict() {
             throw BusinessException.conflict("PROBE_CONFLICT", "Already done.");
+        }
+
+        @GetMapping("/api/probe/nul")
+        String nul() {
+            throw new RuntimeException("wrapper", new RuntimeException("ERROR: invalid byte sequence for encoding \"UTF8\": 0x00"));
+        }
+
+        @GetMapping("/api/probe/offset")
+        String offset() {
+            throw new org.springframework.dao.InvalidDataAccessApiUsageException("Page offset exceeds Integer.MAX_VALUE (2147483647)");
+        }
+
+        @GetMapping("/api/probe/boom")
+        String boom() {
+            throw new IllegalStateException("something else");
         }
 
         @PostMapping("/api/probe/validate")

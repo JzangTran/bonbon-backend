@@ -117,6 +117,8 @@ class ChatController {
 
     @Operation(operationId = "uploadChatImage", summary = "Tải ảnh cho tin nhắn", description = "Tải một ảnh (JPEG, PNG hoặc WEBP, tối đa 5 MB, kiểm tra theo nội dung tệp) trước khi gửi; ảnh lưu riêng tư và chỉ xem được qua liên kết ngắn hạn. Gửi `imageKey` trong tin nhắn. Giới hạn 30 ảnh mỗi giờ.")
     @ApiError(status = 413, code = "FILE_TOO_LARGE", when = "Ảnh vượt 5 MB.")
+    @ApiError(status = 400, code = "IMAGE_INVALID", when = "Ảnh bị cắt dở hoặc không đúng cấu trúc tệp.")
+    @ApiError(status = 400, code = "IMAGE_DIMENSIONS_TOO_LARGE", when = "Ảnh dài hơn 10.000 px một cạnh hoặc quá 50 triệu điểm ảnh.")
     @ApiError(status = 415, code = "UNSUPPORTED_FILE_TYPE", when = "Định dạng không được nhận (kiểm tra theo nội dung tệp).")
     @ApiError(status = 429, code = "TOO_MANY_UPLOADS", when = "Tải quá 30 ảnh trong một giờ.")
     @PostMapping(path = "/conversations/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

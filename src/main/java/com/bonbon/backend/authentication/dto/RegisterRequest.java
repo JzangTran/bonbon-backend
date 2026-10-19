@@ -20,5 +20,5 @@ public record RegisterRequest(
         @NotNull Role role,
         Set<UUID> acceptedDocumentIds,
         Boolean marketingConsent,
-        String captchaToken) {
+        @Size(max = 4096) String captchaToken) {
 }

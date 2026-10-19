@@ -92,6 +92,8 @@ class CustomerOrderCaseController {
     @ApiError(status = 409, code = "REPORT_WINDOW_CLOSED", when = "Đã quá 24 giờ kể từ khi đơn được giao.")
     @ApiError(status = 409, code = "CASE_ALREADY_FILED", when = "Đơn đã có khiếu nại.")
     @ApiError(status = 413, code = "FILE_TOO_LARGE", when = "Ảnh vượt 5 MB.")
+    @ApiError(status = 400, code = "IMAGE_INVALID", when = "Ảnh bị cắt dở hoặc không đúng cấu trúc tệp.")
+    @ApiError(status = 400, code = "IMAGE_DIMENSIONS_TOO_LARGE", when = "Ảnh dài hơn 10.000 px một cạnh hoặc quá 50 triệu điểm ảnh.")
     @ApiError(status = 415, code = "UNSUPPORTED_FILE_TYPE", when = "Định dạng không được nhận (kiểm tra theo nội dung tệp).")
     @ApiError(status = 429, code = "TOO_MANY_UPLOADS", when = "Tải quá 10 ảnh trong một giờ cho đơn này.")
     @PostMapping(path = "/case-photos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

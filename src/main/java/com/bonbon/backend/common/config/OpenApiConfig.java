@@ -87,6 +87,7 @@ class OpenApiConfig {
             Map<Integer, List<String[]>> errors = new TreeMap<>();
             if (takesInput(handler)) {
                 add(errors, 400, "VALIDATION_FAILED", "Dữ liệu gửi lên không hợp lệ; `errors` liệt kê từng trường và lý do.");
+                add(errors, 400, "INVALID_CHARACTER", "Văn bản có ký tự điều khiển hoặc ký tự đảo chiều chữ không được phép (xuống dòng và tab thì được).");
             }
             if (secured) {
                 add(errors, 401, "UNAUTHENTICATED", "Thiếu access token, token sai hoặc đã hết hạn.");

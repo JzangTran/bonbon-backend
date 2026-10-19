@@ -25,8 +25,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Import(TestcontainersConfiguration.class)
 class ObjectStorageTests {
 
-    static final byte[] PNG = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, 'I', 'H', 'D', 'R'};
-    static final byte[] PDF = "%PDF-1.7\n%âãÏÓ\n".getBytes();
+    static final byte[] PNG = com.bonbon.backend.TestImages.PNG;
+    static final byte[] PDF = "%PDF-1.7\n%\u00e2\u00e3\u00cf\u00d3\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n%%EOF\n".getBytes(java.nio.charset.StandardCharsets.ISO_8859_1);
 
     @Autowired
     ObjectStorage storage;

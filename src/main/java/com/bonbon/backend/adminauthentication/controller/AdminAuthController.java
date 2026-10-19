@@ -7,6 +7,7 @@ import com.bonbon.backend.common.web.ClientContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -25,7 +26,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RequestMapping("/api/admin/auth")
 class AdminAuthController {
 
-    record AdminLoginRequest(@NotBlank String email, @NotBlank String password, String captchaToken) {
+    record AdminLoginRequest(@NotBlank @Size(max = 255) String email, @NotBlank @Size(max = 100) String password,
+            @Size(max = 4096) String captchaToken) {
     }
 
     record AdminLogoutRequest(String refreshToken) {

@@ -49,7 +49,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ShopReviewTests {
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
-    static final byte[] PNG = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, 'I', 'H', 'D', 'R'};
+    static final byte[] PNG = com.bonbon.backend.TestImages.PNG;
 
     @Autowired
     MockMvc mvc;

@@ -52,9 +52,39 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     ProblemDetail handleUnexpected(Exception ex) {
+        ProblemDetail rejected = rejectedInput(ex);
+        if (rejected != null) {
+            return rejected;
+        }
         log.error("Unhandled exception", ex);
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra. Vui lòng thử lại sau.");
         problem.setProperty("code", "INTERNAL_ERROR");
+        return problem;
+    }
+
+    /**
+     * Input the caller chose that the stack cannot take is the caller's mistake, not ours: a badly percent-encoded query
+     * string, a NUL character (PostgreSQL text cannot hold one) and a page number so large its offset overflows.
+     */
+    private static ProblemDetail rejectedInput(Throwable ex) {
+        for (Throwable t = ex; t != null; t = t.getCause()) {
+            String message = t.getMessage() == null ? "" : t.getMessage();
+            if (t instanceof org.apache.tomcat.util.http.InvalidParameterException) {
+                return badInput("INVALID_PARAMETER", "Đường dẫn có tham số chứa ký tự không hợp lệ.");
+            }
+            if (message.contains("invalid byte sequence for encoding")) {
+                return badInput("INVALID_CHARACTER", "Văn bản có ký tự không hợp lệ.");
+            }
+            if (message.contains("Page offset exceeds")) {
+                return badInput("INVALID_PAGE", "Trang hoặc kích thước trang không hợp lệ.");
+            }
+        }
+        return null;
+    }
+
+    private static ProblemDetail badInput(String code, String detail) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+        problem.setProperty("code", code);
         return problem;
     }
 
