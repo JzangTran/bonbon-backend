@@ -183,8 +183,7 @@ class ShopReviewTests {
     /** Fills every wizard step as the seller and submits; returns the vendor id. */
     private String submitShop(String accountHolder) throws Exception {
         String place = geocoder.autocomplete("Toà S2", null, null).get(0).placeId();
-        send(put("/api/merchant/shop/steps/1"), seller, Map.of("name", shopName, "phone", "0912345678",
-                "email", "shop@example.com", "placeId", place)).andExpect(status().isOk());
+        send(put("/api/merchant/shop/steps/1"), seller, com.bonbon.backend.ShopAddress.step1(shopName, "0912345678", "shop@example.com")).andExpect(status().isOk());
         send(put("/api/merchant/shop/steps/2"), seller, Map.of("openingHours", List.of(Map.of("weekday", 1, "opensAt", "06:00",
                 "closesAt", "21:00")), "deliveryRadiusKm", 2, "deliveryFee", 10000)).andExpect(status().isOk());
         send(put("/api/merchant/shop/steps/3"), seller, Map.of("businessType", "INDIVIDUAL", "businessAddress", "12 Ngõ 34",

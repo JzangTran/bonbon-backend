@@ -9,6 +9,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -29,7 +30,7 @@ public final class ShopProfileRequests {
     }
 
     /**
-     * Only the fields present change. A new {@code placeId} sends the shop back to review; everything else
+     * Only the fields present change. A new place (province, ward or map point) sends the shop back to review; everything else
      * applies at once. {@code clearFreeDeliveryThreshold} / {@code clearMinOrderValue} remove those options.
      */
     @Schema(name = "ShopProfileUpdateRequest")
@@ -37,8 +38,11 @@ public final class ShopProfileRequests {
             @Size(min = 1, max = 100) String name,
             @Pattern(regexp = ShopApplicationRequests.VN_PHONE, message = "Số điện thoại không hợp lệ") String phone,
             @Email @Size(max = 255) String email,
-            @Size(min = 1, max = 1024) String placeId,
+            @Min(1) @Max(1000) Integer provinceCode,
+            @Min(1) @Max(100_000) Integer wardCode,
             @Size(max = 200) String addressDetail,
+            @DecimalMin("6.0") @DecimalMax("24.0") Double lat,
+            @DecimalMin("102.0") @DecimalMax("118.0") Double lng,
             @DecimalMin("0.1") @DecimalMax("99.9") @Digits(integer = 2, fraction = 1) BigDecimal deliveryRadiusKm,
             @PositiveOrZero @Max(1_000_000) Integer deliveryFee,
             @PositiveOrZero @Max(100_000_000) Integer freeDeliveryThreshold,

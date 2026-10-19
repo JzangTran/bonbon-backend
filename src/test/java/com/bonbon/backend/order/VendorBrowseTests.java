@@ -218,8 +218,7 @@ class VendorBrowseTests {
         u = users.saveAndFlush(u);
         String token = tokens.issue(u, Role.SELLER, Instant.now()).accessToken();
         String place = geocoder.autocomplete("Toà S2", null, null).get(0).placeId();
-        call(token, put("/api/merchant/shop/steps/1"), Map.of("name", name, "phone", "0912345678",
-                "email", "b@example.com", "placeId", place)).andExpect(status().isOk());
+        call(token, put("/api/merchant/shop/steps/1"), com.bonbon.backend.ShopAddress.step1(name, "0912345678", "b@example.com")).andExpect(status().isOk());
         call(token, put("/api/merchant/shop/steps/2"), Map.of("openingHours", allWeek(), "deliveryRadiusKm", radiusKm,
                 "deliveryFee", 10000)).andExpect(status().isOk());
         jdbc.sql("update vendors set status = 'APPROVED', decided_at = now(), lat = :la, lng = :ln where owner_user_id = :o")

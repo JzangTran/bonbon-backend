@@ -112,7 +112,7 @@ class StatisticsTests {
         UUID sellerId = newUser("seller", Role.SELLER);
         seller = tokenOf(sellerId, Role.SELLER);
         String place = geocoder.autocomplete("Toà S2", null, null).get(0).placeId();
-        call(seller, put("/api/merchant/shop/steps/1"), Map.of("name", "Quán Đối Soát", "phone", "0912345678", "email", "q@example.com", "placeId", place));
+        call(seller, put("/api/merchant/shop/steps/1"), com.bonbon.backend.ShopAddress.step1("Quán Đối Soát", "0912345678", "q@example.com"));
         call(seller, put("/api/merchant/shop/steps/2"), Map.of("openingHours", allWeek(), "deliveryRadiusKm", 2, "deliveryFee", 10000));
         jdbc.sql("update vendors set status = 'APPROVED', decided_at = now(), lat = :la, lng = :ln where owner_user_id = :o")
                 .param("la", lat).param("ln", lng).param("o", sellerId).update();
@@ -216,7 +216,7 @@ class StatisticsTests {
         UUID otherOwner = newUser("seller2", Role.SELLER);
         String other = tokenOf(otherOwner, Role.SELLER);
         String place = geocoder.autocomplete("Toà S2", null, null).get(0).placeId();
-        call(other, put("/api/merchant/shop/steps/1"), Map.of("name", "Quán Khác", "phone", "0912345678", "email", "k@example.com", "placeId", place));
+        call(other, put("/api/merchant/shop/steps/1"), com.bonbon.backend.ShopAddress.step1("Quán Khác", "0912345678", "k@example.com"));
         jdbc.sql("update vendors set status = 'APPROVED', decided_at = now() where owner_user_id = :o").param("o", otherOwner).update();
         call(other, get("/api/merchant/stats/revenue"), null).andExpect(jsonPath("$.totals.orders").value(0)).andExpect(jsonPath("$.totals.revenue").value(0));
         call(other, get("/api/merchant/stats/best-selling-dishes"), null).andExpect(jsonPath("$.items.length()").value(0));

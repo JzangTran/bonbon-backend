@@ -37,6 +37,10 @@ bonbon:
     jwt:
       secret: test-only-secret-at-least-32-bytes-long!!
     data-key: dGVzdC1vbmx5LWRhdGEta2V5LTMyLWJ5dGVzLWxvbmc=
+spring:
+  flyway:
+    # db/testdata adds the service area every test shop is placed in.
+    locations: classpath:db/migration,classpath:db/testdata
 springdoc:
   api-docs:
     enabled: true

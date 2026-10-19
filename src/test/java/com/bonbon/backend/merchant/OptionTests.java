@@ -71,8 +71,7 @@ class OptionTests {
         sellerId = u.getId();
         seller = tokens.issue(u, Role.SELLER, Instant.now()).accessToken();
         String place = geocoder.autocomplete("Toà S2", null, null).get(0).placeId();
-        call(put("/api/merchant/shop/steps/1"), Map.of("name", "Trà Sữa", "phone", "0912345678",
-                "email", "tra@example.com", "placeId", place)).andExpect(status().isOk());
+        call(put("/api/merchant/shop/steps/1"), com.bonbon.backend.ShopAddress.step1("Trà Sữa", "0912345678", "tra@example.com")).andExpect(status().isOk());
         jdbc.sql("update vendors set status = 'APPROVED', decided_at = now() where owner_user_id = :o")
                 .param("o", sellerId).update();
         String leaf = jdbc.sql("select id from categories where level = 3 and active order by name limit 1")
@@ -198,7 +197,7 @@ class OptionTests {
         String place = geocoder.autocomplete("Toà S2", null, null).get(0).placeId();
         mvc.perform(put("/api/merchant/shop/steps/1").header("Authorization", "Bearer " + other)
                 .contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(Map.of("name", "Quán 2",
-                        "phone", "0912345678", "email", "q2@example.com", "placeId", place)))).andExpect(status().isOk());
+                        "phone", "0912345678", "email", "q2@example.com", "addressDetail", com.bonbon.backend.ShopAddress.DETAIL, "provinceCode", com.bonbon.backend.ShopAddress.PROVINCE, "wardCode", com.bonbon.backend.ShopAddress.WARD, "lat", com.bonbon.backend.ShopAddress.LAT, "lng", com.bonbon.backend.ShopAddress.LNG)))).andExpect(status().isOk());
         jdbc.sql("update vendors set status = 'APPROVED', decided_at = now() where owner_user_id = :o")
                 .param("o", u.getId()).update();
         mvc.perform(delete("/api/merchant/option-groups/" + size).header("Authorization", "Bearer " + other))

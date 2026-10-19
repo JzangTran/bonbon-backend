@@ -64,9 +64,18 @@ public class Vendor {
     @Column(name = "address_detail", columnDefinition = "text")
     private String addressDetail;
 
+    @Column(name = "province_code")
+    private Integer provinceCode;
+
+    @Column(name = "ward_code")
+    private Integer wardCode;
+
     private Double lat;
 
     private Double lng;
+
+    @Column(name = "service_area_id")
+    private UUID serviceAreaId;
 
     @Column(name = "delivery_radius_km", precision = 4, scale = 1)
     private BigDecimal deliveryRadiusKm;
@@ -152,6 +161,27 @@ public class Vendor {
         this.province = province;
         this.lat = lat;
         this.lng = lng;
+    }
+
+    public void setAddressUnits(Integer provinceCode, Integer wardCode) {
+        this.provinceCode = provinceCode;
+        this.wardCode = wardCode;
+    }
+
+    public UUID getServiceAreaId() {
+        return serviceAreaId;
+    }
+
+    public void setServiceAreaId(UUID serviceAreaId) {
+        this.serviceAreaId = serviceAreaId;
+    }
+
+    public Integer getProvinceCode() {
+        return provinceCode;
+    }
+
+    public Integer getWardCode() {
+        return wardCode;
     }
 
     public void setShipping(BigDecimal radiusKm, Integer fee, Integer freeThreshold, Integer minOrder) {

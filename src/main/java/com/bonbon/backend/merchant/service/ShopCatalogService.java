@@ -25,6 +25,7 @@ import com.bonbon.backend.merchant.repository.MenuSectionRepository;
 import com.bonbon.backend.merchant.repository.OptionGroupRepository;
 import com.bonbon.backend.merchant.repository.OptionRepository;
 import com.bonbon.backend.merchant.repository.VendorRepository;
+import com.bonbon.backend.servicearea.ServiceAreas;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,10 +49,12 @@ class ShopCatalogService implements ShopCatalog {
     private final OptionService optionService;
     private final ObjectStorage storage;
     private final JdbcClient jdbc;
+    private final ServiceAreas areas;
 
     ShopCatalogService(VendorRepository vendors, MenuSectionRepository sections, MenuItemRepository items,
             OptionGroupRepository groups, OptionRepository options, OptionService optionService, ObjectStorage storage,
-            JdbcClient jdbc) {
+            JdbcClient jdbc, ServiceAreas areas) {
+        this.areas = areas;
         this.vendors = vendors;
         this.sections = sections;
         this.items = items;
@@ -159,8 +162,9 @@ class ShopCatalogService implements ShopCatalog {
                 .map(s -> new Section(s.getId(), s.getName(), bySection.get(s.getId()))).toList();
     }
 
-    private static Shop shop(Vendor v, Double distanceKm, ZonedDateTime now) {
+    private Shop shop(Vendor v, Double distanceKm, ZonedDateTime now) {
         return new Shop(v.getId(), v.getName(), v.getFormattedAddress(),
+                areas.find(v.getServiceAreaId()).map(ServiceAreas.Area::name).orElse(null),
                 distanceKm == null ? null : Math.round(distanceKm * 100.0) / 100.0, ShopHours.isOpen(v, now),
                 v.getDeliveryRadiusKm(), v.getDeliveryFee(), v.getFreeDeliveryThreshold(), v.getMinOrderValue(),
                 v.getRatingCount() == 0 ? null : Math.round(v.getRatingSum() * 10.0 / v.getRatingCount()) / 10.0, v.getRatingCount());

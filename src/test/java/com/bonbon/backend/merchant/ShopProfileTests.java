@@ -68,8 +68,7 @@ class ShopProfileTests {
         sellerId = u.getId();
         seller = tokens.issue(u, Role.SELLER, Instant.now()).accessToken();
         String place = geocoder.autocomplete("Toà S2", null, null).get(0).placeId();
-        send(put("/api/merchant/shop/steps/1"), Map.of("name", "Phở Bò", "phone", "0912345678",
-                "email", "pho@example.com", "placeId", place)).andExpect(status().isOk());
+        send(put("/api/merchant/shop/steps/1"), com.bonbon.backend.ShopAddress.step1("Phở Bò", "0912345678", "pho@example.com")).andExpect(status().isOk());
         send(put("/api/merchant/shop/steps/2"), Map.of("openingHours", allWeek(), "deliveryRadiusKm", 2,
                 "deliveryFee", 10000, "freeDeliveryThreshold", 150000)).andExpect(status().isOk());
     }
@@ -101,11 +100,12 @@ class ShopProfileTests {
     @Test
     void aNewAddressSendsTheShopBackToReview() throws Exception {
         approve();
-        String other = geocoder.autocomplete("Khu công nghiệp", null, null).get(1).placeId();
-        send(patch("/api/merchant/shop"), Map.of("placeId", other))
+        send(patch("/api/merchant/shop"), Map.of("provinceCode", 1, "wardCode", 25, "lat", 21.0301, "lng", 105.8201,
+                "addressDetail", "Số 9 Phố Mới"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PENDING"))
-                .andExpect(jsonPath("$.shop.address.placeId").value(other))
+                .andExpect(jsonPath("$.shop.address.ward").value("Phường Giảng Võ"))
+                .andExpect(jsonPath("$.shop.address.formattedAddress").value("Số 9 Phố Mới, Phường Giảng Võ, Thành phố Hà Nội"))
                 .andExpect(jsonPath("$.openNow").value(false));
     }
 

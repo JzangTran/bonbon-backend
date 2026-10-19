@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.UUID;
 
 import com.bonbon.backend.common.exception.BusinessException;
-import com.bonbon.backend.common.geo.Geocoder;
-import com.bonbon.backend.common.geo.PlaceDetail;
 import com.bonbon.backend.common.security.CurrentPrincipal;
 import com.bonbon.backend.merchant.ShopClosureChanged;
 import com.bonbon.backend.merchant.VendorStatus;
@@ -31,16 +29,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class ShopProfileService {
 
     private final VendorRepository vendors;
-    private final Geocoder geocoder;
+    private final ShopAddressRules addressRules;
     private final DeliveryRadiusCap radiusCap;
     private final ShopApplicationService views;
     private final JdbcClient jdbc;
     private final ApplicationEventPublisher events;
 
-    ShopProfileService(VendorRepository vendors, Geocoder geocoder, DeliveryRadiusCap radiusCap, ShopApplicationService views, JdbcClient jdbc,
+    ShopProfileService(VendorRepository vendors, ShopAddressRules addressRules, DeliveryRadiusCap radiusCap, ShopApplicationService views, JdbcClient jdbc,
             ApplicationEventPublisher events) {
         this.vendors = vendors;
-        this.geocoder = geocoder;
+        this.addressRules = addressRules;
         this.radiusCap = radiusCap;
         this.views = views;
         this.jdbc = jdbc;
@@ -59,14 +57,27 @@ public class ShopProfileService {
         if (req.email() != null) {
             vendor.setEmail(req.email().strip());
         }
-        if (req.addressDetail() != null) {
+        boolean movesPlace = req.provinceCode() != null || req.wardCode() != null || req.lat() != null || req.lng() != null;
+        boolean moved = false;
+        if (movesPlace) {
+            // The form sends the whole address; a field left out keeps its stored value.
+            moved = addressRules.apply(vendor,
+                    req.provinceCode() != null ? req.provinceCode() : vendor.getProvinceCode(),
+                    req.wardCode() != null ? req.wardCode() : vendor.getWardCode(),
+                    req.addressDetail() != null ? req.addressDetail() : vendor.getAddressDetail(),
+                    req.lat() != null ? req.lat() : vendor.getLat(),
+                    req.lng() != null ? req.lng() : vendor.getLng());
+            if (moved) {
+                vendor.returnToReview(Instant.now());
+            }
+        } else if (req.addressDetail() != null) {
             vendor.setAddressDetail(req.addressDetail().isBlank() ? null : req.addressDetail().strip());
         }
         if (req.deliveryRadiusKm() != null || req.deliveryFee() != null || req.freeDeliveryThreshold() != null
                 || req.minOrderValue() != null || Boolean.TRUE.equals(req.clearFreeDeliveryThreshold())
                 || Boolean.TRUE.equals(req.clearMinOrderValue())) {
             // A shop compliant at signup cannot edit its way past a cap lowered since.
-            radiusCap.require(req.deliveryRadiusKm());
+            radiusCap.require(vendor, req.deliveryRadiusKm());
             vendor.setShipping(
                     req.deliveryRadiusKm() != null ? req.deliveryRadiusKm() : vendor.getDeliveryRadiusKm(),
                     req.deliveryFee() != null ? req.deliveryFee() : vendor.getDeliveryFee(),
@@ -75,11 +86,9 @@ public class ShopProfileService {
                     Boolean.TRUE.equals(req.clearMinOrderValue()) ? null
                             : req.minOrderValue() != null ? req.minOrderValue() : vendor.getMinOrderValue());
         }
-        if (req.placeId() != null && !req.placeId().equals(vendor.getPlaceId())) {
-            PlaceDetail place = geocoder.placeDetail(req.placeId()).orElseThrow(() -> new BusinessException(
-                    HttpStatus.BAD_REQUEST, "ADDRESS_NOT_FOUND", "Không xác định được địa chỉ này. Hãy chọn lại một gợi ý."));
-            vendor.setAddress(place.placeId(), place.formattedAddress(), place.ward(), place.province(), place.lat(), place.lng());
-            vendor.returnToReview(Instant.now());
+        if (moved) {
+            // The new place may be in an area with a lower limit than the radius the shop has.
+            radiusCap.require(vendor, vendor.getDeliveryRadiusKm());
         }
         return views.toView(vendors.save(vendor));
     }

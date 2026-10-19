@@ -13,8 +13,6 @@ import java.util.UUID;
 
 import com.bonbon.backend.common.crypto.FieldCipher;
 import com.bonbon.backend.common.exception.BusinessException;
-import com.bonbon.backend.common.geo.Geocoder;
-import com.bonbon.backend.common.geo.PlaceDetail;
 import com.bonbon.backend.common.security.CurrentPrincipal;
 import com.bonbon.backend.common.storage.ObjectStorage;
 import com.bonbon.backend.common.storage.ObjectStorage.Visibility;
@@ -34,6 +32,7 @@ import com.bonbon.backend.merchant.repository.PayoutAccountRepository;
 import com.bonbon.backend.merchant.repository.VendorIdentityRepository;
 import com.bonbon.backend.merchant.repository.VendorRepository;
 import com.bonbon.backend.merchant.repository.VendorTaxInfoRepository;
+import com.bonbon.backend.servicearea.ServiceAreas;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -63,20 +62,22 @@ public class ShopApplicationService {
     private final VendorTaxInfoRepository taxInfos;
     private final VendorIdentityRepository identities;
     private final PayoutAccountRepository payouts;
-    private final Geocoder geocoder;
+    private final ShopAddressRules addressRules;
     private final ObjectStorage storage;
     private final FieldCipher cipher;
     private final DeliveryRadiusCap radiusCap;
+    private final ServiceAreas areas;
     private final LegalConsentService legal;
 
     ShopApplicationService(VendorRepository vendors, VendorTaxInfoRepository taxInfos, VendorIdentityRepository identities,
-            PayoutAccountRepository payouts, Geocoder geocoder, ObjectStorage storage, FieldCipher cipher,
-            DeliveryRadiusCap radiusCap, LegalConsentService legal) {
+            PayoutAccountRepository payouts, ShopAddressRules addressRules, ObjectStorage storage, FieldCipher cipher,
+            DeliveryRadiusCap radiusCap, ServiceAreas areas, LegalConsentService legal) {
+        this.areas = areas;
         this.vendors = vendors;
         this.taxInfos = taxInfos;
         this.identities = identities;
         this.payouts = payouts;
-        this.geocoder = geocoder;
+        this.addressRules = addressRules;
         this.storage = storage;
         this.cipher = cipher;
         this.radiusCap = radiusCap;
@@ -86,7 +87,7 @@ public class ShopApplicationService {
     @Transactional(readOnly = true)
     public ShopApplicationView view(UUID ownerId) {
         return vendors.findByOwnerUserId(ownerId).map(this::toView)
-                .orElseGet(() -> new ShopApplicationView("NONE", null, null, 1, List.of(), radiusCap.maxKm(),
+                .orElseGet(() -> new ShopApplicationView("NONE", null, null, 1, List.of(), radiusCap.maxKm(), null,
                         null, null, null, null, null, null));
     }
 
@@ -96,16 +97,7 @@ public class ShopApplicationService {
         vendor.setName(blankToNull(req.name()));
         vendor.setPhone(blankToNull(req.phone()));
         vendor.setEmail(blankToNull(req.email()));
-        vendor.setAddressDetail(blankToNull(req.addressDetail()));
-        String placeId = blankToNull(req.placeId());
-        if (placeId == null) {
-            vendor.setAddress(null, null, null, null, null, null);
-        } else if (!placeId.equals(vendor.getPlaceId())) {
-            // Place Detail is the expensive call: only when a different suggestion was picked.
-            PlaceDetail place = geocoder.placeDetail(placeId).orElseThrow(() -> new BusinessException(
-                    HttpStatus.BAD_REQUEST, "ADDRESS_NOT_FOUND", "Không xác định được địa chỉ này. Hãy chọn lại một gợi ý."));
-            vendor.setAddress(place.placeId(), place.formattedAddress(), place.ward(), place.province(), place.lat(), place.lng());
-        }
+        addressRules.apply(vendor, req.provinceCode(), req.wardCode(), req.addressDetail(), req.lat(), req.lng());
         return toView(vendors.save(vendor));
     }
 
@@ -114,7 +106,7 @@ public class ShopApplicationService {
         Vendor vendor = editableVendor(owner.id());
         List<OpeningWindow> windows = OpeningHoursRules.toWindows(req.openingHours());
         OpeningHoursRules.validate(windows);
-        radiusCap.require(req.deliveryRadiusKm());
+        radiusCap.require(vendor, req.deliveryRadiusKm());
         vendor.replaceOpeningHours(windows);
         vendor.setShipping(req.deliveryRadiusKm(), req.deliveryFee(), req.freeDeliveryThreshold(), req.minOrderValue());
         return toView(vendors.save(vendor));
@@ -216,7 +208,7 @@ public class ShopApplicationService {
                     .withProperty("missing", missing);
         }
         // The cap may have been lowered since step 2 was saved.
-        radiusCap.require(vendor.getDeliveryRadiusKm());
+        radiusCap.require(vendor, vendor.getDeliveryRadiusKm());
         vendor.submit(Instant.now());
         return toView(vendors.save(vendor));
     }
@@ -232,7 +224,11 @@ public class ShopApplicationService {
         need(s1, v.getName(), "name");
         need(s1, v.getPhone(), "phone");
         need(s1, v.getEmail(), "email");
-        need(s1, v.getLat(), "address");
+        need(s1, v.getProvinceCode(), "province");
+        need(s1, v.getWardCode(), "ward");
+        need(s1, v.getAddressDetail(), "addressDetail");
+        need(s1, v.getLat(), "location");
+        need(s1, v.getServiceAreaId(), "serviceArea");
 
         List<String> s2 = new ArrayList<>();
         if (v.getOpeningHours().isEmpty()) {
@@ -279,7 +275,7 @@ public class ShopApplicationService {
 
         var shop = new ShopApplicationView.ShopInfo(v.getName(), v.getPhone(), v.getEmail(),
                 new ShopApplicationView.Address(v.getPlaceId(), v.getFormattedAddress(), v.getWard(), v.getProvince(),
-                        v.getAddressDetail(), v.getLat(), v.getLng()));
+                        v.getWardCode(), v.getProvinceCode(), v.getAddressDetail(), v.getLat(), v.getLng()));
         var shipping = new ShopApplicationView.Shipping(
                 v.getOpeningHours().stream().map(w -> new ShopApplicationView.Hours(w.weekday(), w.opensAt(), w.closesAt())).toList(),
                 v.getDeliveryRadiusKm(), v.getDeliveryFee(), v.getFreeDeliveryThreshold(), v.getMinOrderValue());
@@ -295,8 +291,13 @@ public class ShopApplicationService {
                 signed(id.getFrontFileKey()), signed(id.getSelfieFileKey()), id.getAccuracyConfirmedAt() != null,
                 id.getTermsAcceptedAt() != null, id.getIdentityConsentAt() != null);
         return new ShopApplicationView(v.getStatus().name(), v.getRejectionReason(), v.getSubmittedAt(), firstIncomplete,
-                steps, radiusCap.maxKm(), v.isAcceptingOrders(), ShopHours.isOpen(v, ZonedDateTime.now()), shop, shipping,
+                steps, radiusCap.maxKm(v), serviceArea(v), v.isAcceptingOrders(), ShopHours.isOpen(v, ZonedDateTime.now()), shop, shipping,
                 taxView, identityView);
+    }
+
+    private ShopApplicationView.ServiceAreaInfo serviceArea(Vendor v) {
+        return areas.find(v.getServiceAreaId())
+                .map(a -> new ShopApplicationView.ServiceAreaInfo(a.id(), a.name(), a.maxDeliveryRadiusKm())).orElse(null);
     }
 
     // --- helpers
