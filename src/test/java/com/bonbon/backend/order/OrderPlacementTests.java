@@ -86,7 +86,7 @@ class OrderPlacementTests {
         sellerId = newUser("seller", Role.SELLER);
         seller = tokenOf(sellerId, Role.SELLER);
         String place = geocoder.autocomplete("Toà S2", null, null).get(0).placeId();
-        call(seller, put("/api/merchant/shop/steps/1"), Map.of("name", "Quán Test", "phone", "0912345678", "email", "q@example.com", "placeId", place));
+        call(seller, put("/api/merchant/shop/steps/1"), com.bonbon.backend.ShopAddress.step1("Quán Test", "0912345678", "q@example.com"));
         call(seller, put("/api/merchant/shop/steps/2"), Map.of("openingHours", allWeek(), "deliveryRadiusKm", 2, "deliveryFee", 10000,
                 "freeDeliveryThreshold", 100000));
         jdbc.sql("update vendors set status = 'APPROVED', decided_at = now(), lat = :la, lng = :ln, min_order_value = 20000 where owner_user_id = :o")

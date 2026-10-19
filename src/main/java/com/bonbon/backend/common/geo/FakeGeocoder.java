@@ -51,6 +51,12 @@ class FakeGeocoder implements Geocoder {
         return Optional.of(new PlaceDetail(placeId, main + ", " + WARD + ", " + PROVINCE, main, lat, ORIGIN_LNG, WARD, PROVINCE));
     }
 
+    @Override
+    public Optional<PlaceDetail> reverse(double lat, double lng) {
+        String main = String.format(java.util.Locale.ROOT, "Vị trí %.5f, %.5f", lat, lng);
+        return Optional.of(new PlaceDetail("fake:pin", main + ", " + WARD + ", " + PROVINCE, main, lat, lng, WARD, PROVINCE));
+    }
+
     private static String encode(String main, int n) {
         return PREFIX + n + ":" + Base64.getUrlEncoder().withoutPadding().encodeToString(main.getBytes(StandardCharsets.UTF_8));
     }

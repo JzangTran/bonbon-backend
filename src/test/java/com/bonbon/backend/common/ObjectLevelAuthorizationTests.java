@@ -241,7 +241,7 @@ class ObjectLevelAuthorizationTests {
     }
 
     private UUID approvedShop(String token, UUID ownerId, String name) throws Exception {
-        call(token, put("/api/merchant/shop/steps/1"), Map.of("name", name, "phone", "0912345678", "email", "q@example.com", "placeId", place))
+        call(token, put("/api/merchant/shop/steps/1"), com.bonbon.backend.ShopAddress.step1(name, "0912345678", "q@example.com"))
                 .andExpect(status().isOk());
         call(token, put("/api/merchant/shop/steps/2"), Map.of("openingHours", allWeek(), "deliveryRadiusKm", 2, "deliveryFee", 10000))
                 .andExpect(status().isOk());

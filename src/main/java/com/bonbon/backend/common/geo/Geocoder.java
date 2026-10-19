@@ -17,4 +17,7 @@ public interface Geocoder {
 
     /** Empty when the provider does not know {@code placeId}. */
     Optional<PlaceDetail> placeDetail(String placeId);
+
+    /** The place at a point on the map (the pin the user drops); empty when the provider knows nothing there. */
+    Optional<PlaceDetail> reverse(double lat, double lng);
 }

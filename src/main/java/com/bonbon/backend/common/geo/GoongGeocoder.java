@@ -74,6 +74,20 @@ class GoongGeocoder implements Geocoder {
                 r.compound() == null ? null : r.compound().province()));
     }
 
+    @Override
+    public Optional<PlaceDetail> reverse(double lat, double lng) {
+        ReverseResponse response = call(() -> http.get()
+                .uri(b -> b.path("/v2/geocode").queryParam("api_key", apiKey).queryParam("latlng", lat + "," + lng).build())
+                .retrieve().body(ReverseResponse.class));
+        if (response == null || response.results() == null || response.results().isEmpty()) {
+            return Optional.empty();
+        }
+        DetailResult r = response.results().get(0);
+        return Optional.of(new PlaceDetail(r.placeId(), r.formattedAddress(), r.name(), lat, lng,
+                r.compound() == null ? null : r.compound().commune(),
+                r.compound() == null ? null : r.compound().province()));
+    }
+
     private <T> T call(Supplier<T> request) {
         if (!rateLimiter.tryAcquire("goong:outbound", OUTBOUND_PER_MINUTE, Duration.ofMinutes(1))) {
             log.warn("Goong outbound limit reached");
@@ -105,6 +119,9 @@ class GoongGeocoder implements Geocoder {
     }
 
     record DetailResponse(DetailResult result, String status) {
+    }
+
+    record ReverseResponse(List<DetailResult> results, String status) {
     }
 
     record DetailResult(@JsonProperty("place_id") String placeId, @JsonProperty("formatted_address") String formattedAddress,

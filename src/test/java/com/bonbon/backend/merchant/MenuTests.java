@@ -238,7 +238,7 @@ class MenuTests {
         String place = geocoder.autocomplete("Toà S2", null, null).get(0).placeId();
         mvc.perform(put("/api/merchant/shop/steps/1").header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(Map.of("name", "Cơm Tấm",
-                        "phone", "0912345678", "email", "com@example.com", "placeId", place)))).andExpect(status().isOk());
+                        "phone", "0912345678", "email", "com@example.com", "addressDetail", com.bonbon.backend.ShopAddress.DETAIL, "provinceCode", com.bonbon.backend.ShopAddress.PROVINCE, "wardCode", com.bonbon.backend.ShopAddress.WARD, "lat", com.bonbon.backend.ShopAddress.LAT, "lng", com.bonbon.backend.ShopAddress.LNG)))).andExpect(status().isOk());
         return token;
     }
 

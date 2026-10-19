@@ -24,11 +24,13 @@ public interface ShopCatalog {
     /**
      * {@code distanceKm} is null when the caller gave no position. {@code open} is the one rule of pause-orders.md.
      * {@code ratingAverage} (one decimal) is null while the shop has no visible review.
+     * {@code serviceAreaName} is the area the shop is in, null for a shop approved before areas existed.
      */
     record Shop(
             UUID id,
             String name,
             String address,
+            String serviceAreaName,
             Double distanceKm,
             boolean open,
             BigDecimal deliveryRadiusKm,

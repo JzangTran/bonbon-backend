@@ -263,7 +263,27 @@ async function placeId(query, token) {
   return suggestions[0].placeId
 }
 
+/** A shop's address for step 1: the first suggestion as a point on the map, with the province and ward codes of the list. */
+async function shopAddress(query, token) {
+  const place = await call('GET', `/api/geo/place?placeId=${encodeURIComponent(await placeId(query, token))}`, { token })
+  if (!place.provinceCode || !place.wardCode) throw new Error(`"${query}" does not match a province and ward of the list`)
+  return { provinceCode: place.provinceCode, wardCode: place.wardCode, lat: place.lat, lng: place.lng }
+}
+
 // ---------------------------------------------------------------- shops
+
+/** The area the demo shops sit in (a circle around the demo place), so that their pins land inside a service area. */
+async function ensureServiceArea(admin) {
+  const areas = await call('GET', '/api/admin/service-areas', { token: admin })
+  if (areas.some((a) => a.name === AREA)) return
+  const token = await account(SHOPS[0].seller, 'SELLER')
+  const place = await call('GET', `/api/geo/place?placeId=${encodeURIComponent(await placeId(AREA, token))}`, { token })
+  await call('POST', '/api/admin/service-areas', {
+    token: admin,
+    body: { name: AREA, centerLat: place.lat, centerLng: place.lng, radiusKm: 3, maxDeliveryRadiusKm: 3 },
+  })
+  log(`  service area "${AREA}" added`)
+}
 
 function leafCategories(tree) {
   const out = []
@@ -284,7 +304,7 @@ async function ensureShop(shop, admin, categories) {
   if (!current || current.status === 'NONE' || current.status === 'DRAFT') {
     const [terms, privacy] = await legalIds('SELLER_TERMS', 'PRIVACY_POLICY')
     const steps = [
-      { name: shop.name, phone: shop.phone, email: shop.seller.email, placeId: await placeId(shop.place, token), addressDetail: shop.detail },
+      { name: shop.name, phone: shop.phone, email: shop.seller.email, ...(await shopAddress(shop.place, token)), addressDetail: shop.detail },
       { openingHours: hoursOf(shop), deliveryRadiusKm: shop.radiusKm, deliveryFee: shop.fee, freeDeliveryThreshold: shop.freeFrom },
       { businessType: 'INDIVIDUAL', businessAddress: `${shop.detail}, ${AREA}`, taxCode: '0100000000',
         invoiceEmails: [shop.seller.email], bankName: 'Vietcombank', accountNumber: '0000000000', accountHolderName: shop.seller.name },
@@ -457,6 +477,8 @@ async function main() {
   log(`Seeding demo data into ${API} (Mailpit ${MAILPIT})${ALWAYS_OPEN ? ', shops open all day' : ''}`)
   const admin = await adminToken()
   const categories = leafCategories(await call('GET', '/api/categories'))
+  log('Service area')
+  await ensureServiceArea(admin)
   log('Shops')
   const shops = []
   for (const shop of SHOPS) shops.push(await ensureShop(shop, admin, categories))

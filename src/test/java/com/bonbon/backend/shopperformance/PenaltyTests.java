@@ -128,7 +128,7 @@ class PenaltyTests {
         UUID sellerId = newUser("seller", Role.SELLER);
         seller = tokenOf(sellerId, Role.SELLER);
         String place = geocoder.autocomplete("Toà S2", null, null).get(0).placeId();
-        call(seller, put("/api/merchant/shop/steps/1"), Map.of("name", "Quán Đối Soát " + word, "phone", "0912345678", "email", "q@example.com", "placeId", place));
+        call(seller, put("/api/merchant/shop/steps/1"), com.bonbon.backend.ShopAddress.step1("Quán Đối Soát " + word, "0912345678", "q@example.com"));
         call(seller, put("/api/merchant/shop/steps/2"), Map.of("openingHours", allWeek(), "deliveryRadiusKm", 2, "deliveryFee", 10000));
         jdbc.sql("update vendors set status = 'APPROVED', decided_at = now(), lat = :la, lng = :ln where owner_user_id = :o")
                 .param("la", lat).param("ln", lng).param("o", sellerId).update();
@@ -272,7 +272,7 @@ class PenaltyTests {
         UUID otherOwner = newUser("seller2", Role.SELLER);
         String other = tokenOf(otherOwner, Role.SELLER);
         String place = geocoder.autocomplete("Toà S2", null, null).get(0).placeId();
-        call(other, put("/api/merchant/shop/steps/1"), Map.of("name", "Quán Khác", "phone", "0912345678", "email", "k@example.com", "placeId", place));
+        call(other, put("/api/merchant/shop/steps/1"), com.bonbon.backend.ShopAddress.step1("Quán Khác", "0912345678", "k@example.com"));
         jdbc.sql("update vendors set status = 'APPROVED', decided_at = now() where owner_user_id = :o").param("o", otherOwner).update();
         call(other, post("/api/merchant/penalties/" + penaltyId(1) + "/appeal"), Map.of("reason", "Không phải của tôi")).andExpect(status().isNotFound());
         assertThat(jdbc.sql("select appeal_status from shop_penalties where id = :i::uuid").param("i", penaltyId(1)).query(String.class).optional()).isEmpty();

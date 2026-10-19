@@ -279,7 +279,7 @@ class DishCategoryModerationTests {
         u = users.saveAndFlush(u);
         String token = tokens.issue(u, Role.SELLER, Instant.now()).accessToken();
         String place = geocoder.autocomplete("Toà S2", null, null).get(0).placeId();
-        send(put("/api/merchant/shop/steps/1"), token, Map.of("name", name, "phone", "0912345678", "email", "b@example.com", "placeId", place)).andExpect(status().isOk());
+        send(put("/api/merchant/shop/steps/1"), token, com.bonbon.backend.ShopAddress.step1(name, "0912345678", "b@example.com")).andExpect(status().isOk());
         send(put("/api/merchant/shop/steps/2"), token, Map.of("openingHours", allWeek(), "deliveryRadiusKm", 2, "deliveryFee", 10000)).andExpect(status().isOk());
         jdbc.sql("update vendors set status = 'APPROVED', decided_at = now(), lat = :la, lng = :ln where owner_user_id = :o").param("la", baseLat).param("ln", baseLng).param("o", u.getId()).update();
         String section = JsonPath.read(send(post("/api/merchant/menu-sections"), token, Map.of("name", "Món")).andReturn().getResponse().getContentAsString(), "$.sections[0].id");

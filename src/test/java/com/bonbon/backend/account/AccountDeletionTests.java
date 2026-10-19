@@ -233,7 +233,7 @@ class AccountDeletionTests {
         String leaf = jdbc.sql("select id from categories where level = 3 and active order by name limit 1").query(UUID.class).single().toString();
         UUID sellerId = newUser("seller", Role.SELLER, passwords.encode(PASSWORD));
         String seller = token(sellerId, Role.SELLER, Instant.now());
-        call(seller, put("/api/merchant/shop/steps/1"), Map.of("name", "Quán Xoá TK " + System.nanoTime(), "phone", "0912345678", "email", "q@example.com", "placeId", place));
+        call(seller, put("/api/merchant/shop/steps/1"), com.bonbon.backend.ShopAddress.step1("Quán Xoá TK " + System.nanoTime(), "0912345678", "q@example.com"));
         call(seller, put("/api/merchant/shop/steps/2"), Map.of("openingHours", allWeek(), "deliveryRadiusKm", 2, "deliveryFee", 10000));
         jdbc.sql("update vendors set status = 'APPROVED', decided_at = now(), lat = :la, lng = :ln where owner_user_id = :o").param("la", lat).param("ln", 151.2).param("o", sellerId).update();
         UUID vendorId = jdbc.sql("select id from vendors where owner_user_id = :o").param("o", sellerId).query(UUID.class).single();

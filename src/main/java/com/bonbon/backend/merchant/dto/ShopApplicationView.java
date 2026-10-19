@@ -21,12 +21,18 @@ public record ShopApplicationView(
         Integer firstIncompleteStep,
         List<StepState> steps,
         BigDecimal maxDeliveryRadiusKm,
+        ServiceAreaInfo serviceArea,
         Boolean acceptingOrders,
         Boolean openNow,
         ShopInfo shop,
         Shipping shipping,
         Tax tax,
         Identity identity) {
+
+    /** The service area the shop's map point falls in; its limit is the largest delivery radius the shop may set. */
+    @Schema(name = "ShopServiceArea")
+    public record ServiceAreaInfo(java.util.UUID id, String name, BigDecimal maxDeliveryRadiusKm) {
+    }
 
     /** {@code missing} names the fields still needed for the step to be complete. */
     @Schema(name = "ShopApplicationStep")
@@ -40,8 +46,8 @@ public record ShopApplicationView(
 
     @Schema(name = "ShopAddress")
 
-    public record Address(String placeId, String formattedAddress, String ward, String province, String detail,
-            Double lat, Double lng) {
+    public record Address(String placeId, String formattedAddress, String ward, String province, Integer wardCode,
+            Integer provinceCode, String detail, Double lat, Double lng) {
     }
 
     @Schema(name = "ShopShipping")

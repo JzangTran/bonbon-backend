@@ -78,7 +78,7 @@ class AdminLookupTests {
         UUID sellerId = newUser("seller", Role.SELLER);
         seller = tokenOf(sellerId, Role.SELLER);
         place = geocoder.autocomplete("Toà S2", null, null).get(0).placeId();
-        call(seller, put("/api/merchant/shop/steps/1"), Map.of("name", "Quán Tra Cứu", "phone", "0912345678", "email", "q@example.com", "placeId", place));
+        call(seller, put("/api/merchant/shop/steps/1"), com.bonbon.backend.ShopAddress.step1("Quán Tra Cứu", "0912345678", "q@example.com"));
         call(seller, put("/api/merchant/shop/steps/2"), Map.of("openingHours", allWeek(), "deliveryRadiusKm", 2, "deliveryFee", 10000));
         jdbc.sql("update vendors set status = 'APPROVED', decided_at = now(), lat = :la, lng = :ln where owner_user_id = :o")
                 .param("la", lat).param("ln", lng).param("o", sellerId).update();

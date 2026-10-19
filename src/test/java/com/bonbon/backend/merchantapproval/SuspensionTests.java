@@ -124,7 +124,7 @@ class SuspensionTests {
         UUID sellerId = newUser("seller", Role.SELLER);
         seller = tokenOf(sellerId, Role.SELLER);
         String place = geocoder.autocomplete("Toà S2", null, null).get(0).placeId();
-        call(seller, put("/api/merchant/shop/steps/1"), Map.of("name", "Quán Đối Soát " + word, "phone", "0912345678", "email", "q@example.com", "placeId", place));
+        call(seller, put("/api/merchant/shop/steps/1"), com.bonbon.backend.ShopAddress.step1("Quán Đối Soát " + word, "0912345678", "q@example.com"));
         call(seller, put("/api/merchant/shop/steps/2"), Map.of("openingHours", allWeek(), "deliveryRadiusKm", 2, "deliveryFee", 10000));
         jdbc.sql("update vendors set status = 'APPROVED', decided_at = now(), lat = :la, lng = :ln where owner_user_id = :o")
                 .param("la", lat).param("ln", lng).param("o", sellerId).update();
@@ -254,7 +254,7 @@ class SuspensionTests {
     @Test
     void onlyAnApprovedShopCanBeSuspendedAndOnlyAdministratorsDoIt() throws Exception {
         String fresh = tokenOf(newUser("seller3", Role.SELLER), Role.SELLER);
-        call(fresh, put("/api/merchant/shop/steps/1"), Map.of("name", "Quán Chưa Duyệt", "phone", "0912345678", "email", "c@example.com", "placeId", geocoder.autocomplete("Toà S2", null, null).get(0).placeId()));
+        call(fresh, put("/api/merchant/shop/steps/1"), com.bonbon.backend.ShopAddress.step1("Quán Chưa Duyệt", "0912345678", "c@example.com"));
         UUID draft = jdbc.sql("select id from vendors where name = 'Quán Chưa Duyệt' order by created_at desc limit 1").query(UUID.class).single();
         call(admin, post("/api/admin/merchants/" + draft + "/suspend"), Map.of("reason", "x")).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("SHOP_NOT_APPROVED")).andExpect(jsonPath("$.status").value("DRAFT"));
         call(admin, post("/api/admin/merchants/" + UUID.randomUUID() + "/suspend"), Map.of("reason", "x")).andExpect(status().isNotFound());

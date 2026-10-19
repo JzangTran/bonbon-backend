@@ -42,8 +42,11 @@ public final class ShopApplicationRequests {
             @Size(max = 100) String name,
             @Pattern(regexp = VN_PHONE, message = "Số điện thoại không hợp lệ") String phone,
             @Email @Size(max = 255) String email,
-            @Size(max = 1024) String placeId,
-            @Size(max = 200) String addressDetail) {
+            @Min(1) @Max(1000) Integer provinceCode,
+            @Min(1) @Max(100_000) Integer wardCode,
+            @Size(max = 200) String addressDetail,
+            @DecimalMin("6.0") @DecimalMax("24.0") Double lat,
+            @DecimalMin("102.0") @DecimalMax("118.0") Double lng) {
     }
 
     @Schema(name = "OpeningWindowInput")

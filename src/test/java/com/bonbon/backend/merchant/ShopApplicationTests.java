@@ -66,7 +66,6 @@ class ShopApplicationTests {
 
     String seller;
     UUID sellerId;
-    String placeId;
 
     @BeforeEach
     void setUp() {
@@ -76,7 +75,6 @@ class ShopApplicationTests {
         u = users.saveAndFlush(u);
         sellerId = u.getId();
         seller = tokens.issue(u, Role.SELLER, Instant.now()).accessToken();
-        placeId = geocoder.autocomplete("Toà S2 Vinhomes", null, null).get(0).placeId();
     }
 
     @Test
@@ -97,20 +95,49 @@ class ShopApplicationTests {
     }
 
     @Test
-    void stepOneResolvesThePickedAddressOnce() throws Exception {
+    void stepOneBuildsTheAddressFromTheUnitsAndThePin() throws Exception {
         step(1, Map.of("name", "Cơm tấm Cô Ba", "phone", "0912345678", "email", "coba@example.com",
-                "placeId", placeId, "addressDetail", "Kiot 3"))
+                "provinceCode", 1, "wardCode", 70, "addressDetail", "Kiot 3", "lat", 21.0285, "lng", 105.8542))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("DRAFT"))
-                .andExpect(jsonPath("$.shop.address.formattedAddress").isNotEmpty())
-                .andExpect(jsonPath("$.shop.address.lat").isNumber())
+                .andExpect(jsonPath("$.shop.address.formattedAddress").value("Kiot 3, Phường Hoàn Kiếm, Thành phố Hà Nội"))
+                .andExpect(jsonPath("$.shop.address.ward").value("Phường Hoàn Kiếm"))
+                .andExpect(jsonPath("$.shop.address.provinceCode").value(1))
+                .andExpect(jsonPath("$.shop.address.wardCode").value(70))
+                .andExpect(jsonPath("$.shop.address.lat").value(21.0285))
                 .andExpect(jsonPath("$.steps[0].complete").value(true))
                 .andExpect(jsonPath("$.firstIncompleteStep").value(2));
+    }
 
-        step(1, Map.of("placeId", "fake:nope")).andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("ADDRESS_NOT_FOUND"));
+    @Test
+    void theAddressNeedsAProvinceAWardOfItAPinAndADetailToBeComplete() throws Exception {
+        step(1, Map.of("name", "Quán", "phone", "0912345678", "email", "q@example.com", "provinceCode", 1, "wardCode", 70))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.steps[0].complete").value(false))
+                .andExpect(jsonPath("$.steps[0].missing[*]").value(org.hamcrest.Matchers.containsInAnyOrder("addressDetail", "location", "serviceArea")));
+    }
+
+    @Test
+    void theUnitsMustExistAndTheWardMustBelongToTheProvince() throws Exception {
+        step(1, Map.of("provinceCode", 999)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("provinceCode"));
+        step(1, Map.of("wardCode", 70)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("wardCode"));
+        step(1, Map.of("provinceCode", 79, "wardCode", 70)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("wardCode"));
+        step(1, Map.of("provinceCode", 1, "wardCode", 70, "lat", 21.03)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("location"));
+    }
+
+    @Test
+    void thePinMustBeInsideVietnamAndThePhoneMustBeVietnamese() throws Exception {
+        step(1, Map.of("provinceCode", 1, "wardCode", 70, "lat", 51.5, "lng", -0.12)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
         step(1, Map.of("phone", "12345")).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        step(1, Map.of("phone", "+84912345678")).andExpect(status().isOk());
+        step(1, Map.of("addressDetail", "x".repeat(201))).andExpect(status().isBadRequest());
     }
 
     @Test
@@ -214,7 +241,7 @@ class ShopApplicationTests {
 
     @Test
     void submitNeedsEveryStepThenLocksTheApplication() throws Exception {
-        step(1, Map.of("name", "Bún chả", "phone", "0912345678", "email", "bun@example.com", "placeId", placeId));
+        step(1, com.bonbon.backend.ShopAddress.step1("Bún chả", "0912345678", "bun@example.com"));
         mvc.perform(auth(post("/api/merchant/shop/submit"))).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("SHOP_APPLICATION_INCOMPLETE"))
                 .andExpect(jsonPath("$.firstIncompleteStep").value(2))
