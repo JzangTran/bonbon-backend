@@ -37,7 +37,7 @@ class AccountController {
             @Pattern(regexp = VN_MOBILE + "|^$", message = "Số điện thoại di động Việt Nam không hợp lệ") String phone) {
     }
 
-    record ChangePasswordRequest(@NotBlank String currentPassword, @NotBlank @Size(min = 8, max = 100) String newPassword) {
+    record ChangePasswordRequest(@NotBlank @Size(max = 100) String currentPassword, @NotBlank @Size(min = 8, max = 100) String newPassword) {
     }
 
     private final UserProfileService profiles;

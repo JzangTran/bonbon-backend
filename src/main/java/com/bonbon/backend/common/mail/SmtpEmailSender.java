@@ -25,7 +25,8 @@ class SmtpEmailSender implements EmailSender {
         SimpleMailMessage mail = new SimpleMailMessage();
         mail.setFrom(from);
         mail.setTo(message.to());
-        mail.setSubject(message.subject());
+        // A shop or person's name goes into subjects; a line break in it must not start another header.
+        mail.setSubject(message.subject().replaceAll("[\r\n]+", " "));
         mail.setText(message.textBody());
         mailSender.send(mail);
     }

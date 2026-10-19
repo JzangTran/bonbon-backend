@@ -343,7 +343,7 @@ class OrderCaseAdminTests {
         return jdbc.sql("select status from order_cases where id = :c::uuid").param("c", caseId).query(String.class).single();
     }
 
-    private static final byte[] PNG = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, 'I', 'H', 'D', 'R'};
+    private static final byte[] PNG = com.bonbon.backend.TestImages.PNG;
 
     /** The shop marks it delivered, so the customer has not confirmed anything. */
     private String deliverByShop(String id) throws Exception {

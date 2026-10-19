@@ -11,7 +11,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * An upload whose real type was checked from its first bytes (the client's Content-Type and file name are
- * not trusted) and whose size is within the limit.
+ * not trusted), whose size is within the limit, and whose content passed {@link ImageSanitizer}: well formed, sane
+ * dimensions, no location metadata. {@code content} is the cleaned copy.
  */
 public record ValidatedFile(byte[] content, FileType type) {
 
@@ -60,7 +61,7 @@ public record ValidatedFile(byte[] content, FileType type) {
             throw new BusinessException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_FILE_TYPE",
                     "Định dạng tệp không được hỗ trợ.");
         }
-        return new ValidatedFile(bytes, type);
+        return new ValidatedFile(ImageSanitizer.clean(bytes, type), type);
     }
 
     static FileType sniff(byte[] b) {

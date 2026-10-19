@@ -58,6 +58,8 @@ class MerchantNoShowController {
     @ApiError(status = 404, code = "ORDER_NOT_FOUND", when = "Đơn không tồn tại hoặc không phải của cửa hàng người gọi.")
     @ApiError(status = 409, code = "ORDER_NOT_OUT_FOR_DELIVERY", when = "Đơn không còn ở trạng thái đang giao; kèm `status`.")
     @ApiError(status = 413, code = "FILE_TOO_LARGE", when = "Ảnh vượt 5 MB.")
+    @ApiError(status = 400, code = "IMAGE_INVALID", when = "Ảnh bị cắt dở hoặc không đúng cấu trúc tệp.")
+    @ApiError(status = 400, code = "IMAGE_DIMENSIONS_TOO_LARGE", when = "Ảnh dài hơn 10.000 px một cạnh hoặc quá 50 triệu điểm ảnh.")
     @ApiError(status = 415, code = "UNSUPPORTED_FILE_TYPE", when = "Định dạng không được nhận (kiểm tra theo nội dung tệp).")
     @ApiError(status = 429, code = "TOO_MANY_UPLOADS", when = "Tải quá 5 ảnh trong một giờ cho đơn này.")
     @PostMapping(path = "/no-show-photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

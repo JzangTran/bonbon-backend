@@ -46,7 +46,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class MenuTests {
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
-    private static final byte[] PNG = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0};
+    private static final byte[] PNG = com.bonbon.backend.TestImages.PNG;
 
     @Autowired
     MockMvc mvc;

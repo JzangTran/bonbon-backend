@@ -85,6 +85,8 @@ class SupportTicketController {
 
     @Operation(operationId = "uploadSupportAttachment", summary = "Tải ảnh đính kèm", description = "Tải một ảnh (JPEG, PNG hoặc WEBP, tối đa 5 MB, kiểm tra theo nội dung tệp) trước khi gửi phiếu hoặc tin nhắn; ảnh lưu riêng tư. Giới hạn 20 ảnh mỗi giờ.")
     @ApiError(status = 413, code = "FILE_TOO_LARGE", when = "Ảnh vượt 5 MB.")
+    @ApiError(status = 400, code = "IMAGE_INVALID", when = "Ảnh bị cắt dở hoặc không đúng cấu trúc tệp.")
+    @ApiError(status = 400, code = "IMAGE_DIMENSIONS_TOO_LARGE", when = "Ảnh dài hơn 10.000 px một cạnh hoặc quá 50 triệu điểm ảnh.")
     @ApiError(status = 415, code = "UNSUPPORTED_FILE_TYPE", when = "Định dạng không được nhận (kiểm tra theo nội dung tệp).")
     @ApiError(status = 429, code = "TOO_MANY_UPLOADS", when = "Tải quá 20 ảnh trong một giờ.")
     @ApiError(status = 403, code = "NOT_A_USER", when = "Vai trò đang dùng không phải khách hoặc người bán.")

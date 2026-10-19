@@ -21,5 +21,5 @@ public record OAuthLoginRequest(
         Set<UUID> acceptedDocumentIds,
         Boolean marketingConsent,
         @Size(max = 100) String password,
-        String captchaToken) {
+        @Size(max = 4096) String captchaToken) {
 }

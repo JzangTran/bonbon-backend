@@ -16,6 +16,6 @@ public final class PasswordRequests {
     }
 
     /** Reset or initial password: same 8–100 character rule as registration. */
-    public record SetPassword(@NotBlank String token, @NotBlank @Size(min = 8, max = 100) String newPassword) {
+    public record SetPassword(@NotBlank @Size(max = 4096) String token, @NotBlank @Size(min = 8, max = 100) String newPassword) {
     }
 }
