@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class VendorBrowseService {
 
-    static final int MAX_PAGE_SIZE = 50;
+    static final int MAX_PAGE_SIZE = 100;
     private static final int MAX_QUERY_LENGTH = 100;
 
     private final ShopCatalog shops;

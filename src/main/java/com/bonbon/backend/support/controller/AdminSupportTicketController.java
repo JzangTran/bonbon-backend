@@ -35,7 +35,7 @@ class AdminSupportTicketController {
 
     @Operation(operationId = "listAdminSupportTickets", summary = "Hộp thư phiếu hỗ trợ", description = "Theo `status` (mặc định OPEN). OPEN và ANSWERED xếp cũ nhất trước, CLOSED mới nhất trước.")
     @ApiError(status = 400, code = "INVALID_STATUS", when = "`status` không phải OPEN, ANSWERED hoặc CLOSED.")
-    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–50.")
+    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–100.")
     @GetMapping
     @PreAuthorize("hasAuthority('ticket:read')")
     TicketViews.AdminPage inbox(@RequestParam(defaultValue = "OPEN") String status, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {

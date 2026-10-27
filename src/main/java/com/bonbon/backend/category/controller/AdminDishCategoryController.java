@@ -63,7 +63,7 @@ class AdminDishCategoryController {
 
     @Operation(operationId = "listDishCategoryCases", summary = "Danh sách vụ sai ngành", description = "Lọc theo `status` và `vendorId` (lịch sử vi phạm của một quán). `status=APPEALED` là hàng chờ kháng nghị, cũ nhất trước (đích 3–5 ngày làm việc); còn lại mới nhất trước.")
     @ApiError(status = 400, code = "INVALID_STATUS", when = "`status` không hợp lệ.")
-    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–50.")
+    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–100.")
     @GetMapping("/category-cases")
     ModerationViews.Page list(@RequestParam(required = false) String status, @RequestParam(required = false) UUID vendorId, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {

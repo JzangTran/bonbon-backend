@@ -52,7 +52,7 @@ public class OrderService {
 
     static final String MAX_OPEN_ORDERS_KEY = "abuse.max_open_orders";
     static final String DEFAULT_COMMISSION_KEY = "commission.default_rate";
-    private static final int MAX_PAGE_SIZE = 50;
+    private static final int MAX_PAGE_SIZE = 100;
     private static final int MIN_ONLINE = 1_000;
     private static final int MAX_ONLINE = 50_000_000;
 

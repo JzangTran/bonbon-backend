@@ -41,7 +41,7 @@ class AdminConversationController {
 
     @Operation(operationId = "listAdminConversationMessages", summary = "Đọc tin nhắn của một cuộc trò chuyện", description = "Tin mới nhất trước, trang cũ hơn qua `before` như phía người dùng. Mở trang đầu (không có `before`) được ghi vào nhật ký tra cứu cùng người mở và thời điểm. `mine` luôn là `false`.")
     @ApiError(status = 404, code = "CONVERSATION_NOT_FOUND", when = "Không có cuộc trò chuyện này.")
-    @ApiError(status = 400, code = "INVALID_PAGE", when = "`size` ngoài 1–50.")
+    @ApiError(status = 400, code = "INVALID_PAGE", when = "`size` ngoài 1–100.")
     @GetMapping("/{id}/messages")
     ChatViews.Messages messages(CurrentPrincipal principal, @PathVariable UUID id,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant before, @RequestParam(defaultValue = "30") int size) {

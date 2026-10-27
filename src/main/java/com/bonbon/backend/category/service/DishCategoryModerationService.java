@@ -38,7 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DishCategoryModerationService implements DishCategoryCases {
 
     private static final Set<String> STATUSES = Set.of("RESTRICTED", "AUTO_CORRECTED", "APPEALED", "RESOLVED", "CONFIRMED", "EXPIRED", "APPEAL_ACCEPTED", "APPEAL_REJECTED");
-    private static final int MAX_PAGE_SIZE = 50;
+    private static final int MAX_PAGE_SIZE = 100;
     private static final Duration MAX_DEADLINE = Duration.ofDays(7);
 
     private final JdbcClient jdbc;

@@ -31,7 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 class ShopOrdersService implements ShopOrders {
 
     private static final ZoneId VIETNAM = ZoneId.of("Asia/Ho_Chi_Minh");
-    private static final int MAX_PAGE_SIZE = 50;
+    private static final int MAX_PAGE_SIZE = 100;
     /** Unpaid orders are not real orders yet, so a shop never sees them. */
     private static final EnumSet<OrderStatus> VISIBLE = EnumSet.complementOf(EnumSet.of(OrderStatus.PENDING_PAYMENT));
 

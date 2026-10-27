@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ReviewModerationService {
 
-    private static final int MAX_PAGE_SIZE = 50;
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final ReviewRepository reviews;
     private final ReviewResponseRepository responses;
