@@ -55,6 +55,8 @@ bonbon:
   app:
     # Links in emails (verify email, reset password) open the web app, which calls the API.
     web-url: ${BONBON_WEB_URL:http://localhost:5173}
+    # Where the merchant pages open from an email: https://merchant.bonbon.com in production (a subdomain), the /merchant path in development.
+    merchant-url: ${BONBON_MERCHANT_URL:${bonbon.app.web-url}/merchant}
   mail:
     from: ${BONBON_MAIL_FROM:bonbon <no-reply@bonbon.local>}
   admin:

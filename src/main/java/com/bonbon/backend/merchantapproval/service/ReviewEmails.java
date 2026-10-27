@@ -19,12 +19,12 @@ class ReviewEmails {
 
     private final EmailSender sender;
     private final UserProfileService profiles;
-    private final String webUrl;
+    private final String merchantUrl;
 
-    ReviewEmails(EmailSender sender, UserProfileService profiles, @Value("${bonbon.app.web-url:http://localhost:5173}") String webUrl) {
+    ReviewEmails(EmailSender sender, UserProfileService profiles, @Value("${bonbon.app.merchant-url:${bonbon.app.web-url:http://localhost:5173}/merchant}") String merchantUrl) {
         this.sender = sender;
         this.profiles = profiles;
-        this.webUrl = webUrl;
+        this.merchantUrl = merchantUrl;
     }
 
     @Async
@@ -36,12 +36,12 @@ class ReviewEmails {
             sender.send(new EmailMessage(owner.email(), "Cửa hàng " + shop + " đã được duyệt",
                     "Chào " + owner.name() + ",\n\n"
                             + "Cửa hàng " + shop + " đã được duyệt trên bonbon. Hãy thêm thực đơn để khách trong khu bắt đầu đặt món:\n"
-                            + webUrl + "/seller\n\nbonbon"));
+                            + merchantUrl + "\n\nbonbon"));
         } else {
             sender.send(new EmailMessage(owner.email(), "Hồ sơ cửa hàng " + shop + " cần bổ sung",
                     "Chào " + owner.name() + ",\n\n"
                             + "Hồ sơ cửa hàng " + shop + " chưa được duyệt vì lý do sau:\n\n" + event.reason() + "\n\n"
-                            + "Bạn có thể sửa hồ sơ và gửi lại tại:\n" + webUrl + "/seller\n\nbonbon"));
+                            + "Bạn có thể sửa hồ sơ và gửi lại tại:\n" + merchantUrl + "\n\nbonbon"));
         }
     }
 }

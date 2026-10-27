@@ -58,7 +58,8 @@ public enum Permission {
     CUSTOMER_ABUSE_DECIDE("customer-abuse:decide"),
     ADMIN_ORDER_READ("admin-order:read"),
     ADMIN_CUSTOMER_READ("admin-customer:read"),
-    APP_CONFIG_WRITE("app-config:write");
+    APP_CONFIG_WRITE("app-config:write"),
+    OPS_READ("ops:read");
 
     private static final Map<String, Permission> BY_CODE =
             Arrays.stream(values()).collect(Collectors.toUnmodifiableMap(Permission::code, Function.identity()));
