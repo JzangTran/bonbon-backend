@@ -35,7 +35,7 @@ class AdminContactRequestController {
 
     @Operation(operationId = "listContactRequests", summary = "Hộp thư liên hệ", description = "Theo `status` (mặc định OPEN). OPEN xếp cũ nhất trước, các trạng thái khác mới nhất trước.")
     @ApiError(status = 400, code = "INVALID_STATUS", when = "`status` không phải OPEN, ANSWERED hoặc CLOSED.")
-    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–50.")
+    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–100.")
     @GetMapping
     @PreAuthorize("hasAuthority('ticket:read')")
     ContactViews.Page inbox(@RequestParam(defaultValue = "OPEN") String status, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
