@@ -2,6 +2,7 @@ package com.bonbon.backend.notification.service;
 
 import com.bonbon.backend.authentication.CustomerDirectory;
 import com.bonbon.backend.common.mail.EmailSender;
+import com.bonbon.backend.support.ContactRequestAnswered;
 import com.bonbon.backend.support.TicketAnswered;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +38,20 @@ class SupportMailer {
                     "Bonbon đã trả lời phiếu hỗ trợ của bạn", "Phiếu \"" + event.subject() + "\" đã có câu trả lời. Mở ứng dụng Bonbon, mục Trợ giúp, để xem và trả lời.")));
         } catch (RuntimeException e) {
             log.warn("Support email failed", e);
+        }
+    }
+
+    /** The answer to the public contact form: the person may have no account, so it always goes to the email they typed. */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    void onContactAnswered(ContactRequestAnswered event) {
+        try {
+            String question = event.question().length() > 500 ? event.question().substring(0, 499) + "…" : event.question();
+            email.send(new EmailSender.EmailMessage(event.email(), "Bonbon trả lời câu hỏi của bạn",
+                    "Chào " + event.fullName() + ",\n\n" + event.answer() + "\n\n— Đội hỗ trợ Bonbon\n\nBạn đã hỏi:\n" + question
+                            + "\n\nCần hỏi thêm, hãy gửi một yêu cầu mới ở trang Liên hệ hỗ trợ."));
+        } catch (RuntimeException e) {
+            log.warn("Contact answer email failed", e);
         }
     }
 }
