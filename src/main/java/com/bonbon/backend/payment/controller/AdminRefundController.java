@@ -34,7 +34,7 @@ class AdminRefundController {
 
     @Operation(operationId = "listRefunds", summary = "Hàng đợi hoàn tiền", description = "Mặc định là hàng đợi chuyển khoản đang mở (`REQUESTED` chờ quản trị chuyển, `NEEDS_DESTINATION` chờ khách nhập tài khoản), cũ nhất trước. `status=COMPLETED` xem khoản đã xong, `ALL` xem mọi khoản hoàn kể cả hoàn qua MoMo (để đối soát cuối tháng). Mỗi dòng có số tiền, mã đơn, lý do, mã kết quả MoMo và tài khoản khách nhập (số đầy đủ).")
     @ApiError(status = 400, code = "INVALID_STATUS", when = "`status` không thuộc REQUESTED, NEEDS_DESTINATION, COMPLETED, ALL.")
-    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–50.")
+    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–100.")
     @GetMapping
     RefundViews.Page list(@RequestParam(required = false) String status, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {

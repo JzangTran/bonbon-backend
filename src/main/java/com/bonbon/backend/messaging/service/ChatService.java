@@ -40,7 +40,7 @@ public class ChatService {
     static final int MAX_TEXT = 1000;
     private static final long IMAGE_MAX_BYTES = 5L * 1024 * 1024;
     private static final Duration IMAGE_URL_TTL = Duration.ofMinutes(15);
-    private static final int MAX_PAGE_SIZE = 50;
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final JdbcClient jdbc;
     private final Clock clock;

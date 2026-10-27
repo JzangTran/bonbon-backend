@@ -33,7 +33,7 @@ class AdminReviewController {
     }
 
     @Operation(operationId = "listReviewsForModeration", summary = "Danh sách đánh giá", description = "Mới nhất trước, gồm cả đánh giá đã ẩn (`hidden`). Lọc theo quán (`vendorId`), trạng thái ẩn (`hidden`) và số sao tối đa (`maxRating`, để tìm đánh giá thấp). Mỗi đánh giá kèm phản hồi của quán, kể cả khi phản hồi đang bị ẩn.")
-    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–50.")
+    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–100.")
     @GetMapping("/reviews")
     ReviewViews.Page list(@RequestParam(required = false) UUID vendorId, @RequestParam(required = false) Boolean hidden,
             @RequestParam(required = false) Integer maxRating, @RequestParam(defaultValue = "0") int page,

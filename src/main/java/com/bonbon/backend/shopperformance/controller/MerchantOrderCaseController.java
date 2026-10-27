@@ -36,7 +36,7 @@ class MerchantOrderCaseController {
     @Operation(operationId = "listMyOrderCases", summary = "Danh sách khiếu nại của quán", description = "Khiếu nại đang chờ quán trả lời xếp đầu, rồi đang chờ quản trị viên, rồi đã xử lý; trong mỗi nhóm mới nhất trước. `status` lọc theo một trạng thái. `shopBears` là số tiền quán phải chịu nếu khiếu nại được chấp nhận.")
     @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người gọi chưa có cửa hàng được duyệt.")
     @ApiError(status = 400, code = "INVALID_STATUS", when = "`status` không phải AWAITING_SHOP, AWAITING_CUSTOMER, OPEN, UPHELD hoặc DISMISSED.")
-    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–50.")
+    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–100.")
     @GetMapping
     @PreAuthorize("hasAuthority('order:read')")
     CaseViews.Page list(CurrentPrincipal principal, @RequestParam(required = false) String status, @RequestParam(defaultValue = "0") int page,

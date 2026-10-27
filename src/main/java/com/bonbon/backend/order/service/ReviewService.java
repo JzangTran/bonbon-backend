@@ -40,7 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReviewService implements ShopReviews {
 
     static final String EDIT_WINDOW_KEY = "review.edit_window_hours";
-    private static final int MAX_PAGE_SIZE = 50;
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final ReviewRepository reviews;
     private final ReviewResponseRepository responses;

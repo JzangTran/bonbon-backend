@@ -36,7 +36,7 @@ class MerchantCategoryCaseController {
     @Operation(operationId = "listMyCategoryCases", summary = "Các vụ sai ngành của quán", description = "Mới nhất trước, lọc theo `status` (RESTRICTED và AUTO_CORRECTED là các vụ còn mở; còn lại là lịch sử). Mỗi vụ có lý do, ngành gợi ý, hạn sửa và hạn xác nhận hoặc kháng nghị.")
     @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người gọi chưa có cửa hàng đang hoạt động.")
     @ApiError(status = 400, code = "INVALID_STATUS", when = "`status` không hợp lệ.")
-    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–50.")
+    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–100.")
     @GetMapping
     @PreAuthorize("hasAuthority('vendor:read')")
     ModerationViews.Page list(CurrentPrincipal principal, @RequestParam(required = false) String status, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
