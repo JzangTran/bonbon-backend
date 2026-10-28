@@ -51,7 +51,7 @@ class SupportTicketController {
     }
 
     @Operation(operationId = "listSupportTickets", summary = "Phiếu hỗ trợ của tôi", description = "Phiếu của người gọi ở vai trò đang dùng, hoạt động gần nhất trước.")
-    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–50.")
+    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–100.")
     @ApiError(status = 403, code = "NOT_A_USER", when = "Vai trò đang dùng không phải khách hoặc người bán.")
     @GetMapping("/tickets")
     TicketViews.Page list(CurrentPrincipal principal, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {

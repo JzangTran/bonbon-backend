@@ -35,7 +35,7 @@ class NotificationController {
 
     /** {@code unread=true} is the pending view to show after a reconnect. */
     @Operation(operationId = "listNotifications", summary = "Danh sách thông báo", description = "Mới nhất trước; `unread=true` là danh sách còn chờ, nên gọi sau khi kết nối lại. `unread` trong phản hồi là tổng số chưa đọc.")
-    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–50.")
+    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–100.")
     @GetMapping
     NotificationViews.Page list(CurrentPrincipal principal, @RequestParam(defaultValue = "false") boolean unread,
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {

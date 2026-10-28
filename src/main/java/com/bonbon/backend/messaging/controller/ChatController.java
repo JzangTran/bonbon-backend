@@ -44,7 +44,7 @@ class ChatController {
     @Operation(operationId = "listConversations", summary = "Danh sách cuộc trò chuyện", description = "Các cuộc trò chuyện của người gọi, mới nhất trước, kèm tin cuối để xem trước và dấu chưa đọc. `unreadConversations` là tổng số cuộc còn tin chưa đọc. Chưa đọc tính theo từng phía (khách, hoặc cả cửa hàng), không theo từng người.")
     @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người bán chưa có cửa hàng được duyệt.")
     @ApiError(status = 403, code = "NOT_A_PARTICIPANT", when = "Vai trò đang dùng không phải khách hoặc người bán.")
-    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–50.")
+    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–100.")
     @GetMapping("/conversations")
     @PreAuthorize("hasAuthority('conversation:read')")
     ChatViews.Page list(CurrentPrincipal principal, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
@@ -63,7 +63,7 @@ class ChatController {
     @Operation(operationId = "listConversationMessages", summary = "Lịch sử tin nhắn", description = "Tin nhắn mới nhất trước. Để lấy trang cũ hơn, truyền `nextBefore` của lần trước vào `before`. Ảnh là liên kết ngắn hạn (15 phút). `mine` cho biết tin do phía của người gọi gửi.")
     @ApiError(status = 404, code = "CONVERSATION_NOT_FOUND", when = "Không có cuộc trò chuyện này ở phía của người gọi.")
     @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người bán chưa có cửa hàng được duyệt.")
-    @ApiError(status = 400, code = "INVALID_PAGE", when = "`size` ngoài 1–50.")
+    @ApiError(status = 400, code = "INVALID_PAGE", when = "`size` ngoài 1–100.")
     @GetMapping("/conversations/{id}/messages")
     @PreAuthorize("hasAuthority('conversation:read')")
     ChatViews.Messages messages(CurrentPrincipal principal, @PathVariable UUID id,

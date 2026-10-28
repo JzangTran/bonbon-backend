@@ -79,7 +79,7 @@ class OrderController {
 
     /** Newest first. {@code status} may be repeated or comma separated; empty means every status. */
     @Operation(operationId = "listMyOrders", summary = "Danh sách đơn của tôi", description = "Mới nhất trước; `status` lặp lại được, bỏ trống là mọi trạng thái. Mỗi đơn có tóm tắt món.")
-    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–50.")
+    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–100.")
     @GetMapping
     OrderViews.Page list(CurrentPrincipal principal, @RequestParam(required = false) List<OrderStatus> status,
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {

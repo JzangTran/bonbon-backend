@@ -27,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ShopCaseService {
 
     private static final Set<String> STATUSES = Set.of("AWAITING_SHOP", "AWAITING_CUSTOMER", "OPEN", "UPHELD", "DISMISSED");
-    private static final int MAX_PAGE_SIZE = 50;
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final JdbcClient jdbc;
     private final Clock clock;

@@ -41,7 +41,7 @@ class AdminHelpArticleController {
 
     @Operation(operationId = "listAdminHelpArticles", summary = "Danh sách bài trợ giúp (kể cả nháp)", description = "Mới cập nhật trước. `status` lọc DRAFT hoặc PUBLISHED, `q` tìm như phía người dùng.")
     @ApiError(status = 400, code = "INVALID_STATUS", when = "`status` không phải DRAFT hoặc PUBLISHED.")
-    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–50.")
+    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–100.")
     @GetMapping
     HelpViews.AdminArticles list(@RequestParam(required = false) String status, @RequestParam(required = false) String q, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {

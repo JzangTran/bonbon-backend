@@ -34,7 +34,7 @@ class VendorController {
     /** {@code sort}: {@code distance} (default; open shops first) or {@code name}. */
     @Operation(operationId = "listShopsInArea", summary = "Quán giao tới điểm này", description = "Quán có bán kính giao riêng phủ tới toạ độ, quán đang mở trước rồi gần trước (`sort=name` để xếp theo tên). `q` tìm theo tên quán hoặc món, không phân biệt dấu. `categoryId` lọc theo ngành và mọi ngành con. Chỉ quán có ít nhất một món đặt được.")
     @ApiError(status = 400, code = "INVALID_POSITION", when = "Toạ độ ngoài phạm vi.")
-    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–50.")
+    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–100.")
     @ApiError(status = 400, code = "INVALID_QUERY", when = "Từ khoá quá dài (tối đa 100 ký tự).")
     @ApiError(status = 400, code = "INVALID_SORT", when = "`sort` chỉ nhận `distance` hoặc `name`.")
     @GetMapping
@@ -56,7 +56,7 @@ class VendorController {
 
     @Operation(operationId = "listShopReviews", summary = "Đánh giá của quán", description = "Công khai, mới nhất trước. Chỉ gồm đánh giá đang hiển thị (đánh giá bị quản trị ẩn không có ở đây) kèm phản hồi của quán nếu có. Kèm điểm trung bình (một chữ số thập phân) và số đánh giá. Tên người đánh giá được rút gọn, không có thông tin đơn.")
     @ApiError(status = 404, code = "VENDOR_NOT_FOUND", when = "Quán không tồn tại hoặc chưa được duyệt.")
-    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–50.")
+    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–100.")
     @GetMapping("/{id}/reviews")
     ReviewViews.Page shopReviews(@PathVariable UUID id, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
         return reviews.forShop(id, page, size);

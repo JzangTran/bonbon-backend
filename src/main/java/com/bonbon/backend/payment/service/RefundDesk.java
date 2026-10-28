@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class RefundDesk {
 
-    private static final int MAX_PAGE_SIZE = 50;
+    private static final int MAX_PAGE_SIZE = 100;
     private static final Set<String> STATUSES = Set.of("REQUESTED", "NEEDS_DESTINATION", "COMPLETED", "ALL");
 
     private final JdbcClient jdbc;

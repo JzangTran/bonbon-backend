@@ -49,7 +49,7 @@ public class NotificationService {
 
     public static final String CUSTOMER = "CUSTOMER";
     public static final String SHOP = "SHOP";
-    private static final int MAX_PAGE_SIZE = 50;
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final NotificationRepository notifications;
     private final ShopOrdering shops;

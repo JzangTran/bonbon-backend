@@ -42,7 +42,7 @@ class MerchantOrderController {
      */
     @Operation(operationId = "listShopOrders", summary = "Danh sách đơn của quán", description = "`status` lặp lại được, bỏ trống là mọi trạng thái. `from`/`to` là ngày theo giờ Việt Nam (gồm cả hai đầu). `sort=oldest` cho hàng chờ đơn mới. Đơn mới có `responseDeadline`, đơn đã nhận có `handoverDeadline`.")
     @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người gọi chưa có cửa hàng được duyệt; `status` cho biết trạng thái hồ sơ.")
-    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–50.")
+    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–100.")
     @GetMapping
     @PreAuthorize("hasAuthority('order:read')")
     ShopOrders.ShopOrderPage list(CurrentPrincipal principal, @RequestParam(required = false) List<OrderStatus> status,

@@ -40,7 +40,7 @@ class MerchantReviewController {
 
     @Operation(operationId = "listReviewsOfMyShop", summary = "Đánh giá của quán", description = "Mới nhất trước. `unreplied=true` chỉ lấy đánh giá chưa phản hồi. Đánh giá bị quản trị ẩn không hiện. Phản hồi của quán có `editableUntil` và nhãn `hidden` nếu bị ẩn.")
     @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người gọi chưa có cửa hàng được duyệt; `status` cho biết trạng thái hồ sơ.")
-    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–50.")
+    @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc `size` ngoài 1–100.")
     @GetMapping
     ReviewViews.Page list(CurrentPrincipal principal, @RequestParam(defaultValue = "false") boolean unreplied,
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
