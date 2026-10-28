@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
-import com.bonbon.backend.authentication.UserNames;
+import com.bonbon.backend.identity.authentication.UserNames;
 import com.bonbon.backend.common.exception.BusinessException;
 import com.bonbon.backend.common.ratelimit.RateLimiter;
 import com.bonbon.backend.common.security.CaptchaVerifier;

@@ -5,7 +5,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 
-import com.bonbon.backend.messaging.ConversationOpenedByAdmin;
+import com.bonbon.backend.support.ConversationOpenedByAdmin;
 import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;

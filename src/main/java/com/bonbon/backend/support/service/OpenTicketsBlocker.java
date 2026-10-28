@@ -3,7 +3,7 @@ package com.bonbon.backend.support.service;
 import java.util.List;
 import java.util.UUID;
 
-import com.bonbon.backend.account.DeletionBlocker;
+import com.bonbon.backend.identity.account.DeletionBlocker;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;

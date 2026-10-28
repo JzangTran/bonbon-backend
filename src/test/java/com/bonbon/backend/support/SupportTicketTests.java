@@ -7,10 +7,10 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.bonbon.backend.TestcontainersConfiguration;
-import com.bonbon.backend.authentication.Role;
-import com.bonbon.backend.authentication.entity.User;
-import com.bonbon.backend.authentication.repository.UserRepository;
-import com.bonbon.backend.authentication.service.TokenService;
+import com.bonbon.backend.identity.authentication.Role;
+import com.bonbon.backend.identity.authentication.entity.User;
+import com.bonbon.backend.identity.authentication.repository.UserRepository;
+import com.bonbon.backend.identity.authentication.service.TokenService;
 import com.bonbon.backend.common.geo.Geocoder;
 import com.bonbon.backend.common.mail.EmailSender;
 import com.bonbon.backend.support.service.SupportTicketService;

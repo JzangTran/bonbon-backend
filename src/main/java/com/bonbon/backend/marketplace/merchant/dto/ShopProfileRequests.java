@@ -1,0 +1,63 @@
+package com.bonbon.backend.marketplace.merchant.dto;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
+import io.swagger.v3.oas.annotations.media.Schema;
+
+/** Requests of an approved shop editing itself (edit-store-info.md, pause-orders.md). */
+public final class ShopProfileRequests {
+
+    private ShopProfileRequests() {
+    }
+
+    @Schema(name = "CloseShopRequest")
+    public record Close(
+            @Schema(description = "STOP_SELLING (không bán nữa), RELOCATING (chuyển đi), TOO_FEW_ORDERS (ít đơn) hoặc OTHER (khác, cần ghi rõ).")
+            @NotNull @Pattern(regexp = "STOP_SELLING|RELOCATING|TOO_FEW_ORDERS|OTHER", message = "Lý do không hợp lệ.") String reason,
+            @Schema(description = "Ghi rõ lý do; bắt buộc khi lý do là OTHER.") @Size(max = 500) String reasonText) {
+    }
+
+    /**
+     * Only the fields present change. A new place (province, ward or map point) sends the shop back to review; everything else
+     * applies at once. {@code clearFreeDeliveryThreshold} / {@code clearMinOrderValue} remove those options.
+     */
+    @Schema(name = "ShopProfileUpdateRequest")
+    public record Update(
+            @Size(min = 1, max = 100) String name,
+            @Pattern(regexp = ShopApplicationRequests.VN_PHONE, message = "Số điện thoại không hợp lệ") String phone,
+            @Email @Size(max = 255) String email,
+            @Min(1) @Max(1000) Integer provinceCode,
+            @Min(1) @Max(100_000) Integer wardCode,
+            @Size(max = 200) String addressDetail,
+            @DecimalMin("6.0") @DecimalMax("24.0") Double lat,
+            @DecimalMin("102.0") @DecimalMax("118.0") Double lng,
+            @DecimalMin("0.1") @DecimalMax("99.9") @Digits(integer = 2, fraction = 1) BigDecimal deliveryRadiusKm,
+            @PositiveOrZero @Max(1_000_000) Integer deliveryFee,
+            @PositiveOrZero @Max(100_000_000) Integer freeDeliveryThreshold,
+            @PositiveOrZero @Max(100_000_000) Integer minOrderValue,
+            Boolean clearFreeDeliveryThreshold,
+            Boolean clearMinOrderValue) {
+    }
+
+    /** The whole weekly schedule; an empty list means closed every day. */
+    @Schema(name = "ShopOpeningHoursRequest")
+    public record OpeningHours(@NotNull @Size(max = 28) List<ShopApplicationRequests.@Valid @NotNull Window> openingHours) {
+    }
+
+    @Schema(name = "AcceptingOrdersRequest")
+
+    public record AcceptingOrders(@NotNull Boolean accepting) {
+    }
+}
