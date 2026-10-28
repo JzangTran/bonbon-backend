@@ -12,7 +12,7 @@ import jakarta.persistence.Table;
 
 /** Append-only evidence of one decision about one purpose; never updated. */
 @Entity
-@Table(name = "consent_records")
+@Table(schema = "identity", name = "consent_records")
 public class ConsentRecord {
 
     @Id

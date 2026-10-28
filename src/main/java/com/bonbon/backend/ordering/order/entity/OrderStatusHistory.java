@@ -17,7 +17,7 @@ import jakarta.persistence.Table;
 
 /** One step of an order's timeline: who moved it from one status to the next, and why. */
 @Entity
-@Table(name = "order_status_history")
+@Table(schema = "ordering", name = "order_status_history")
 public class OrderStatusHistory {
 
     @Id

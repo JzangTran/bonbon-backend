@@ -17,7 +17,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "categories")
+@Table(schema = "marketplace", name = "categories")
 public class Category {
 
     public static final int MAX_LEVEL = 3;

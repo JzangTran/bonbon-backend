@@ -18,7 +18,7 @@ import jakarta.persistence.Table;
 
 /** One choice inside an {@link OptionGroup}, with the amount it adds to the dish price. */
 @Entity
-@Table(name = "options")
+@Table(schema = "marketplace", name = "options")
 public class Option {
 
     @Id

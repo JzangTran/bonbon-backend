@@ -12,7 +12,7 @@ import jakarta.persistence.Table;
 
 /** Single-use, stored only as a SHA-256 hash; the raw value travels in the emailed link. */
 @Entity
-@Table(name = "email_verification_tokens")
+@Table(schema = "identity", name = "email_verification_tokens")
 public class EmailVerificationToken {
 
     @Id

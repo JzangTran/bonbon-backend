@@ -17,7 +17,7 @@ import jakarta.persistence.Table;
 
 /** A shop's own display grouping of dishes; not the platform category tree. */
 @Entity
-@Table(name = "menu_sections")
+@Table(schema = "marketplace", name = "menu_sections")
 public class MenuSection {
 
     @Id

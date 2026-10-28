@@ -17,7 +17,7 @@ import jakarta.persistence.Table;
 
 /** A named set of choices owned by a shop and reusable across its dishes ("Size", "Topping"). */
 @Entity
-@Table(name = "option_groups")
+@Table(schema = "marketplace", name = "option_groups")
 public class OptionGroup {
 
     public enum Status { ACTIVE, ARCHIVED }

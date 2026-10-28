@@ -17,7 +17,7 @@ import jakarta.persistence.Table;
  * INITIAL_PASSWORD lets an admin created by another admin set the first one.
  */
 @Entity
-@Table(name = "password_reset_tokens")
+@Table(schema = "identity", name = "password_reset_tokens")
 public class PasswordResetToken {
 
     public enum Purpose { RESET, INITIAL_PASSWORD }

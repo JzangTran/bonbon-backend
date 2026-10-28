@@ -14,7 +14,7 @@ import jakarta.persistence.Table;
 
 /** A saved delivery address: a picked Goong place, plus the building/floor detail Goong cannot know. */
 @Entity
-@Table(name = "addresses")
+@Table(schema = "identity", name = "addresses")
 public class Address {
 
     @Id

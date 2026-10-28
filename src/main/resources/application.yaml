@@ -8,6 +8,10 @@ spring:
     url: ${BONBON_DB_URL:jdbc:postgresql://localhost:5432/bonbon}
     username: ${BONBON_DB_USER:bonbon}
     password: ${BONBON_DB_PASSWORD:}
+    hikari:
+      # Each module's tables live in its own schema (V0047); SQL uses bare table names, found through this path. public keeps the
+      # functions and extensions and Flyway's history.
+      connection-init-sql: SET search_path TO identity, marketplace, ordering, payments, communication, support, operations, public
   jpa:
     open-in-view: false
     hibernate:
@@ -19,6 +23,8 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    # Flyway's history stays in public whatever the search path says; migrations after V0047 name the schema of every table.
+    default-schema: public
   mail:
     host: ${SPRING_MAIL_HOST:localhost}
     port: ${SPRING_MAIL_PORT:1025}

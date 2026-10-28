@@ -20,7 +20,7 @@ import jakarta.persistence.Table;
 
 /** A line of an order: the dish name and unit price (options included) as they were when it was placed. */
 @Entity
-@Table(name = "order_items")
+@Table(schema = "ordering", name = "order_items")
 public class OrderItem {
 
     @Id

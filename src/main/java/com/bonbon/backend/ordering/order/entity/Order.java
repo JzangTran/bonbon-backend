@@ -24,7 +24,7 @@ import org.hibernate.generator.EventType;
 
 /** One order. Everything in it is a snapshot of what was true when it was placed. */
 @Entity
-@Table(name = "orders")
+@Table(schema = "ordering", name = "orders")
 public class Order {
 
     @Id

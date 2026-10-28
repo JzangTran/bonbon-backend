@@ -14,7 +14,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "vendor_review_decisions")
+@Table(schema = "marketplace", name = "vendor_review_decisions")
 public class ReviewDecision {
 
     public enum Decision { APPROVED, REJECTED }

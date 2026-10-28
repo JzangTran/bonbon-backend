@@ -14,7 +14,7 @@ import jakarta.persistence.Table;
 
 /** An option the customer chose on a line, copied so a later rename or removal changes nothing. */
 @Entity
-@Table(name = "order_item_options")
+@Table(schema = "ordering", name = "order_item_options")
 public class OrderItemOption {
 
     @Id

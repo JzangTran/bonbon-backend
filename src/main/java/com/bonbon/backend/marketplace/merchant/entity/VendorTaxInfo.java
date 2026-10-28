@@ -18,7 +18,7 @@ import jakarta.persistence.Table;
 
 /** Wizard step 3, tax part: what an e-invoice and the tax authority need, by business model. */
 @Entity
-@Table(name = "vendor_tax_info")
+@Table(schema = "marketplace", name = "vendor_tax_info")
 public class VendorTaxInfo {
 
     public enum BusinessType { INDIVIDUAL, HOUSEHOLD }
@@ -46,7 +46,7 @@ public class VendorTaxInfo {
     private String licenseFileKey;
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "vendor_invoice_emails", joinColumns = @JoinColumn(name = "vendor_id"))
+    @CollectionTable(schema = "marketplace", name = "vendor_invoice_emails", joinColumns = @JoinColumn(name = "vendor_id"))
     @OrderColumn(name = "position")
     @Column(name = "email", nullable = false, columnDefinition = "text")
     private List<String> invoiceEmails = new ArrayList<>();

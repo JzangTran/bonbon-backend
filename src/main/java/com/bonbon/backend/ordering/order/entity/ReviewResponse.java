@@ -15,7 +15,7 @@ import jakarta.persistence.Table;
 
 /** The shop's one reply to a review (respond-to-review.md). */
 @Entity
-@Table(name = "review_responses")
+@Table(schema = "ordering", name = "review_responses")
 public class ReviewResponse {
 
     @Id

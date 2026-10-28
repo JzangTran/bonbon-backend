@@ -14,7 +14,7 @@ import jakarta.persistence.Table;
 
 /** Read-only here; versions are created and published through {@code LegalAdminService}. */
 @Entity
-@Table(name = "legal_documents")
+@Table(schema = "identity", name = "legal_documents")
 public class LegalDocument {
 
     @Id

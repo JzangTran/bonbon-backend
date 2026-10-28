@@ -12,7 +12,7 @@ import jakarta.persistence.Table;
 
 /** One administrator viewing one shop owner's identity documents. */
 @Entity
-@Table(name = "identity_document_access_log")
+@Table(schema = "marketplace", name = "identity_document_access_log")
 public class IdentityAccess {
 
     @Id

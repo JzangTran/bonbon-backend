@@ -13,7 +13,7 @@ import jakarta.persistence.Table;
 
 /** A stored notification. {@code audience} is CUSTOMER or SHOP: an identity with both roles sees only the active one. */
 @Entity
-@Table(name = "notifications")
+@Table(schema = "communication", name = "notifications")
 public class Notification {
 
     @Id

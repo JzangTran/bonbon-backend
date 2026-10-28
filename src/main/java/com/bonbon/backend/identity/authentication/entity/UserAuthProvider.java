@@ -14,7 +14,7 @@ import jakarta.persistence.Table;
 
 /** One external sign-in method attached to a user (Google today; Facebook later). */
 @Entity
-@Table(name = "user_auth_providers")
+@Table(schema = "identity", name = "user_auth_providers")
 public class UserAuthProvider {
 
     @EmbeddedId

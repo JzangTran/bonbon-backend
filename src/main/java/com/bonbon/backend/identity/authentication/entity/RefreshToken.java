@@ -15,7 +15,7 @@ import jakarta.persistence.Table;
 
 /** One login session (per device and role); the raw token is never stored, only its SHA-256. */
 @Entity
-@Table(name = "refresh_tokens")
+@Table(schema = "identity", name = "refresh_tokens")
 public class RefreshToken {
 
     @Id

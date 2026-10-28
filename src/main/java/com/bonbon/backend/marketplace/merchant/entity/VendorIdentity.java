@@ -15,7 +15,7 @@ import jakarta.persistence.Table;
  * clear for display; photos are keys in the private bucket.
  */
 @Entity
-@Table(name = "vendor_identity")
+@Table(schema = "marketplace", name = "vendor_identity")
 public class VendorIdentity {
 
     public enum DocType { CCCD, CMND }

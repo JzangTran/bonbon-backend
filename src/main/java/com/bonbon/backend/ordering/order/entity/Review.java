@@ -12,7 +12,7 @@ import jakarta.persistence.Table;
 
 /** A customer's review of the shop for one delivered order (review-order.md). */
 @Entity
-@Table(name = "reviews")
+@Table(schema = "ordering", name = "reviews")
 public class Review {
 
     @Id

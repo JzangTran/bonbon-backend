@@ -14,7 +14,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "service_areas")
+@Table(schema = "marketplace", name = "service_areas")
 public class ServiceArea {
 
     @Id

@@ -13,7 +13,7 @@ import jakarta.persistence.Table;
 
 /** One installed app that can receive pushes; the token is unique, so it always belongs to one user at a time. */
 @Entity
-@Table(name = "push_devices")
+@Table(schema = "communication", name = "push_devices")
 public class PushDevice {
 
     public enum Status { ACTIVE, INVALID, REVOKED }

@@ -19,7 +19,7 @@ import jakarta.persistence.Table;
  * notifications) is a separate flow.
  */
 @Entity
-@Table(name = "vendor_payout_accounts")
+@Table(schema = "marketplace", name = "vendor_payout_accounts")
 public class PayoutAccount {
 
     public enum Status { ACTIVE, PENDING_HOLD, REPLACED }

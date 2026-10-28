@@ -18,7 +18,7 @@ import jakarta.persistence.Table;
 
 /** A dish. Archived rows are hidden everywhere but kept so past orders stay readable. */
 @Entity
-@Table(name = "menu_items")
+@Table(schema = "marketplace", name = "menu_items")
 public class MenuItem {
 
     @Id

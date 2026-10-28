@@ -26,7 +26,7 @@ import jakarta.persistence.Table;
 
 /** A shop. Fields stay nullable while it is a draft; completeness is checked at submission. */
 @Entity
-@Table(name = "vendors")
+@Table(schema = "marketplace", name = "vendors")
 public class Vendor {
 
     @Id
@@ -127,7 +127,7 @@ public class Vendor {
     private Instant decidedAt;
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "shop_opening_hours", joinColumns = @JoinColumn(name = "vendor_id"))
+    @CollectionTable(schema = "marketplace", name = "shop_opening_hours", joinColumns = @JoinColumn(name = "vendor_id"))
     private List<OpeningWindow> openingHours = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
