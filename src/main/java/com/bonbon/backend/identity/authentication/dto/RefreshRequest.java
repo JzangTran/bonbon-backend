@@ -1,6 +1,5 @@
 package com.bonbon.backend.identity.authentication.dto;
 
-import jakarta.validation.constraints.NotBlank;
-
-public record RefreshRequest(@NotBlank String refreshToken) {
+/** The phone app sends its refresh token here; the web app sends none and the HttpOnly cookie is used. */
+public record RefreshRequest(String refreshToken) {
 }

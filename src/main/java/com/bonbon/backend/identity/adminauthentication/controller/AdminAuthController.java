@@ -5,6 +5,9 @@ import com.bonbon.backend.identity.authentication.IssuedSession;
 import com.bonbon.backend.common.exception.BusinessException;
 import com.bonbon.backend.common.web.ClientContext;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import com.bonbon.backend.identity.authentication.controller.RefreshCookies;
+import com.bonbon.backend.identity.authentication.service.TokenService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -35,8 +38,13 @@ class AdminAuthController {
 
     private final AdminAccountService admins;
 
-    AdminAuthController(AdminAccountService admins) {
+    private final RefreshCookies cookies;
+    private final TokenService tokens;
+
+    AdminAuthController(AdminAccountService admins, RefreshCookies cookies, TokenService tokens) {
         this.admins = admins;
+        this.cookies = cookies;
+        this.tokens = tokens;
     }
 
     @Operation(operationId = "adminLogin", summary = "Đăng nhập quản trị", description = "Email và mật khẩu của quản trị viên. Sai nhiều lần thì phải kèm reCAPTCHA.")
@@ -51,10 +59,17 @@ class AdminAuthController {
     @ApiError(status = 401, code = "UNAUTHENTICATED", when = "Không có access token hợp lệ.")
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void logout(@RequestBody(required = false) AdminLogoutRequest request, @AuthenticationPrincipal Jwt jwt) {
+    void logout(@RequestBody(required = false) AdminLogoutRequest request, @AuthenticationPrincipal Jwt jwt, HttpServletRequest http,
+            HttpServletResponse response) {
+        String refreshToken = cookies.pick(request == null ? null : request.refreshToken(), http);
+        if (RefreshCookies.isWeb(http)) cookies.clear(response);
+        if (jwt == null && refreshToken != null) {
+            tokens.revokeRefreshToken(refreshToken);
+            return;
+        }
         if (jwt == null) {
             throw new BusinessException(HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED", "Vui lòng đăng nhập.");
         }
-        admins.signOut(jwt, request == null ? null : request.refreshToken());
+        admins.signOut(jwt, refreshToken);
     }
 }

@@ -64,8 +64,20 @@ public class TokenService {
         return issue(user, role, authTime, UUID.randomUUID());
     }
 
+    /** A refreshed pair and who it belongs to. */
+    public record Refreshed(TokenPair pair, User user) {
+    }
+
     @Transactional(noRollbackFor = BusinessException.class)
     public TokenPair refresh(String rawRefreshToken) {
+        return refreshSession(rawRefreshToken).pair();
+    }
+
+    @Transactional(noRollbackFor = BusinessException.class)
+    public Refreshed refreshSession(String rawRefreshToken) {
+        if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
+            throw invalidRefresh();
+        }
         Instant now = clock.instant();
         RefreshToken current = refreshTokens.findByTokenHash(SecureTokens.hash(rawRefreshToken))
                 .orElseThrow(TokenService::invalidRefresh);
@@ -87,7 +99,7 @@ public class TokenService {
             refreshTokens.revokeFamily(current.getFamilyId(), now);
             throw invalidRefresh();
         }
-        return issue(user, current.getRole(), current.getAuthTime(), current.getFamilyId());
+        return new Refreshed(issue(user, current.getRole(), current.getAuthTime(), current.getFamilyId()), user);
     }
 
     /** Logout of one device: the access token stops working at once, its refresh token is revoked. */
@@ -102,6 +114,14 @@ public class TokenService {
                     .filter(t -> t.getUserId().toString().equals(accessToken.getSubject()))
                     .ifPresent(t -> t.revoke(now));
         }
+    }
+
+    /** Sign-out with only the refresh token (its access token already expired): holding the token is proof enough. */
+    @Transactional
+    public void revokeRefreshToken(String rawRefreshToken) {
+        if (rawRefreshToken == null || rawRefreshToken.isBlank()) return;
+        Instant now = clock.instant();
+        refreshTokens.findByTokenHash(SecureTokens.hash(rawRefreshToken)).ifPresent(t -> t.revoke(now));
     }
 
     /** Password change/reset or logout-all: every token issued before now stops working. */

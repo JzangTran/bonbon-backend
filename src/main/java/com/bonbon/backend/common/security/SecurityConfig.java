@@ -44,7 +44,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  */
 @Configuration
 @EnableMethodSecurity
-@EnableConfigurationProperties({JwtProperties.class, CorsProperties.class})
+@EnableConfigurationProperties({JwtProperties.class, CorsProperties.class, RefreshCookieProperties.class})
 class SecurityConfig {
 
     static final String[] PUBLIC_PATHS = {
@@ -129,6 +129,10 @@ class SecurityConfig {
         cors.setAllowedOrigins(props.allowedOrigins());
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cors.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key", "X-Client-Channel", "X-App-Version", "X-App-Platform"));
+        // the web app sends its refresh-token cookie when the API is on another origin
+        cors.setAllowCredentials(true);
+        // the web app sends its refresh-token cookie when the API is on another origin
+        cors.setAllowCredentials(true);
         cors.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cors);

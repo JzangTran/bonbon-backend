@@ -8,6 +8,8 @@ import com.bonbon.backend.identity.authentication.service.SessionService;
 import com.bonbon.backend.common.exception.BusinessException;
 import com.bonbon.backend.common.web.ClientContext;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import com.bonbon.backend.identity.authentication.service.TokenService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,17 +32,30 @@ class SessionController {
     private final SessionService sessions;
     private final PasswordRecoveryService recovery;
 
-    SessionController(SessionService sessions, PasswordRecoveryService recovery) {
+    private final RefreshCookies cookies;
+    private final TokenService tokens;
+
+    SessionController(SessionService sessions, PasswordRecoveryService recovery, RefreshCookies cookies, TokenService tokens) {
         this.sessions = sessions;
         this.recovery = recovery;
+        this.cookies = cookies;
+        this.tokens = tokens;
     }
 
     @Operation(operationId = "logout", summary = "Đăng xuất", description = "Thu hồi phiên hiện tại và `refreshToken` gửi kèm.")
     @ApiError(status = 401, code = "UNAUTHENTICATED", when = "Không có access token hợp lệ.")
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void logout(@RequestBody(required = false) PasswordRequests.Logout body, @AuthenticationPrincipal Jwt jwt) {
-        sessions.logout(requireSignedIn(jwt), body == null ? null : body.refreshToken());
+    void logout(@RequestBody(required = false) PasswordRequests.Logout body, @AuthenticationPrincipal Jwt jwt, HttpServletRequest http,
+            HttpServletResponse response) {
+        String refreshToken = cookies.pick(body == null ? null : body.refreshToken(), http);
+        if (RefreshCookies.isWeb(http)) cookies.clear(response);
+        // the web app may come back with only its cookie once the access token has expired: holding the refresh token is enough
+        if (jwt == null && refreshToken != null) {
+            tokens.revokeRefreshToken(refreshToken);
+            return;
+        }
+        sessions.logout(requireSignedIn(jwt), refreshToken);
     }
 
     @Operation(operationId = "logoutEverywhere", summary = "Đăng xuất khỏi mọi thiết bị", description = "Thu hồi mọi phiên của tài khoản, kể cả thiết bị này. Tài khoản có mật khẩu phải nhập lại mật khẩu.")
@@ -49,8 +64,10 @@ class SessionController {
     @ApiError(status = 403, code = "REAUTHENTICATION_REQUIRED", when = "Phiên đăng nhập đã lâu: đăng nhập lại rồi thử.")
     @PostMapping("/logout-all")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void logoutAll(@RequestBody(required = false) PasswordRequests.LogoutAll body, @AuthenticationPrincipal Jwt jwt) {
+    void logoutAll(@RequestBody(required = false) PasswordRequests.LogoutAll body, @AuthenticationPrincipal Jwt jwt, HttpServletRequest http,
+            HttpServletResponse response) {
         sessions.logoutEverywhere(requireSignedIn(jwt), body == null ? null : body.password());
+        if (RefreshCookies.isWeb(http)) cookies.clear(response);
     }
 
     @Operation(operationId = "forgotPassword", summary = "Quên mật khẩu", description = "Gửi thư đặt lại mật khẩu nếu email có tài khoản; luôn trả 202 để không tiết lộ tài khoản.")

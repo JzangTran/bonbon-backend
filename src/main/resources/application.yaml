@@ -56,6 +56,9 @@ bonbon:
       secret: ${BONBON_JWT_SECRET:}
     # AES-256 key (32 bytes, base64) for encrypted columns: identity numbers, bank accounts. Never commit.
     data-key: ${BONBON_DATA_KEY:}
+    # The web app's refresh token travels in this HttpOnly cookie. Set the domain (e.g. bonbon.com) so every subdomain shares one sign-in.
+    refresh-cookie:
+      domain: ${BONBON_REFRESH_COOKIE_DOMAIN:}
   cors:
     allowed-origins: ${BONBON_CORS_ORIGINS:http://localhost:5173}
   app:
