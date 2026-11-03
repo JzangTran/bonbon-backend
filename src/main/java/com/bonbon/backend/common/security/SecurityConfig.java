@@ -83,9 +83,9 @@ class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(PUBLIC_PATHS).permitAll()
                         // Reading the category tree is public (browsing filters); writes live under /api/admin.
-                        .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/categories", "/api/display-categories").permitAll()
                         // Guests browse shops and menus before logging in (browse-vendors-in-area.md).
-                        .requestMatchers(HttpMethod.GET, "/api/vendors", "/api/vendors/*/menu", "/api/vendors/*/reviews").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/vendors", "/api/vendors/*/menu", "/api/vendors/*/reviews", "/api/feed").permitAll()
                         // ...and type where they want the food to go; guests are limited per IP (AddressSuggestionService).
                         .requestMatchers(HttpMethod.GET, "/api/geo/**").permitAll()
                         // The help centre can be read without logging in (browse-help-center.md).

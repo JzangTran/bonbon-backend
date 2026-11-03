@@ -46,6 +46,10 @@ public class MenuItem {
     @Column(name = "photo_key", columnDefinition = "text")
     private String photoKey;
 
+    /** The price before the discount, shown struck through; null when the dish is not discounted. Always above {@code price}. */
+    @Column(name = "original_price")
+    private Integer originalPrice;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "text")
     private MenuItemStatus status = MenuItemStatus.AVAILABLE;
@@ -149,6 +153,26 @@ public class MenuItem {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public Integer getOriginalPrice() {
+        return originalPrice;
+    }
+
+    public void setOriginalPrice(Integer originalPrice) {
+        this.originalPrice = originalPrice;
+    }
+
+    /** Whole percent off, rounded down (so "Giảm 15%" never promises more than the real saving); 0 without a discount. */
+    public int discountPercent() {
+        return discountPercent(price, originalPrice);
+    }
+
+    public static int discountPercent(int price, Integer originalPrice) {
+        if (originalPrice == null || originalPrice <= price || originalPrice <= 0) {
+            return 0;
+        }
+        return (int) ((long) (originalPrice - price) * 100 / originalPrice);
     }
 
     public int getPrice() {

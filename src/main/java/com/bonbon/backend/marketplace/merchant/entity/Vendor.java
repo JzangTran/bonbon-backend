@@ -43,6 +43,10 @@ public class Vendor {
     @Column(columnDefinition = "text")
     private String name;
 
+    /** The square picture next to the shop's name in the customer app; null shows a placeholder. */
+    @Column(name = "logo_key", columnDefinition = "text")
+    private String logoKey;
+
     @Column(columnDefinition = "text")
     private String phone;
 
@@ -233,6 +237,14 @@ public class Vendor {
 
     public String getName() {
         return name;
+    }
+
+    public String getLogoKey() {
+        return logoKey;
+    }
+
+    public void setLogoKey(String logoKey) {
+        this.logoKey = logoKey;
     }
 
     public void setName(String name) {

@@ -18,6 +18,30 @@ public interface ShopCatalog {
      */
     List<Shop> shopsInArea(double lat, double lng, String query, java.util.Set<UUID> categoryIds);
 
+    /**
+     * The home page's raw material, light enough to cache: every approved shop with a dish to order (in {@code categoryIds} when
+     * given), with its point, radius, rating and best discount. With {@code lat}/{@code lng}, only shops whose radius could reach
+     * a point within {@code reachKm} of it (the caller checks the exact point); without, every shop.
+     */
+    List<FeedEntry> feedEntries(Double lat, Double lng, double reachKm, java.util.Set<UUID> categoryIds);
+
+    /** The cards of a page of the home page, in the order of {@code ids}: the shop and up to 10 dishes it has now, discounted first. */
+    List<FeedCard> feedCards(List<UUID> ids, Double lat, Double lng);
+
+    /**
+     * {@code restricted}: the shop is held back (unpaid commission, performance) and goes last. {@code maxDiscountPercent} is the
+     * best "Giảm X%" among its dishes on sale now, 0 when none.
+     */
+    record FeedEntry(UUID id, double lat, double lng, double radiusKm, int ratingSum, int ratingCount, int maxDiscountPercent,
+            boolean restricted) {
+    }
+
+    record FeedCard(Shop shop, List<FeedDish> dishes) {
+    }
+
+    record FeedDish(UUID id, String name, String photoUrl, int price, Integer originalPrice, int discountPercent) {
+    }
+
     /** The shop's menu, or empty when the shop does not exist or is not approved. */
     Optional<ShopMenu> menu(UUID shopId, Double lat, Double lng);
 
@@ -29,6 +53,7 @@ public interface ShopCatalog {
     record Shop(
             UUID id,
             String name,
+            String logoUrl,
             String address,
             String serviceAreaName,
             Double distanceKm,
@@ -48,8 +73,8 @@ public interface ShopCatalog {
     }
 
     /** {@code soldOut} is effective (switched off, no stock, or a required group cannot be filled); stock itself is never shown. */
-    record Item(UUID id, String name, String description, int price, String photoUrl, boolean soldOut,
-            List<MenuOptionGroup> optionGroups) {
+    record Item(UUID id, String name, String description, int price, Integer originalPrice, int discountPercent, String photoUrl,
+            boolean soldOut, List<MenuOptionGroup> optionGroups) {
     }
 
     record MenuOptionGroup(UUID id, String name, int min, int max, List<MenuOption> options) {

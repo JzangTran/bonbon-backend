@@ -25,6 +25,8 @@ public record MenuView(List<Section> sections) {
             String name,
             String description,
             int price,
+            Integer originalPrice,
+            int discountPercent,
             String photoUrl,
             MenuItemStatus status,
             boolean soldOut,

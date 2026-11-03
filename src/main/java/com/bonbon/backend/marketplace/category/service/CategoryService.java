@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -34,13 +35,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class CategoryService implements CategoryCatalog {
 
+    private final DisplayCategoryService displays;
+
     private static final UUID NO_ID = new UUID(0, 0);
 
     private final CategoryRepository categories;
     private final ObjectProvider<CategoryUsage> usage;
     private final ApplicationEventPublisher events;
 
-    CategoryService(CategoryRepository categories, ObjectProvider<CategoryUsage> usage, ApplicationEventPublisher events) {
+    CategoryService(CategoryRepository categories, ObjectProvider<CategoryUsage> usage, ApplicationEventPublisher events,
+            DisplayCategoryService displays) {
+        this.displays = displays;
         this.categories = categories;
         this.usage = usage;
         this.events = events;
@@ -191,6 +196,11 @@ public class CategoryService implements CategoryCatalog {
         return categories.findById(categoryId)
                 .filter(c -> c.getLevel() == Category.MAX_LEVEL && c.isActive() && ancestorsActive(c))
                 .isPresent();
+    }
+
+    @Override
+    public Set<UUID> displayCategoryLeaves(UUID displayCategoryId) {
+        return displays.leavesOf(displayCategoryId);
     }
 
     @Override

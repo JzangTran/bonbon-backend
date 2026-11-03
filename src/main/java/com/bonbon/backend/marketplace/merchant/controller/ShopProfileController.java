@@ -11,6 +11,10 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -63,6 +67,24 @@ class ShopProfileController {
     ShopApplicationView close(CurrentPrincipal principal, @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody ShopProfileRequests.Close request) {
         Object claim = jwt.getClaims().get(CurrentPrincipal.CLAIM_AUTH_TIME);
         return profiles.requestClose(principal, claim instanceof Number n ? java.time.Instant.ofEpochSecond(n.longValue()) : null, request, java.time.Instant.now());
+    }
+
+    @Operation(operationId = "setMyShopLogo", summary = "Đặt logo quán", description = "Ảnh vuông hiện cạnh tên quán trong ứng dụng khách (JPG, PNG, WebP, tối đa 2 MB). Logo cũ được xoá sau khi lưu.")
+    @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người gọi chưa có cửa hàng được duyệt; `status` cho biết trạng thái hồ sơ.")
+    @ApiError(status = 400, code = "FILE_REQUIRED", when = "Không có tệp trong trường `file`.")
+    @ApiError(status = 413, code = "FILE_TOO_LARGE", when = "Tệp vượt 2 MB.")
+    @ApiError(status = 400, code = "IMAGE_INVALID", when = "Ảnh bị cắt dở hoặc không đúng cấu trúc tệp.")
+    @ApiError(status = 415, code = "UNSUPPORTED_FILE_TYPE", when = "Định dạng không được nhận (kiểm tra theo nội dung tệp, không theo tên).")
+    @PutMapping(path = "/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    ShopApplicationView setLogo(CurrentPrincipal principal, @RequestPart("file") MultipartFile file) {
+        return profiles.setLogo(principal, file);
+    }
+
+    @Operation(operationId = "removeMyShopLogo", summary = "Gỡ logo quán", description = "Quán trở lại ô ảnh trống; tệp cũ được xoá sau khi lưu.")
+    @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người gọi chưa có cửa hàng được duyệt; `status` cho biết trạng thái hồ sơ.")
+    @DeleteMapping("/logo")
+    ShopApplicationView removeLogo(CurrentPrincipal principal) {
+        return profiles.removeLogo(principal);
     }
 
     @Operation(operationId = "setAcceptingOrders", summary = "Tạm ngưng / nhận đơn lại", description = "Ghi đè lịch ngay lập tức; đơn đã nhận không bị ảnh hưởng. Ai bấm và lúc nào được ghi lại.")

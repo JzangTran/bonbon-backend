@@ -273,9 +273,10 @@ public class ShopApplicationService {
         PayoutAccount payout = payouts.findActive(v.getId()).orElse(null);
         VendorIdentity id = identities.findById(v.getId()).orElse(null);
 
-        var shop = new ShopApplicationView.ShopInfo(v.getName(), v.getPhone(), v.getEmail(),
+        var shop = new ShopApplicationView.ShopInfo(v.getId(), v.getName(), v.getPhone(), v.getEmail(),
                 new ShopApplicationView.Address(v.getPlaceId(), v.getFormattedAddress(), v.getWard(), v.getProvince(),
-                        v.getWardCode(), v.getProvinceCode(), v.getAddressDetail(), v.getLat(), v.getLng()));
+                        v.getWardCode(), v.getProvinceCode(), v.getAddressDetail(), v.getLat(), v.getLng()),
+                v.getLogoKey() == null ? null : storage.publicUrl(v.getLogoKey()));
         var shipping = new ShopApplicationView.Shipping(
                 v.getOpeningHours().stream().map(w -> new ShopApplicationView.Hours(w.weekday(), w.opensAt(), w.closesAt())).toList(),
                 v.getDeliveryRadiusKm(), v.getDeliveryFee(), v.getFreeDeliveryThreshold(), v.getMinOrderValue());

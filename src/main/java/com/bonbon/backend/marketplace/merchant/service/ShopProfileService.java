@@ -1,5 +1,12 @@
 package com.bonbon.backend.marketplace.merchant.service;
 
+import com.bonbon.backend.common.storage.ObjectStorage;
+import com.bonbon.backend.common.storage.ObjectStorage.Visibility;
+import com.bonbon.backend.common.storage.ValidatedFile;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -34,15 +41,70 @@ public class ShopProfileService {
     private final ShopApplicationService views;
     private final JdbcClient jdbc;
     private final ApplicationEventPublisher events;
+    private final ObjectStorage storage;
 
     ShopProfileService(VendorRepository vendors, ShopAddressRules addressRules, DeliveryRadiusCap radiusCap, ShopApplicationService views, JdbcClient jdbc,
-            ApplicationEventPublisher events) {
+            ApplicationEventPublisher events, ObjectStorage storage) {
         this.vendors = vendors;
         this.addressRules = addressRules;
         this.radiusCap = radiusCap;
         this.views = views;
         this.jdbc = jdbc;
         this.events = events;
+        this.storage = storage;
+    }
+
+    private static final long LOGO_MAX_BYTES = 2L * 1024 * 1024;
+
+    /** The shop's logo (a square picture next to its name in the app); the old file goes once the change is saved. */
+    @Transactional
+    public ShopApplicationView setLogo(CurrentPrincipal owner, MultipartFile upload) {
+        Vendor vendor = approvedShop(owner.id());
+        ValidatedFile file = ValidatedFile.of(upload, ValidatedFile.IMAGES, LOGO_MAX_BYTES);
+        String key = storage.put(Visibility.PUBLIC, "shop-logo/" + vendor.getId(), file);
+        afterCompletion(rolledBack -> {
+            if (rolledBack) {
+                deleteQuietly(key);
+            }
+        });
+        String old = vendor.getLogoKey();
+        vendor.setLogoKey(key);
+        afterCompletion(rolledBack -> {
+            if (!rolledBack && old != null) {
+                deleteQuietly(old);
+            }
+        });
+        return views.toView(vendors.save(vendor));
+    }
+
+    @Transactional
+    public ShopApplicationView removeLogo(CurrentPrincipal owner) {
+        Vendor vendor = approvedShop(owner.id());
+        String old = vendor.getLogoKey();
+        vendor.setLogoKey(null);
+        afterCompletion(rolledBack -> {
+            if (!rolledBack && old != null) {
+                deleteQuietly(old);
+            }
+        });
+        return views.toView(vendors.save(vendor));
+    }
+
+    private static void afterCompletion(java.util.function.Consumer<Boolean> action) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                action.accept(status == STATUS_ROLLED_BACK);
+            }
+        });
+    }
+
+    private void deleteQuietly(String key) {
+        try {
+            storage.delete(Visibility.PUBLIC, key);
+        } catch (RuntimeException e) {
+            org.slf4j.LoggerFactory.getLogger(ShopProfileService.class).warn("Could not delete shop logo {}", key, e);
+        }
     }
 
     @Transactional

@@ -37,7 +37,8 @@ public final class MenuRequests {
             @NotBlank @Size(max = 100) String name,
             @Size(max = 500) String description,
             @NotNull @PositiveOrZero @Max(10_000_000) Integer price,
-            @PositiveOrZero @Max(100_000) Integer stockQuantity) {
+            @PositiveOrZero @Max(100_000) Integer stockQuantity,
+            @Schema(description = "Giá trước giảm, phải lớn hơn `price`; bỏ trống nếu món không giảm giá.") @PositiveOrZero @Max(10_000_000) Integer originalPrice) {
     }
 
     /**
@@ -53,6 +54,8 @@ public final class MenuRequests {
             @PositiveOrZero @Max(10_000_000) Integer price,
             @PositiveOrZero @Max(100_000) Integer stockQuantity,
             Boolean clearDescription,
-            Boolean clearStock) {
+            Boolean clearStock,
+            @Schema(description = "Giá trước giảm, phải lớn hơn giá bán.") @PositiveOrZero @Max(10_000_000) Integer originalPrice,
+            @Schema(description = "`true` để bỏ giảm giá (xoá giá trước giảm).") Boolean clearOriginalPrice) {
     }
 }

@@ -20,6 +20,12 @@ public interface CategoryCatalog {
      */
     Optional<BigDecimal> effectiveCommissionRate(UUID categoryId);
 
+    /**
+     * The leaf categories a display category of the home page gathers - what picking it in the app matches; empty when it does
+     * not exist or is hidden.
+     */
+    Set<UUID> displayCategoryLeaves(UUID displayCategoryId);
+
     /** The category and every node below it (empty when it does not exist) - what a category filter matches. */
     Set<UUID> subtreeIds(UUID categoryId);
 

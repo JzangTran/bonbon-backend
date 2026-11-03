@@ -133,6 +133,8 @@ public class MenuService {
         requireLeaf(req.categoryId());
         MenuItem item = new MenuItem(shop.getId(), section.getId(), req.categoryId(), req.name().strip(),
                 blankToNull(req.description()), req.price(), req.stockQuantity(), items.maxSortOrder(section.getId()) + 1);
+        item.setOriginalPrice(req.originalPrice());
+        requireOriginalAbovePrice(item);
         item.touchedBy(owner.actorType(), owner.id());
         items.save(item);
         return view(shop);
@@ -148,6 +150,12 @@ public class MenuService {
         if (req.price() != null) {
             item.setPrice(req.price());
         }
+        if (Boolean.TRUE.equals(req.clearOriginalPrice())) {
+            item.setOriginalPrice(null);
+        } else if (req.originalPrice() != null) {
+            item.setOriginalPrice(req.originalPrice());
+        }
+        requireOriginalAbovePrice(item);
         if (Boolean.TRUE.equals(req.clearDescription())) {
             item.setDescription(null);
         } else if (req.description() != null) {
@@ -246,13 +254,21 @@ public class MenuService {
 
     // --- internals
 
+    /** A discount shows the old price struck through, so it has to be above what the customer now pays. */
+    private static void requireOriginalAbovePrice(MenuItem item) {
+        if (item.getOriginalPrice() != null && item.getOriginalPrice() <= item.getPrice()) {
+            throw new BusinessException(org.springframework.http.HttpStatus.BAD_REQUEST, "ORIGINAL_PRICE_NOT_ABOVE",
+                    "Giá trước giảm phải cao hơn giá bán.");
+        }
+    }
+
     private MenuView view(Vendor shop) {
         OptionService.MenuOptionInfo optionInfo = optionService.forMenu(shop.getId());
         Map<UUID, List<MenuView.Item>> bySection = new LinkedHashMap<>();
         for (MenuItem i : items.findActiveByVendor(shop.getId())) {
             bySection.computeIfAbsent(i.getSectionId(), k -> new ArrayList<>()).add(new MenuView.Item(
                     i.getId(), i.getSectionId(), i.getCategoryId(), i.getName(), i.getDescription(), i.getPrice(),
-                    i.getPhotoKey() == null ? null : storage.publicUrl(i.getPhotoKey()), i.getStatus(),
+                    i.getOriginalPrice(), i.discountPercent(), i.getPhotoKey() == null ? null : storage.publicUrl(i.getPhotoKey()), i.getStatus(),
                     i.isSoldOut() || optionInfo.blockedItems().contains(i.getId()), i.getStockQuantity(), i.getSortOrder(),
                     optionInfo.groupIdsByItem().getOrDefault(i.getId(), List.of())));
         }

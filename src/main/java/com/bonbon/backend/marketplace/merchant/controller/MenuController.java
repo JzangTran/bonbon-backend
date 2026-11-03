@@ -98,7 +98,8 @@ class MenuController {
         return menu.reorderItems(principal, id, request);
     }
 
-    @Operation(operationId = "createMenuItem", summary = "Thêm món", description = "Giá là số nguyên VND. Ngành hàng phải là ngành cấp 3 đang hoạt động (quyết định hoa hồng). `stockQuantity` bỏ trống là không giới hạn.")
+    @Operation(operationId = "createMenuItem", summary = "Thêm món", description = "Giá là số nguyên VND. Ngành hàng phải là ngành cấp 3 đang hoạt động (quyết định hoa hồng). `stockQuantity` bỏ trống là không giới hạn. `originalPrice` (giá trước giảm) cho món giảm giá.")
+    @ApiError(status = 400, code = "ORIGINAL_PRICE_NOT_ABOVE", when = "Giá trước giảm không cao hơn giá bán.")
     @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người gọi chưa có cửa hàng được duyệt; `status` cho biết trạng thái hồ sơ.")
     @ApiError(status = 404, code = "MENU_SECTION_NOT_FOUND", when = "Mục không tồn tại hoặc thuộc quán khác.")
     @ApiError(status = 400, code = "CATEGORY_NOT_ASSIGNABLE", when = "Ngành hàng không phải ngành cấp 3 đang hoạt động.")
@@ -109,7 +110,8 @@ class MenuController {
         return menu.createItem(principal, request);
     }
 
-    @Operation(operationId = "updateMenuItem", summary = "Sửa món", description = "Chỉ trường gửi lên mới đổi; `clearDescription`/`clearStock` xoá mô tả/tồn kho. Đơn đã đặt giữ giá và tên cũ.")
+    @Operation(operationId = "updateMenuItem", summary = "Sửa món", description = "Chỉ trường gửi lên mới đổi; `clearDescription`/`clearStock`/`clearOriginalPrice` xoá mô tả/tồn kho/giảm giá. Đơn đã đặt giữ giá và tên cũ.")
+    @ApiError(status = 400, code = "ORIGINAL_PRICE_NOT_ABOVE", when = "Giá trước giảm không cao hơn giá bán.")
     @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người gọi chưa có cửa hàng được duyệt; `status` cho biết trạng thái hồ sơ.")
     @ApiError(status = 404, code = "MENU_ITEM_NOT_FOUND", when = "Món không tồn tại, đã xoá hoặc thuộc quán khác.")
     @ApiError(status = 404, code = "MENU_SECTION_NOT_FOUND", when = "Mục không tồn tại hoặc thuộc quán khác.")

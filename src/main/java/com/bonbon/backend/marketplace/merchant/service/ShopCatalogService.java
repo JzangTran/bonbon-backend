@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -125,6 +126,96 @@ class ShopCatalogService implements ShopCatalog {
                 .toList();
     }
 
+    /** Whole percent off, as MenuItem.discountPercent, in SQL. */
+    private static final String DISCOUNT_SQL = """
+            case when i.original_price is not null and i.original_price > i.price and i.original_price > 0
+                 then (i.original_price - i.price) * 100 / i.original_price else 0 end""";
+
+    /** A dish a customer could order now (the same rule the area list uses). */
+    private static final String ORDERABLE_SQL = """
+            i.archived_at is null and i.status = 'AVAILABLE' and (i.stock_quantity is null or i.stock_quantity > 0)
+            and not i.category_restricted""";
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FeedEntry> feedEntries(Double lat, Double lng, double reachKm, Set<UUID> categoryIds) {
+        if (categoryIds != null && categoryIds.isEmpty()) {
+            return List.of();
+        }
+        StringBuilder sql = new StringBuilder("""
+                select v.id, v.lat, v.lng, v.delivery_radius_km, v.rating_sum, v.rating_count,
+                       (v.commission_stage not in ('NONE', 'OVERDUE') or v.performance_restricted) as restricted,
+                       coalesce((select max(%s) from menu_items i where i.vendor_id = v.id and %s), 0) as max_discount
+                from vendors v
+                where v.status = 'APPROVED' and v.lat is not null and v.lng is not null and v.delivery_radius_km is not null
+                  and exists (select 1 from menu_items i where i.vendor_id = v.id and %s%s)""".formatted(
+                DISCOUNT_SQL, ORDERABLE_SQL, ORDERABLE_SQL, categoryIds == null ? "" : " and i.category_id in (:categories)"));
+        if (lat != null && lng != null) {
+            // a band as wide as the largest radius plus the reach, then each shop's own radius plus the reach
+            sql.append("""
+
+                      and v.lat between :lat - ((select max(r.delivery_radius_km) from vendors r where r.status = 'APPROVED') + :reach) / :kmDeg
+                                    and :lat + ((select max(r.delivery_radius_km) from vendors r where r.status = 'APPROVED') + :reach) / :kmDeg
+                      and abs(:lat - v.lat) * :kmDeg <= v.delivery_radius_km + :reach
+                      and abs(:lng - v.lng) * :kmDeg * greatest(cos(radians(v.lat)), 0.01) <= v.delivery_radius_km + :reach""");
+        }
+        JdbcClient.StatementSpec spec = jdbc.sql(sql.toString());
+        if (lat != null && lng != null) {
+            spec = spec.param("lat", lat).param("lng", lng).param("reach", reachKm).param("kmDeg", KM_PER_DEGREE);
+        }
+        if (categoryIds != null) {
+            spec = spec.param("categories", List.copyOf(categoryIds));
+        }
+        return spec.query((rs, n) -> new FeedEntry(rs.getObject("id", UUID.class), rs.getDouble("lat"), rs.getDouble("lng"),
+                rs.getDouble("delivery_radius_km"), rs.getInt("rating_sum"), rs.getInt("rating_count"), rs.getInt("max_discount"),
+                rs.getBoolean("restricted"))).list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FeedCard> feedCards(List<UUID> ids, Double lat, Double lng) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, List<FeedDish>> dishes = new HashMap<>();
+        jdbc.sql("""
+                select * from (
+                    select i.id, i.vendor_id, i.name, i.photo_key, i.price, i.original_price,
+                           row_number() over (partition by i.vendor_id
+                                              order by (%s) desc, coalesce(s.sort_order, 0), i.sort_order, i.name) as rn
+                    from menu_items i left join menu_sections s on s.id = i.section_id
+                    where i.vendor_id in (:ids) and %s) t
+                where rn <= 10
+                order by vendor_id, rn""".formatted(DISCOUNT_SQL, ORDERABLE_SQL))
+                .param("ids", ids)
+                .query((rs, n) -> {
+                    String photo = rs.getString("photo_key");
+                    int price = rs.getInt("price");
+                    Integer original = (Integer) rs.getObject("original_price");
+                    dishes.computeIfAbsent(rs.getObject("vendor_id", UUID.class), k -> new ArrayList<>()).add(new FeedDish(
+                            rs.getObject("id", UUID.class), rs.getString("name"), photo == null ? null : storage.publicUrl(photo),
+                            price, original, MenuItem.discountPercent(price, original)));
+                    return Boolean.TRUE;
+                }).list();
+        ZonedDateTime now = ZonedDateTime.now();
+        Map<UUID, Vendor> found = new HashMap<>();
+        for (Vendor v : vendors.findAllById(ids)) {
+            if (v.getStatus() == VendorStatus.APPROVED) {
+                found.put(v.getId(), v);
+            }
+        }
+        List<FeedCard> cards = new ArrayList<>();
+        for (UUID id : ids) {
+            Vendor v = found.get(id);
+            if (v == null) {
+                continue;
+            }
+            Double distance = lat == null || lng == null ? null : GeoDistance.haversineKm(lat, lng, v.getLat(), v.getLng());
+            cards.add(new FeedCard(shop(v, distance, now), dishes.getOrDefault(id, List.of())));
+        }
+        return cards;
+    }
+
     @Override
     @Transactional(readOnly = true)
     public Optional<ShopMenu> menu(UUID shopId, Double lat, Double lng) {
@@ -153,7 +244,7 @@ class ShopCatalogService implements ShopCatalog {
                             o.getName(), o.getPriceDelta(), o.getStatus() == com.bonbon.backend.marketplace.merchant.OptionStatus.AVAILABLE,
                             o.isDefaultChoice())).toList())).toList();
             bySection.computeIfAbsent(d.getSectionId(), k -> new ArrayList<>()).add(new Item(d.getId(), d.getName(),
-                    d.getDescription(), d.getPrice(), d.getPhotoKey() == null ? null : storage.publicUrl(d.getPhotoKey()),
+                    d.getDescription(), d.getPrice(), d.getOriginalPrice(), d.discountPercent(), d.getPhotoKey() == null ? null : storage.publicUrl(d.getPhotoKey()),
                     d.isSoldOut() || info.blockedItems().contains(d.getId()),
                     groupViews));
         }
@@ -163,7 +254,7 @@ class ShopCatalogService implements ShopCatalog {
     }
 
     private Shop shop(Vendor v, Double distanceKm, ZonedDateTime now) {
-        return new Shop(v.getId(), v.getName(), v.getFormattedAddress(),
+        return new Shop(v.getId(), v.getName(), v.getLogoKey() == null ? null : storage.publicUrl(v.getLogoKey()), v.getFormattedAddress(),
                 areas.find(v.getServiceAreaId()).map(ServiceAreas.Area::name).orElse(null),
                 distanceKm == null ? null : Math.round(distanceKm * 100.0) / 100.0, ShopHours.isOpen(v, now),
                 v.getDeliveryRadiusKm(), v.getDeliveryFee(), v.getFreeDeliveryThreshold(), v.getMinOrderValue(),
