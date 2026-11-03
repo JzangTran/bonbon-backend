@@ -305,7 +305,7 @@ public class OrderService {
         }
         List<OrderViews.Summary> items = result.getContent().stream().map(o -> new OrderViews.Summary(o.getId(), o.getNumber(),
                 o.getStatus(), o.getVendorName(), o.getGrandTotal(), counts.getOrDefault(o.getId(), 0),
-                String.join(", ", lines.getOrDefault(o.getId(), List.of())), o.getPlacedAt())).toList();
+                String.join(", ", lines.getOrDefault(o.getId(), List.of())), o.getPlacedAt(), o.getPaymentMethod(), o.getPaymentStatus())).toList();
         return new OrderViews.Page(items, page, size, result.getTotalElements());
     }
 

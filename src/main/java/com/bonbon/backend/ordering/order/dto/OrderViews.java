@@ -96,8 +96,9 @@ public final class OrderViews {
     }
 
     @Schema(name = "OrderSummary")
+    /** {@code paymentMethod}: COD or ONLINE (MoMo); {@code paymentStatus}: PENDING or PAID - the customer's payment history. */
     public record Summary(UUID id, long number, OrderStatus status, String shopName, int grandTotal, int itemCount,
-            String itemsPreview, Instant placedAt) {
+            String itemsPreview, Instant placedAt, String paymentMethod, String paymentStatus) {
     }
 
     @Schema(name = "OrderPage")
