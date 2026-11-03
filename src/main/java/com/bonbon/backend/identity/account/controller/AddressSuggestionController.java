@@ -4,6 +4,11 @@ import java.util.List;
 
 import com.bonbon.backend.identity.account.dto.GeoViews;
 import com.bonbon.backend.identity.account.service.AddressSuggestionService;
+import com.bonbon.backend.identity.account.service.AddressSuggestionService.GeoCaller;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import com.bonbon.backend.common.geo.PlaceSuggestion;
 import com.bonbon.backend.common.security.CurrentPrincipal;
 import jakarta.validation.constraints.DecimalMax;
@@ -35,13 +40,13 @@ class AddressSuggestionController {
         this.suggestions = suggestions;
     }
 
-    @Operation(operationId = "suggestAddresses", summary = "Gợi ý địa chỉ", description = "Gọi khi người dùng đã gõ từ 3 ký tự và dừng 300 ms. Trả về `placeId` để gửi kèm biểu mẫu; toạ độ chỉ được tra khi lưu. Có thể truyền toạ độ hiện tại để ưu tiên kết quả gần.")
+    @Operation(operationId = "suggestAddresses", summary = "Gợi ý địa chỉ", description = "Không cần đăng nhập: khách chưa có tài khoản cũng gõ được địa chỉ để xem quán (giới hạn theo IP). Gọi khi người dùng đã gõ từ 3 ký tự và dừng 300 ms. Trả về `placeId` để gửi kèm biểu mẫu; toạ độ chỉ được tra khi lưu. Có thể truyền toạ độ hiện tại để ưu tiên kết quả gần.")
     @ApiError(status = 429, code = "TOO_MANY_REQUESTS", when = "Gửi quá nhiều lần trong thời gian ngắn; đợi rồi thử lại.")
     @ApiError(status = 503, code = "GEOCODING_UNAVAILABLE", when = "Dịch vụ tra địa chỉ (Goong) tạm thời không phản hồi; thử lại sau.")
     @GetMapping("/autocomplete")
-    List<PlaceSuggestion> autocomplete(CurrentPrincipal principal, @RequestParam @Size(max = 200) String input,
+    List<PlaceSuggestion> autocomplete(HttpServletRequest request, @RequestParam @Size(max = 200) String input,
             @RequestParam(required = false) Double lat, @RequestParam(required = false) Double lng) {
-        return suggestions.suggest(principal.id(), input, lat, lng);
+        return suggestions.suggest(caller(request), input, lat, lng);
     }
 
     @Operation(operationId = "listProvinces", summary = "Danh sách tỉnh, thành phố", description = "34 tỉnh và thành phố trực thuộc trung ương sau sáp nhập (2025). Danh sách nằm trong ứng dụng, không gọi bên ngoài; dùng cho ô chọn Tỉnh/Thành phố.")
@@ -62,8 +67,8 @@ class AddressSuggestionController {
     @ApiError(status = 429, code = "TOO_MANY_REQUESTS", when = "Gửi quá nhiều lần trong thời gian ngắn; đợi rồi thử lại.")
     @ApiError(status = 503, code = "GEOCODING_UNAVAILABLE", when = "Dịch vụ tra địa chỉ (Goong) tạm thời không phản hồi; thử lại sau.")
     @GetMapping("/place")
-    GeoViews.Place place(CurrentPrincipal principal, @RequestParam @NotBlank @Size(max = 1024) String placeId) {
-        return suggestions.place(principal.id(), placeId);
+    GeoViews.Place place(HttpServletRequest request, @RequestParam @NotBlank @Size(max = 1024) String placeId) {
+        return suggestions.place(caller(request), placeId);
     }
 
     @Operation(operationId = "reverseGeocode", summary = "Địa chỉ tại một điểm trên bản đồ", description = "Gọi khi người dùng dừng kéo bản đồ: đổi toạ độ ở tâm bản đồ thành địa chỉ, kèm mã tỉnh và phường/xã khớp với danh sách. Toạ độ phải nằm trong lãnh thổ Việt Nam.")
@@ -71,9 +76,18 @@ class AddressSuggestionController {
     @ApiError(status = 429, code = "TOO_MANY_REQUESTS", when = "Gửi quá nhiều lần trong thời gian ngắn; đợi rồi thử lại.")
     @ApiError(status = 503, code = "GEOCODING_UNAVAILABLE", when = "Dịch vụ tra địa chỉ (Goong) tạm thời không phản hồi; thử lại sau.")
     @GetMapping("/reverse")
-    GeoViews.Place reverse(CurrentPrincipal principal,
+    GeoViews.Place reverse(HttpServletRequest request,
             @RequestParam @DecimalMin("6.0") @DecimalMax("24.0") double lat,
             @RequestParam @DecimalMin("102.0") @DecimalMax("118.0") double lng) {
-        return suggestions.reverse(principal.id(), lat, lng);
+        return suggestions.reverse(caller(request), lat, lng);
+    }
+
+    /** The signed-in user when the request carries a token, otherwise a guest known by IP (the proxy's forwarded address in production). */
+    private static GeoCaller caller(HttpServletRequest request) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
+            return GeoCaller.user(CurrentPrincipal.from(jwt).id());
+        }
+        return GeoCaller.guest(request.getRemoteAddr());
     }
 }

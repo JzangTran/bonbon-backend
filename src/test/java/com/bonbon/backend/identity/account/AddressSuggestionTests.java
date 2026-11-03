@@ -9,6 +9,7 @@ import com.bonbon.backend.identity.authentication.entity.User;
 import com.bonbon.backend.identity.authentication.repository.UserRepository;
 import com.bonbon.backend.identity.authentication.service.TokenService;
 import com.bonbon.backend.common.geo.Geocoder;
+import com.bonbon.backend.common.ratelimit.RateLimiter;
 import com.bonbon.backend.common.geo.PlaceSuggestion;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,9 @@ class AddressSuggestionTests {
     @Autowired
     Geocoder geocoder;
 
+    @Autowired
+    RateLimiter rateLimiter;
+
     String access;
 
     @BeforeEach
@@ -51,11 +55,27 @@ class AddressSuggestionTests {
         u.addRole(Role.CUSTOMER);
         u.markEmailVerified();
         access = tokens.issue(users.saveAndFlush(u), Role.CUSTOMER, Instant.now()).accessToken();
+        rateLimiter.reset("geo_autocomplete:ip:127.0.0.1");
     }
 
     @Test
-    void suggestionsNeedASignedInUser() throws Exception {
-        mvc.perform(get("/api/geo/autocomplete").param("input", "toà s2")).andExpect(status().isUnauthorized());
+    void guestsGetSuggestionsToo() throws Exception {
+        mvc.perform(get("/api/geo/autocomplete").param("input", "toà s2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(3));
+    }
+
+    @Test
+    void guestsAreLimitedPerIp() throws Exception {
+        for (int i = 0; i < 20; i++) {
+            mvc.perform(get("/api/geo/autocomplete").param("input", "toà s2")).andExpect(status().isOk());
+        }
+        mvc.perform(get("/api/geo/autocomplete").param("input", "toà s2"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("TOO_MANY_REQUESTS"));
+        // a signed-in user from the same address keeps their own allowance
+        mvc.perform(get("/api/geo/autocomplete").param("input", "toà s2").header("Authorization", "Bearer " + access))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -99,9 +119,9 @@ class AddressSuggestionTests {
     }
 
     @Test
-    void theProvincesAreTheThirtyFourOfTheMergerAndNeedASignedInUser() throws Exception {
-        mvc.perform(get("/api/geo/provinces")).andExpect(status().isUnauthorized());
-        mvc.perform(get("/api/geo/provinces").header("Authorization", "Bearer " + access))
+    void theProvincesAreTheThirtyFourOfTheMerger() throws Exception {
+        // a list built into the server: guests read it too, nothing is called outside
+        mvc.perform(get("/api/geo/provinces"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(34))
                 .andExpect(jsonPath("$[?(@.name == 'Thành phố Hà Nội')].code").value(1));

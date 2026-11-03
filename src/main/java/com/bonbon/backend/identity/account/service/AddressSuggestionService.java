@@ -38,12 +38,12 @@ public class AddressSuggestionService {
         this.units = units;
     }
 
-    public List<PlaceSuggestion> suggest(UUID userId, String input, Double nearLat, Double nearLng) {
+    public List<PlaceSuggestion> suggest(GeoCaller caller, String input, Double nearLat, Double nearLng) {
         String text = input == null ? "" : input.strip();
         if (text.length() < MIN_INPUT) {
             return List.of();
         }
-        limit(userId);
+        limit(caller);
         return geocoder.autocomplete(text, nearLat, nearLng);
     }
 
@@ -59,24 +59,40 @@ public class AddressSuggestionService {
     }
 
     /** A picked suggestion as a point on the map (one Place Detail call). */
-    public GeoViews.Place place(UUID userId, String placeId) {
-        limit(userId);
+    public GeoViews.Place place(GeoCaller caller, String placeId) {
+        limit(caller);
         PlaceDetail detail = geocoder.placeDetail(placeId).orElseThrow(() -> new BusinessException(HttpStatus.BAD_REQUEST,
                 "ADDRESS_NOT_FOUND", "Không xác định được địa chỉ này. Hãy chọn lại một gợi ý."));
         return view(detail);
     }
 
     /** The address under the pin the user dropped on the map. */
-    public GeoViews.Place reverse(UUID userId, double lat, double lng) {
-        limit(userId);
+    public GeoViews.Place reverse(GeoCaller caller, double lat, double lng) {
+        limit(caller);
         PlaceDetail detail = geocoder.reverse(lat, lng).orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND,
                 "ADDRESS_NOT_FOUND", "Không có địa chỉ nào ở vị trí này. Hãy dời bản đồ một chút."));
         return view(detail);
     }
 
-    private void limit(UUID userId) {
-        int limit = settings.getInt("geo.autocomplete_per_user_per_minute", 30);
-        if (!rateLimiter.tryAcquire("geo_autocomplete:user:" + userId, limit, Duration.ofMinutes(1))) {
+    /**
+     * Who is asking, for the per-minute limit: a signed-in user by id, a guest (browsing before signing up) by IP, with a lower
+     * limit since many guests can share nothing else we can count.
+     */
+    public record GeoCaller(UUID userId, String ip) {
+        public static GeoCaller user(UUID id) {
+            return new GeoCaller(id, null);
+        }
+
+        public static GeoCaller guest(String ip) {
+            return new GeoCaller(null, ip);
+        }
+    }
+
+    private void limit(GeoCaller caller) {
+        boolean guest = caller.userId() == null;
+        int limit = guest ? settings.getInt("geo.autocomplete_per_ip_per_minute", 20) : settings.getInt("geo.autocomplete_per_user_per_minute", 30);
+        String key = guest ? "geo_autocomplete:ip:" + caller.ip() : "geo_autocomplete:user:" + caller.userId();
+        if (!rateLimiter.tryAcquire(key, limit, Duration.ofMinutes(1))) {
             throw new BusinessException(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_REQUESTS",
                     "Bạn thao tác quá nhanh, vui lòng thử lại sau.");
         }
