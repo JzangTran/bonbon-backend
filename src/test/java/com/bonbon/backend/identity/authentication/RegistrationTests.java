@@ -7,6 +7,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.bonbon.backend.TestcontainersConfiguration;
+import com.bonbon.backend.identity.authentication.Role;
 import com.bonbon.backend.identity.authentication.entity.User;
 import com.bonbon.backend.identity.authentication.repository.UserRepository;
 import com.bonbon.backend.identity.authentication.service.TokenService;
@@ -119,6 +120,48 @@ class RegistrationTests {
         mvc.perform(register(unique("short"), "1234567", "Dung", "CUSTOMER", customerTermsId, privacyId))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void theEmailStatusSaysWhatTheSellerSignUpAsksNext() throws Exception {
+        String email = "status-" + System.nanoTime() + "@example.com";
+        emailStatus(email).andExpect(jsonPath("$.status").value("NEW"));
+
+        mvc.perform(register(email, "password123", "Khách", "CUSTOMER", docId("CUSTOMER_TERMS"), docId("PRIVACY_POLICY")))
+                .andExpect(status().isCreated());
+        emailStatus(email).andExpect(jsonPath("$.status").value("ACCOUNT"));
+
+        users.findByEmail(email).ifPresent(u -> {
+            u.addRole(Role.SELLER);
+            users.saveAndFlush(u);
+        });
+        emailStatus(email).andExpect(jsonPath("$.status").value("SELLER"));
+    }
+
+    @Test
+    void aNewSellerCanHoldBothRolesWithOneEmailAndTheCustomerTerms() throws Exception {
+        String email = "both-" + System.nanoTime() + "@example.com";
+        String seller = docId("SELLER_TERMS");
+        String privacy = docId("PRIVACY_POLICY");
+
+        mvc.perform(bothRoles(email, seller, privacy))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("CONSENT_REQUIRED"));
+
+        mvc.perform(bothRoles(email, seller, docId("CUSTOMER_TERMS"), privacy)).andExpect(status().isCreated());
+        User user = users.findByEmail(email).orElseThrow();
+        assertThat(user.hasRole(Role.SELLER)).isTrue();
+        assertThat(user.hasRole(Role.CUSTOMER)).isTrue();
+    }
+
+    private MockHttpServletRequestBuilder bothRoles(String email, String... docIds) {
+        String body = json(email, "password123", "Chủ quán", "SELLER", docIds);
+        return withIp(post("/api/auth/register")).contentType(MediaType.APPLICATION_JSON)
+                .content(body.substring(0, body.length() - 1) + ",\"alsoCustomer\":true}");
+    }
+
+    private org.springframework.test.web.servlet.ResultActions emailStatus(String email) throws Exception {
+        return mvc.perform(withIp(post("/api/auth/email-status")).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"" + email + "\"}")).andExpect(status().isOk());
     }
 
     @Test

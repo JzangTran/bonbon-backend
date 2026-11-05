@@ -81,6 +81,24 @@ public class RegistrationService {
                 : createIdentity(req, client);
     }
 
+    /**
+     * What the seller sign-up asks next for this email: a new account's details, or the password of the account it already is.
+     * It tells whether an email has an account, as registering does, so it has a limit of its own per IP.
+     */
+    public EmailStatus emailStatus(String email, ClientContext client) {
+        int limit = settings.getInt("auth.email_status_per_ip_per_hour", 30);
+        if (!rateLimiter.tryAcquire("email_status:ip:" + client.ip(), limit, Duration.ofHours(1))) {
+            throw new BusinessException(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_REQUESTS",
+                    "Bạn thao tác quá nhanh, vui lòng thử lại sau.");
+        }
+        return users.findByEmail(email.trim()).map(user -> {
+            if (user.hasRole(Role.SELLER) || user.hasRole(Role.ADMIN)) {
+                return EmailStatus.SELLER;
+            }
+            return user.hasPassword() ? EmailStatus.ACCOUNT : EmailStatus.EXTERNAL_ONLY;
+        }).orElse(EmailStatus.NEW);
+    }
+
     private RegisterResponse createIdentity(RegisterRequest req, ClientContext client) {
         if (req.password() == null) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "PASSWORD_REQUIRED", "Vui lòng nhập mật khẩu.");
@@ -90,13 +108,19 @@ public class RegistrationService {
         }
         User user = new User(req.email().trim(), passwords.encode(req.password()), req.name().trim());
         user.addRole(req.role());
+        boolean bothModes = req.role() == Role.SELLER && Boolean.TRUE.equals(req.alsoCustomer());
+        if (bothModes) {
+            user.addRole(Role.CUSTOMER);
+        }
         try {
             user = users.saveAndFlush(user);
         } catch (DataIntegrityViolationException e) {
             throw emailTaken();
         }
-        legal.recordAcceptance(PRINCIPAL_TYPE, user.getId(), List.of(termsFor(req.role()), DocumentType.PRIVACY_POLICY),
-                req.acceptedDocumentIds(), req.marketingConsent(), client);
+        List<DocumentType> required = bothModes
+                ? List.of(DocumentType.SELLER_TERMS, DocumentType.CUSTOMER_TERMS, DocumentType.PRIVACY_POLICY)
+                : List.of(termsFor(req.role()), DocumentType.PRIVACY_POLICY);
+        legal.recordAcceptance(PRINCIPAL_TYPE, user.getId(), required, req.acceptedDocumentIds(), req.marketingConsent(), client);
         verification.issue(user);
         return new RegisterResponse(RegisterResponse.Status.VERIFICATION_SENT, null);
     }
@@ -143,6 +167,9 @@ public class RegistrationService {
         legal.recordAcceptance(PRINCIPAL_TYPE, user.getId(), List.of(termsFor(req.role())),
                 req.acceptedDocumentIds(), req.marketingConsent(), client);
     }
+
+    /** NEW: no account. ACCOUNT: a customer who adds selling with their password. SELLER: sign in. EXTERNAL_ONLY: no password, Google only. */
+    public enum EmailStatus { NEW, ACCOUNT, SELLER, EXTERNAL_ONLY }
 
     private static DocumentType termsFor(Role role) {
         return role == Role.SELLER ? DocumentType.SELLER_TERMS : DocumentType.CUSTOMER_TERMS;

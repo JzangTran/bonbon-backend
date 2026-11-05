@@ -11,6 +11,9 @@ import com.bonbon.backend.identity.authentication.service.RegistrationService;
 import com.bonbon.backend.common.security.CurrentPrincipal;
 import com.bonbon.backend.common.web.ClientContext;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +48,19 @@ class RegistrationController {
     }
 
     /** Public; when called with a valid access token it adds the role to that signed-in identity. */
+    @Operation(operationId = "getEmailStatus", summary = "Email này đã có tài khoản chưa", description = "Bước đầu của đăng ký người bán. `NEW`: chưa có tài khoản, nhập thông tin để tạo. `ACCOUNT`: đã có tài khoản khách, nhập mật khẩu của tài khoản đó để thêm vai trò người bán. `SELLER`: đã là người bán, đăng nhập. `EXTERNAL_ONLY`: tài khoản không có mật khẩu (Google), thêm vai trò trong ứng dụng. Giới hạn số lần theo IP.")
+    @ApiError(status = 429, code = "TOO_MANY_REQUESTS", when = "Gửi quá nhiều lần trong thời gian ngắn; đợi rồi thử lại.")
+    @PostMapping("/email-status")
+    EmailStatusResponse emailStatus(@Valid @RequestBody EmailStatusRequest request, HttpServletRequest http) {
+        return new EmailStatusResponse(registration.emailStatus(request.email(), ClientContext.from(http)));
+    }
+
+    record EmailStatusRequest(@NotBlank @Email @Size(max = 255) String email) {
+    }
+
+    record EmailStatusResponse(RegistrationService.EmailStatus status) {
+    }
+
     @Operation(operationId = "register", summary = "Đăng ký", description = "Tạo tài khoản và gửi thư xác thực (201). Nếu gọi kèm access token của một tài khoản đã xác thực, vai trò mới được thêm vào chính tài khoản đó (200) thay vì tạo tài khoản thứ hai.")
     @ApiError(status = 400, code = "NAME_REQUIRED", when = "Thiếu họ tên khi tạo tài khoản mới.")
     @ApiError(status = 400, code = "PASSWORD_REQUIRED", when = "Thiếu mật khẩu khi tạo tài khoản mới.")

@@ -12,6 +12,8 @@ import jakarta.validation.constraints.Size;
 /**
  * {@code password} is required for a new identity and for adding a role while signed out; {@code name}
  * only for a new identity. {@code acceptedDocumentIds} are the exact document versions shown on the form.
+ * {@code alsoCustomer}: a new seller's account also orders as a customer, one email and password for both; the customer terms
+ * are then among the documents to accept.
  */
 public record RegisterRequest(
         @NotBlank @Email @Size(max = 255) String email,
@@ -20,5 +22,6 @@ public record RegisterRequest(
         @NotNull Role role,
         Set<UUID> acceptedDocumentIds,
         Boolean marketingConsent,
-        @Size(max = 4096) String captchaToken) {
+        @Size(max = 4096) String captchaToken,
+        Boolean alsoCustomer) {
 }
