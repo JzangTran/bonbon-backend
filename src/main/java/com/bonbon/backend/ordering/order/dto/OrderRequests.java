@@ -25,7 +25,8 @@ public final class OrderRequests {
             @NotNull UUID addressId,
             @NotNull @Pattern(regexp = "COD|ONLINE", message = "Phương thức thanh toán phải là COD hoặc ONLINE.") String paymentMethod,
             @Size(max = 300) String note,
-            @NotEmpty @Size(max = 50) List<@Valid @NotNull Line> items) {
+            @NotEmpty @Size(max = 50) List<@Valid @NotNull Line> items,
+            @Size(max = 20) String voucherCode) {
     }
 
     @Schema(name = "PlaceOrderLine")

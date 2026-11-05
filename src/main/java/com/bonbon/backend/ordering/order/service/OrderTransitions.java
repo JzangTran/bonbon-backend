@@ -19,6 +19,7 @@ import java.util.UUID;
 import com.bonbon.backend.common.exception.BusinessException;
 import com.bonbon.backend.common.persistence.ActorType;
 import com.bonbon.backend.marketplace.merchant.ShopOrdering;
+import com.bonbon.backend.marketplace.merchant.ShopVouchers;
 import com.bonbon.backend.ordering.order.OrderStatus;
 import com.bonbon.backend.ordering.order.OrderStatusChanged;
 import com.bonbon.backend.ordering.order.entity.Order;
@@ -78,14 +79,16 @@ class OrderTransitions {
     private final OrderRepository orders;
     private final OrderStatusHistoryRepository history;
     private final ShopOrdering shops;
+    private final ShopVouchers vouchers;
     private final ApplicationEventPublisher events;
     private final OnlinePayments payments;
 
-    OrderTransitions(OrderRepository orders, OrderStatusHistoryRepository history, ShopOrdering shops, ApplicationEventPublisher events,
+    OrderTransitions(OrderRepository orders, OrderStatusHistoryRepository history, ShopOrdering shops, ShopVouchers vouchers, ApplicationEventPublisher events,
             OnlinePayments payments) {
         this.orders = orders;
         this.history = history;
         this.shops = shops;
+        this.vouchers = vouchers;
         this.events = events;
         this.payments = payments;
     }
@@ -117,6 +120,7 @@ class OrderTransitions {
         }
         // Read what the side effects need now: the update below clears the persistence context.
         Map<UUID, Integer> toReturn = new java.util.LinkedHashMap<>();
+        UUID voucherToRelease = to == REJECTED || to == CANCELLED ? order.getVoucherId() : null;
         if (to == REJECTED || to == CANCELLED) {
             for (OrderItem item : order.getItems()) {
                 toReturn.merge(item.getMenuItemId(), item.getQuantity(), Integer::sum);
@@ -140,6 +144,9 @@ class OrderTransitions {
         }
         history.save(new OrderStatusHistory(order.getId(), from, to, actorType, actorId, cleanReason));
         toReturn.forEach(shops::returnStock);
+        if (voucherToRelease != null) {
+            vouchers.release(voucherToRelease);
+        }
         if (cashCollected) {
             payments.cashCollected(order.getId());
         }

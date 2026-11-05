@@ -129,6 +129,12 @@ public class OrderItem {
         return commissionRate;
     }
 
+    /** This line's share of the voucher, and the commission on what is left of the line after it. */
+    public void applyDiscount(int allocatedDiscount, int commissionAmount) {
+        this.allocatedDiscount = allocatedDiscount;
+        this.commissionAmount = commissionAmount;
+    }
+
     public int getAllocatedDiscount() {
         return allocatedDiscount;
     }

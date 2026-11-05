@@ -23,6 +23,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     long countByCustomerIdAndStatusIn(UUID customerId, Collection<OrderStatus> statuses);
 
+    long countByCustomerIdAndVoucherIdAndStatusNotIn(UUID customerId, UUID voucherId, Collection<OrderStatus> statuses);
+
     @Query("select o from Order o where o.customerId = :customerId order by o.placedAt desc")
     Page<Order> findForCustomer(@Param("customerId") UUID customerId, Pageable pageable);
 

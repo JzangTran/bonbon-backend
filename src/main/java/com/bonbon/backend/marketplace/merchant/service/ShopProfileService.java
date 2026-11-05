@@ -42,9 +42,10 @@ public class ShopProfileService {
     private final JdbcClient jdbc;
     private final ApplicationEventPublisher events;
     private final ObjectStorage storage;
+    private final VoucherManagement vouchers;
 
     ShopProfileService(VendorRepository vendors, ShopAddressRules addressRules, DeliveryRadiusCap radiusCap, ShopApplicationService views, JdbcClient jdbc,
-            ApplicationEventPublisher events, ObjectStorage storage) {
+            ApplicationEventPublisher events, ObjectStorage storage, VoucherManagement vouchers) {
         this.vendors = vendors;
         this.addressRules = addressRules;
         this.radiusCap = radiusCap;
@@ -52,9 +53,46 @@ public class ShopProfileService {
         this.jdbc = jdbc;
         this.events = events;
         this.storage = storage;
+        this.vouchers = vouchers;
     }
 
     private static final long LOGO_MAX_BYTES = 2L * 1024 * 1024;
+
+    private static final long COVER_MAX_BYTES = 5L * 1024 * 1024;
+
+    /** The picture behind the top of the shop's page; the old file goes once the change is saved. */
+    @Transactional
+    public ShopApplicationView setCover(CurrentPrincipal owner, MultipartFile upload) {
+        Vendor vendor = approvedShop(owner.id());
+        ValidatedFile file = ValidatedFile.of(upload, ValidatedFile.IMAGES, COVER_MAX_BYTES);
+        String key = storage.put(Visibility.PUBLIC, "shop-cover/" + vendor.getId(), file);
+        afterCompletion(rolledBack -> {
+            if (rolledBack) {
+                deleteQuietly(key);
+            }
+        });
+        String old = vendor.getCoverKey();
+        vendor.setCoverKey(key);
+        afterCompletion(rolledBack -> {
+            if (!rolledBack && old != null) {
+                deleteQuietly(old);
+            }
+        });
+        return views.toView(vendors.save(vendor));
+    }
+
+    @Transactional
+    public ShopApplicationView removeCover(CurrentPrincipal owner) {
+        Vendor vendor = approvedShop(owner.id());
+        String old = vendor.getCoverKey();
+        vendor.setCoverKey(null);
+        afterCompletion(rolledBack -> {
+            if (!rolledBack && old != null) {
+                deleteQuietly(old);
+            }
+        });
+        return views.toView(vendors.save(vendor));
+    }
 
     /** The shop's logo (a square picture next to its name in the app); the old file goes once the change is saved. */
     @Transactional
@@ -201,6 +239,7 @@ public class ShopProfileService {
         jdbc.sql("update vendors set closing_reason = :r, closing_reason_text = :t, closing_requested_at = :at where id = :id")
                 .param("r", request.reason()).param("t", request.reasonText() == null || request.reasonText().isBlank() ? null : request.reasonText().strip())
                 .param("at", java.sql.Timestamp.from(now)).param("id", vendor.getId()).update();
+        vouchers.disableAll(vendor.getId());
         events.publishEvent(new ShopClosureChanged(vendor.getId(), vendor.getOwnerUserId(), vendor.getName(), "CLOSING", request.reason()));
         return views.toView(vendors.findById(vendor.getId()).orElseThrow());
     }

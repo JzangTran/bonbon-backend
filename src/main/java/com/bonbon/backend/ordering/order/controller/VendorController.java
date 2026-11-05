@@ -1,8 +1,10 @@
 package com.bonbon.backend.ordering.order.controller;
 
+import java.util.List;
 import java.util.UUID;
 
 import com.bonbon.backend.marketplace.merchant.ShopCatalog;
+import com.bonbon.backend.marketplace.merchant.ShopVouchers;
 import com.bonbon.backend.ordering.order.dto.VendorPage;
 import com.bonbon.backend.ordering.order.ReviewViews;
 import com.bonbon.backend.ordering.order.service.ReviewService;
@@ -25,8 +27,10 @@ class VendorController {
 
     private final VendorBrowseService browse;
     private final ReviewService reviews;
+    private final ShopVouchers vouchers;
 
-    VendorController(VendorBrowseService browse, ReviewService reviews) {
+    VendorController(VendorBrowseService browse, ReviewService reviews, ShopVouchers vouchers) {
+        this.vouchers = vouchers;
         this.browse = browse;
         this.reviews = reviews;
     }
@@ -52,6 +56,12 @@ class VendorController {
     ShopCatalog.ShopMenu menu(@PathVariable UUID id, @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lng) {
         return browse.menu(id, lat, lng);
+    }
+
+    @Operation(operationId = "listShopVouchers", summary = "Ưu đãi của quán", description = "Voucher khách dùng được lúc này, sắp hết hạn trước. Không gồm voucher đã tắt, chưa đến ngày, đã hết hạn hoặc hết lượt. Không cần đăng nhập.")
+    @GetMapping("/{id}/vouchers")
+    List<ShopVouchers.Offer> vouchers(@PathVariable UUID id) {
+        return vouchers.offers(id);
     }
 
     @Operation(operationId = "listShopReviews", summary = "Đánh giá của quán", description = "Công khai, mới nhất trước. Chỉ gồm đánh giá đang hiển thị (đánh giá bị quản trị ẩn không có ở đây) kèm phản hồi của quán nếu có. Kèm điểm trung bình (một chữ số thập phân) và số đánh giá. Tên người đánh giá được rút gọn, không có thông tin đơn.")

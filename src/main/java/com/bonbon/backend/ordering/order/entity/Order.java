@@ -82,6 +82,10 @@ public class Order {
     @Column(nullable = false)
     private int discount;
 
+    /** The voucher this order used; its use goes back if the order ends cancelled or rejected. */
+    @Column(name = "voucher_id")
+    private UUID voucherId;
+
     @Column(name = "delivery_fee", nullable = false)
     private int deliveryFee;
 
@@ -233,6 +237,14 @@ public class Order {
 
     public int getItemsTotal() {
         return itemsTotal;
+    }
+
+    public UUID getVoucherId() {
+        return voucherId;
+    }
+
+    public void setVoucherId(UUID voucherId) {
+        this.voucherId = voucherId;
     }
 
     public int getDiscount() {

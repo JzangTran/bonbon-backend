@@ -276,7 +276,8 @@ public class ShopApplicationService {
         var shop = new ShopApplicationView.ShopInfo(v.getId(), v.getName(), v.getPhone(), v.getEmail(),
                 new ShopApplicationView.Address(v.getPlaceId(), v.getFormattedAddress(), v.getWard(), v.getProvince(),
                         v.getWardCode(), v.getProvinceCode(), v.getAddressDetail(), v.getLat(), v.getLng()),
-                v.getLogoKey() == null ? null : storage.publicUrl(v.getLogoKey()));
+                v.getLogoKey() == null ? null : storage.publicUrl(v.getLogoKey()),
+                v.getCoverKey() == null ? null : storage.publicUrl(v.getCoverKey()));
         var shipping = new ShopApplicationView.Shipping(
                 v.getOpeningHours().stream().map(w -> new ShopApplicationView.Hours(w.weekday(), w.opensAt(), w.closesAt())).toList(),
                 v.getDeliveryRadiusKm(), v.getDeliveryFee(), v.getFreeDeliveryThreshold(), v.getMinOrderValue());

@@ -21,6 +21,7 @@ import com.bonbon.backend.common.security.CurrentPrincipal;
 import com.bonbon.backend.common.settings.SystemSettingsService;
 import com.bonbon.backend.common.web.ClientContext;
 import com.bonbon.backend.marketplace.merchant.ShopOrdering;
+import com.bonbon.backend.marketplace.merchant.ShopVouchers;
 import com.bonbon.backend.marketplace.merchant.ShopOrdering.OrderableDish;
 import com.bonbon.backend.marketplace.merchant.ShopOrdering.OrderableGroup;
 import com.bonbon.backend.marketplace.merchant.ShopOrdering.OrderableOption;
@@ -59,6 +60,7 @@ public class OrderService {
     private final OrderRepository orders;
     private final OrderStatusHistoryRepository history;
     private final ShopOrdering shops;
+    private final ShopVouchers vouchers;
     private final DeliveryAddresses addresses;
     private final CategoryCatalog categories;
     private final SystemSettingsService settings;
@@ -68,12 +70,13 @@ public class OrderService {
     private final OrderSettings orderSettings;
     private final TransactionTemplate tx;
 
-    OrderService(OrderRepository orders, OrderStatusHistoryRepository history, ShopOrdering shops, DeliveryAddresses addresses,
+    OrderService(OrderRepository orders, OrderStatusHistoryRepository history, ShopOrdering shops, ShopVouchers vouchers, DeliveryAddresses addresses,
             CategoryCatalog categories, SystemSettingsService settings, OrderTransitions transitions,
             ReviewRepository reviews, OnlinePayments payments, OrderSettings orderSettings, PlatformTransactionManager transactions) {
         this.orders = orders;
         this.history = history;
         this.shops = shops;
+        this.vouchers = vouchers;
         this.addresses = addresses;
         this.categories = categories;
         this.settings = settings;
@@ -178,8 +181,23 @@ public class OrderService {
                 throw itemProblem(HttpStatus.CONFLICT, "INSUFFICIENT_STOCK", "Một món không còn đủ số phần bạn chọn.", e.getKey());
             }
         }
-        int deliveryFee = shop.freeDeliveryThreshold() != null && itemsTotal >= shop.freeDeliveryThreshold() ? 0 : shop.deliveryFee();
-        order.setTotals(itemsTotal, 0, deliveryFee, itemsTotal + deliveryFee, commission);
+        int discount = 0;
+        if (req.voucherCode() != null && !req.voucherCode().isBlank()) {
+            ShopVouchers.Quote quote = vouchers.quote(shop.id(), req.voucherCode(), itemsTotal);
+            if (quote.maxPerCustomer() != null && orders.countByCustomerIdAndVoucherIdAndStatusNotIn(customerId, quote.voucherId(),
+                    List.of(OrderStatus.CANCELLED, OrderStatus.REJECTED)) >= quote.maxPerCustomer()) {
+                throw BusinessException.conflict("VOUCHER_CUSTOMER_LIMIT", "Bạn đã dùng hết số lần cho mã ưu đãi này.");
+            }
+            if (!vouchers.reserve(quote.voucherId())) {
+                throw BusinessException.conflict("VOUCHER_USED_UP", "Mã ưu đãi đã hết lượt dùng.");
+            }
+            discount = quote.discount();
+            commission = allocate(order, discount, itemsTotal);
+            order.setVoucherId(quote.voucherId());
+        }
+        int foodAfterDiscount = itemsTotal - discount;
+        int deliveryFee = shop.freeDeliveryThreshold() != null && foodAfterDiscount >= shop.freeDeliveryThreshold() ? 0 : shop.deliveryFee();
+        order.setTotals(itemsTotal, discount, deliveryFee, foodAfterDiscount + deliveryFee, commission);
         if (online && (order.getGrandTotal() < MIN_ONLINE || order.getGrandTotal() > MAX_ONLINE)) {
             // MoMo's payment API only accepts this range; the customer can pay the same order at the door instead.
             throw new BusinessException(HttpStatus.BAD_REQUEST, "ONLINE_AMOUNT_OUT_OF_RANGE",
@@ -193,6 +211,26 @@ public class OrderService {
         }
         transitions.placed(order);
         return detail(order);
+    }
+
+    /**
+     * Shares the voucher over the lines in proportion to their value (the last line takes the rounding, so the shares add up exactly)
+     * and charges commission on what is left of each line. Returns the order's new commission.
+     */
+    private static int allocate(Order order, int discount, int itemsTotal) {
+        int left = discount;
+        int commission = 0;
+        List<OrderItem> items = order.getItems();
+        for (int i = 0; i < items.size(); i++) {
+            OrderItem item = items.get(i);
+            int share = i == items.size() - 1 ? left : (int) ((long) discount * item.getLineTotal() / itemsTotal);
+            share = Math.min(share, Math.min(left, item.getLineTotal()));
+            left -= share;
+            int lineCommission = percentOf(item.getLineTotal() - share, item.getCommissionRate());
+            item.applyDiscount(share, lineCommission);
+            commission += lineCommission;
+        }
+        return commission;
     }
 
     /** Resolves the chosen option ids against the dish's groups and enforces each group's min and max. */

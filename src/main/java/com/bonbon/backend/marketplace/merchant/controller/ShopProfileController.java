@@ -87,6 +87,24 @@ class ShopProfileController {
         return profiles.removeLogo(principal);
     }
 
+    @Operation(operationId = "setMyShopCover", summary = "Đặt ảnh nền quán", description = "Ảnh ngang phía trên trang quán trong ứng dụng khách (JPG, PNG, WebP, tối đa 5 MB). Ảnh cũ được xoá sau khi lưu.")
+    @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người gọi chưa có cửa hàng được duyệt; `status` cho biết trạng thái hồ sơ.")
+    @ApiError(status = 400, code = "FILE_REQUIRED", when = "Không có tệp trong trường `file`.")
+    @ApiError(status = 413, code = "FILE_TOO_LARGE", when = "Tệp vượt 5 MB.")
+    @ApiError(status = 400, code = "IMAGE_INVALID", when = "Ảnh bị cắt dở hoặc không đúng cấu trúc tệp.")
+    @ApiError(status = 415, code = "UNSUPPORTED_FILE_TYPE", when = "Định dạng không được nhận (kiểm tra theo nội dung tệp, không theo tên).")
+    @PutMapping(path = "/cover", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    ShopApplicationView setCover(CurrentPrincipal principal, @RequestPart("file") MultipartFile file) {
+        return profiles.setCover(principal, file);
+    }
+
+    @Operation(operationId = "removeMyShopCover", summary = "Gỡ ảnh nền quán", description = "Trang quán trở lại nền mặc định; tệp cũ được xoá sau khi lưu.")
+    @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người gọi chưa có cửa hàng được duyệt; `status` cho biết trạng thái hồ sơ.")
+    @DeleteMapping("/cover")
+    ShopApplicationView removeCover(CurrentPrincipal principal) {
+        return profiles.removeCover(principal);
+    }
+
     @Operation(operationId = "setAcceptingOrders", summary = "Tạm ngưng / nhận đơn lại", description = "Ghi đè lịch ngay lập tức; đơn đã nhận không bị ảnh hưởng. Ai bấm và lúc nào được ghi lại.")
     @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người gọi chưa có cửa hàng được duyệt; `status` cho biết trạng thái hồ sơ.")
     @PutMapping("/accepting-orders")

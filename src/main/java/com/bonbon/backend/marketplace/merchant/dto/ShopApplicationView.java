@@ -42,7 +42,7 @@ public record ShopApplicationView(
     @Schema(name = "ShopApplicationShopInfo")
 
     /** {@code id} is what the shop's QR code and links carry (/shops/{id}). */
-    public record ShopInfo(java.util.UUID id, String name, String phone, String email, Address address, String logoUrl) {
+    public record ShopInfo(java.util.UUID id, String name, String phone, String email, Address address, String logoUrl, String coverUrl) {
     }
 
     @Schema(name = "ShopAddress")

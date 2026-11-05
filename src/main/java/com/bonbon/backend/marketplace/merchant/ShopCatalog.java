@@ -54,6 +54,7 @@ public interface ShopCatalog {
             UUID id,
             String name,
             String logoUrl,
+            String coverUrl,
             String address,
             String serviceAreaName,
             Double distanceKm,

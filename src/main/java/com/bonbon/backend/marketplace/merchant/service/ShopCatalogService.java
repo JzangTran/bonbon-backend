@@ -254,7 +254,8 @@ class ShopCatalogService implements ShopCatalog {
     }
 
     private Shop shop(Vendor v, Double distanceKm, ZonedDateTime now) {
-        return new Shop(v.getId(), v.getName(), v.getLogoKey() == null ? null : storage.publicUrl(v.getLogoKey()), v.getFormattedAddress(),
+        return new Shop(v.getId(), v.getName(), v.getLogoKey() == null ? null : storage.publicUrl(v.getLogoKey()),
+                v.getCoverKey() == null ? null : storage.publicUrl(v.getCoverKey()), v.getFormattedAddress(),
                 areas.find(v.getServiceAreaId()).map(ServiceAreas.Area::name).orElse(null),
                 distanceKm == null ? null : Math.round(distanceKm * 100.0) / 100.0, ShopHours.isOpen(v, now),
                 v.getDeliveryRadiusKm(), v.getDeliveryFee(), v.getFreeDeliveryThreshold(), v.getMinOrderValue(),

@@ -47,6 +47,10 @@ public class Vendor {
     @Column(name = "logo_key", columnDefinition = "text")
     private String logoKey;
 
+    /** The picture behind the top of the shop's page in the customer app. */
+    @Column(name = "cover_key", columnDefinition = "text")
+    private String coverKey;
+
     @Column(columnDefinition = "text")
     private String phone;
 
@@ -241,6 +245,14 @@ public class Vendor {
 
     public String getLogoKey() {
         return logoKey;
+    }
+
+    public String getCoverKey() {
+        return coverKey;
+    }
+
+    public void setCoverKey(String coverKey) {
+        this.coverKey = coverKey;
     }
 
     public void setLogoKey(String logoKey) {

@@ -276,6 +276,115 @@ class OrderPlacementTests {
 
     // --- helpers
 
+    // --- vouchers
+
+    private String voucher(Map<String, Object> extra) throws Exception {
+        String code = "M" + Long.toString(System.nanoTime(), 36).toUpperCase();
+        Map<String, Object> body = new java.util.HashMap<>(Map.of("code", code, "discountType", "PERCENT", "discountValue", 10,
+                "validFrom", Instant.now().minusSeconds(60).toString(), "validTo", Instant.now().plusSeconds(3600).toString()));
+        body.putAll(extra);
+        call(seller, post("/api/merchant/vouchers"), body).andExpect(status().isCreated());
+        return code;
+    }
+
+    private ResultActions place(String code, String key, Map<String, Object> line) throws Exception {
+        Map<String, Object> body = order(List.of(line), null);
+        body.put("voucherCode", code);
+        return call(customer, post("/api/orders"), body, key);
+    }
+
+    private int usedCount(String code) {
+        return jdbc.sql("select used_count from vouchers where vendor_id = :v and code = :c").param("v", vendorId).param("c", code).query(Integer.class).single();
+    }
+
+    @Test
+    void aVoucherComesOffTheFoodValueAndCommissionIsChargedOnWhatIsLeft() throws Exception {
+        String code = voucher(Map.of("maxDiscount", 5000));
+        String id = JsonPath.read(place(code.toLowerCase(), "key-voucher-1", line(dishId, 2, List.of(sizeM), null))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.totals.itemsTotal").value(60000))
+                .andExpect(jsonPath("$.totals.discount").value(5000))   // 10% is 6000, the ceiling is 5000
+                .andExpect(jsonPath("$.totals.grandTotal").value(65000))
+                .andReturn().getResponse().getContentAsString(), "$.id");
+
+        assertThat(usedCount(code)).isEqualTo(1);
+        Map<String, Object> row = jdbc.sql("""
+                select i.allocated_discount, i.commission_amount, i.commission_rate, o.commission_amount as order_commission, o.voucher_id
+                from order_items i join orders o on o.id = i.order_id where o.id = :o""").param("o", UUID.fromString(id)).query().singleRow();
+        assertThat(row.get("allocated_discount")).isEqualTo(5000);
+        int expected = new java.math.BigDecimal(55000).multiply((java.math.BigDecimal) row.get("commission_rate"))
+                .divide(new java.math.BigDecimal(100), 0, java.math.RoundingMode.HALF_UP).intValueExact();
+        assertThat(row.get("commission_amount")).isEqualTo(expected);
+        assertThat(row.get("order_commission")).isEqualTo(expected);
+        assertThat(row.get("voucher_id")).isNotNull();
+    }
+
+    @Test
+    void theFreeDeliveryThresholdIsCheckedAfterTheVoucher() throws Exception {
+        String code = voucher(Map.of("discountType", "FIXED", "discountValue", 10000));
+        place(code, "key-voucher-free", line(dishId, 3, List.of(sizeL), null))   // 105.000, threshold 100.000, 95.000 after the voucher
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.totals.deliveryFee").value(10000))
+                .andExpect(jsonPath("$.totals.grandTotal").value(105000));
+    }
+
+    @Test
+    void aVoucherSharedOverLinesAddsUpExactly() throws Exception {
+        String code = voucher(Map.of("discountType", "FIXED", "discountValue", 10001));
+        Map<String, Object> body = order(List.of(line(dishId, 1, List.of(sizeM), "a"), line(dishId, 1, List.of(sizeL), "b"), line(dishId, 1, List.of(sizeM), "c")), null);
+        body.put("voucherCode", code);
+        String id = JsonPath.read(call(customer, post("/api/orders"), body, "key-voucher-lines").andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        int shared = jdbc.sql("select sum(allocated_discount)::int from order_items where order_id = :o").param("o", UUID.fromString(id)).query(Integer.class).single();
+        assertThat(shared).isEqualTo(10001);
+    }
+
+    @Test
+    void aCancelledOrderGivesItsUseBackAndTheLastUseIsTakenOnce() throws Exception {
+        String code = voucher(Map.of("usageLimit", 1));
+        String id = JsonPath.read(place(code, "key-voucher-limit", line(dishId, 1, List.of(sizeM), null)).andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        place(code, "key-voucher-limit-2", line(dishId, 1, List.of(sizeM), null))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("VOUCHER_USED_UP"));
+        mvc.perform(get("/api/vendors/" + vendorId + "/vouchers")).andExpect(jsonPath("$[?(@.code=='" + code + "')]").isEmpty());
+
+        call(customer, post("/api/orders/" + id + "/cancel"), Map.of("reason", "Đổi ý")).andExpect(status().isOk());
+        assertThat(usedCount(code)).isZero();
+        place(code, "key-voucher-limit-3", line(dishId, 1, List.of(sizeM), null)).andExpect(status().isCreated());
+    }
+
+    @Test
+    void aCustomerCanOnlyUseAVoucherTheirAllowedNumberOfTimes() throws Exception {
+        String code = voucher(Map.of("maxPerCustomer", 1));
+        place(code, "key-voucher-once", line(dishId, 1, List.of(sizeM), null)).andExpect(status().isCreated());
+        place(code, "key-voucher-twice", line(dishId, 1, List.of(sizeM), null))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("VOUCHER_CUSTOMER_LIMIT"));
+    }
+
+    @Test
+    void aVoucherThatDoesNotApplySaysWhyAndChargesNothing() throws Exception {
+        place("KHONGCOMA", "key-voucher-none", line(dishId, 1, List.of(sizeM), null))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("VOUCHER_NOT_FOUND"));
+
+        String high = voucher(Map.of("minOrderValue", 100000));
+        place(high, "key-voucher-min", line(dishId, 1, List.of(sizeM), null))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("VOUCHER_MIN_ORDER"));
+        assertThat(usedCount(high)).isZero();
+
+        String off = voucher(Map.of());
+        String id = jdbc.sql("select id from vouchers where vendor_id = :v and code = :c").param("v", vendorId).param("c", off).query(UUID.class).single().toString();
+        call(seller, patch("/api/merchant/vouchers/" + id + "/status"), Map.of("status", "DISABLED")).andExpect(status().isOk());
+        place(off, "key-voucher-off", line(dishId, 1, List.of(sizeM), null))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("VOUCHER_NOT_ACTIVE"));
+        mvc.perform(get("/api/vendors/" + vendorId + "/vouchers")).andExpect(jsonPath("$[?(@.code=='" + off + "')]").isEmpty());
+
+        String seen = voucher(Map.of());
+        mvc.perform(get("/api/vendors/" + vendorId + "/vouchers")).andExpect(status().isOk()).andExpect(jsonPath("$[?(@.code=='" + seen + "')].discountValue").value(10));
+        call(seller, post("/api/merchant/vouchers"), Map.of("code", seen.toLowerCase(), "discountType", "FIXED", "discountValue", 1000,
+                "validFrom", Instant.now().toString(), "validTo", Instant.now().plusSeconds(60).toString()))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("VOUCHER_CODE_TAKEN"));
+    }
+
     private Integer stockOf(String id) {
         return jdbc.sql("select stock_quantity from menu_items where id = :i::uuid").param("i", id).query(Integer.class).single();
     }
