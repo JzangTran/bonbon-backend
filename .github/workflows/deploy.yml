@@ -1,11 +1,12 @@
 name: Deploy
 
-# After CI passes on main: build the image, push it to GitHub Container Registry, then roll it out on the demo server.
+# The demo follows develop for now; set the branch below back to main once it serves real users.
+# After CI passes on develop: build the image, push it to GitHub Container Registry, then roll it out on the demo server.
 on:
   workflow_run:
     workflows: [CI]
     types: [completed]
-    branches: [main]
+    branches: [develop]
   workflow_dispatch:
 
 concurrency:
