@@ -83,9 +83,16 @@ bonbon:
     public-bucket: ${BONBON_STORAGE_PUBLIC_BUCKET:bonbon-public}
     public-base-url: ${BONBON_STORAGE_PUBLIC_BASE_URL:}
   geo:
+    # osm (default, no key), goong or openmap (OpenMap.vn), for addresses; the map and the roads stay on OpenStreetMap. Point these at your own Photon and OSRM before real traffic: the public ones are best effort.
+    provider: ${BONBON_GEO_PROVIDER:osm}
+    photon-url: ${BONBON_GEO_PHOTON_URL:https://photon.komoot.io}
+    osrm-url: ${BONBON_GEO_OSRM_URL:https://routing.openstreetmap.de/routed-car}
     goong:
       # Goong REST API key; stays on the server (clients call /api/geo/autocomplete).
       api-key: ${GOONG_API_KEY:}
+    openmap:
+      # OpenMap.vn REST key (enterprise.openmap.vn); stays on the server like the Goong key.
+      api-key: ${OPENMAP_API_KEY:}
   oauth:
     google:
       # OAuth client IDs (comma-separated) whose Google ID tokens are accepted: web, Android, iOS.

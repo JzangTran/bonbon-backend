@@ -24,7 +24,8 @@ public final class AddressDtos {
             @Size(max = 200) String detail,
             @NotBlank @Size(max = 100) String recipientName,
             @NotBlank @Pattern(regexp = VN_MOBILE, message = "Số điện thoại di động Việt Nam không hợp lệ") String recipientPhone,
-            Boolean makeDefault) {
+            Boolean makeDefault,
+            @Size(max = 300) String note) {
     }
 
     /** Only the fields present change; a new {@code placeId} is resolved again, editing {@code detail} is free. */
@@ -34,17 +35,18 @@ public final class AddressDtos {
             @Size(min = 1, max = 1024) String placeId,
             @Size(max = 200) String detail,
             @Size(min = 1, max = 100) String recipientName,
-            @Pattern(regexp = VN_MOBILE, message = "Số điện thoại di động Việt Nam không hợp lệ") String recipientPhone) {
+            @Pattern(regexp = VN_MOBILE, message = "Số điện thoại di động Việt Nam không hợp lệ") String recipientPhone,
+            @Size(max = 300) String note) {
     }
 
     @Schema(name = "DeliveryAddress")
 
     public record View(UUID id, String label, String placeId, String formattedAddress, String ward, String province,
-            String detail, String recipientName, String recipientPhone, double lat, double lng, boolean isDefault) {
+            String detail, String recipientName, String recipientPhone, double lat, double lng, boolean isDefault, String note) {
 
         public static View of(Address a) {
             return new View(a.getId(), a.getLabel(), a.getPlaceId(), a.getFormattedAddress(), a.getWard(), a.getProvince(),
-                    a.getDetail(), a.getRecipientName(), a.getRecipientPhone(), a.getLat(), a.getLng(), a.isDefaultAddress());
+                    a.getDetail(), a.getRecipientName(), a.getRecipientPhone(), a.getLat(), a.getLng(), a.isDefaultAddress(), a.getNote());
         }
     }
 }

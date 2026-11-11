@@ -12,6 +12,7 @@ import com.bonbon.backend.common.geo.AdministrativeUnits;
 import com.bonbon.backend.common.geo.Geocoder;
 import com.bonbon.backend.common.geo.PlaceDetail;
 import com.bonbon.backend.common.geo.PlaceSuggestion;
+import com.bonbon.backend.common.geo.RoutePlanner;
 import com.bonbon.backend.common.ratelimit.RateLimiter;
 import com.bonbon.backend.common.settings.SystemSettingsService;
 import org.springframework.http.HttpStatus;
@@ -30,8 +31,10 @@ public class AddressSuggestionService {
     private final RateLimiter rateLimiter;
     private final SystemSettingsService settings;
     private final AdministrativeUnits units;
+    private final RoutePlanner routes;
 
-    AddressSuggestionService(Geocoder geocoder, RateLimiter rateLimiter, SystemSettingsService settings, AdministrativeUnits units) {
+    AddressSuggestionService(RoutePlanner routes, Geocoder geocoder, RateLimiter rateLimiter, SystemSettingsService settings, AdministrativeUnits units) {
+        this.routes = routes;
         this.geocoder = geocoder;
         this.rateLimiter = rateLimiter;
         this.settings = settings;
@@ -64,6 +67,20 @@ public class AddressSuggestionService {
         PlaceDetail detail = geocoder.placeDetail(placeId).orElseThrow(() -> new BusinessException(HttpStatus.BAD_REQUEST,
                 "ADDRESS_NOT_FOUND", "Không xác định được địa chỉ này. Hãy chọn lại một gợi ý."));
         return view(detail);
+    }
+
+    /** The roads between two points, best first. */
+    public List<GeoViews.Route> route(GeoCaller caller, double fromLat, double fromLng, double toLat, double toLng) {
+        limit(caller);
+        return routes.routes(new RoutePlanner.Point(fromLat, fromLng), new RoutePlanner.Point(toLat, toLng)).stream()
+                .map(r -> new GeoViews.Route(r.distanceKm(), r.durationMinutes())).toList();
+    }
+
+    /** The order to visit several stops in, the first one staying first. */
+    public GeoViews.Tour tour(GeoCaller caller, GeoViews.TourRequest request) {
+        limit(caller);
+        RoutePlanner.Tour tour = routes.optimize(request.stops().stream().map(p -> new RoutePlanner.Point(p.lat(), p.lng())).toList());
+        return new GeoViews.Tour(tour.order(), tour.distanceKm(), tour.durationMinutes());
     }
 
     /** The address under the pin the user dropped on the map. */

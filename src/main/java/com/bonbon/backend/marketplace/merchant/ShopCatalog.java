@@ -45,6 +45,12 @@ public interface ShopCatalog {
     /** The shop's menu, or empty when the shop does not exist or is not approved. */
     Optional<ShopMenu> menu(UUID shopId, Double lat, Double lng);
 
+    /** Whether an approved shop is open now and when that next changes (Vietnam time, "HH:mm"; {@code opensDay} 1 is Monday). */
+    Optional<ShopSchedule> schedule(UUID shopId);
+
+    record ShopSchedule(boolean open, String closesAt, Integer opensDay, String opensAt) {
+    }
+
     /**
      * {@code distanceKm} is null when the caller gave no position. {@code open} is the one rule of pause-orders.md.
      * {@code ratingAverage} (one decimal) is null while the shop has no visible review.

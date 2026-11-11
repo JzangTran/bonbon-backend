@@ -58,6 +58,13 @@ class VendorController {
         return browse.menu(id, lat, lng);
     }
 
+    @Operation(operationId = "getShopPlaceInfo", summary = "Giờ mở cửa và giờ đông khách của quán", description = "Quán đang mở hay đóng và thời điểm đổi trạng thái tiếp theo theo giờ Việt Nam, kèm số đơn trung bình mỗi giờ trong 8 tuần gần nhất, tách ngày làm việc (T2 đến T6) và cuối tuần (T7, CN). Không cần đăng nhập.")
+    @ApiError(status = 404, code = "VENDOR_NOT_FOUND", when = "Quán không tồn tại hoặc chưa được duyệt.")
+    @GetMapping("/{id}/place-info")
+    com.bonbon.backend.ordering.order.dto.PlaceInfo placeInfo(@PathVariable UUID id) {
+        return browse.placeInfo(id);
+    }
+
     @Operation(operationId = "listShopVouchers", summary = "Ưu đãi của quán", description = "Voucher khách dùng được lúc này, sắp hết hạn trước. Không gồm voucher đã tắt, chưa đến ngày, đã hết hạn hoặc hết lượt. Không cần đăng nhập.")
     @GetMapping("/{id}/vouchers")
     List<ShopVouchers.Offer> vouchers(@PathVariable UUID id) {

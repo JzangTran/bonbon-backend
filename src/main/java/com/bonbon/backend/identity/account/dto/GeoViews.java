@@ -1,5 +1,11 @@
 package com.bonbon.backend.identity.account.dto;
 
+import java.util.List;
+import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /** What the address forms read from the geo endpoints. */
@@ -33,5 +39,21 @@ public final class GeoViews {
             @Schema(description = "Tên phường/xã theo Goong.") String ward,
             @Schema(description = "Mã tỉnh khớp với danh sách; trống khi không khớp được.") Integer provinceCode,
             @Schema(description = "Mã phường/xã khớp với danh sách; trống khi không khớp được.") Integer wardCode) {
+    }
+
+    @Schema(name = "GeoRoute")
+    public record Route(double distanceKm, double durationMinutes) {
+    }
+
+    @Schema(name = "GeoPoint")
+    public record Point(@DecimalMin("6.0") @DecimalMax("24.0") double lat, @DecimalMin("102.0") @DecimalMax("118.0") double lng) {
+    }
+
+    @Schema(name = "GeoTourRequest")
+    public record TourRequest(@NotNull @Size(min = 2, max = 12) List<@Valid Point> stops) {
+    }
+
+    @Schema(name = "GeoTour")
+    public record Tour(List<Integer> order, double distanceKm, double durationMinutes) {
     }
 }

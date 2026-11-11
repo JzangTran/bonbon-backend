@@ -42,6 +42,8 @@ public class Address {
     @Column(columnDefinition = "text")
     private String detail;
 
+    private String note;
+
     @Column(name = "recipient_name", nullable = false, columnDefinition = "text")
     private String recipientName;
 
@@ -120,6 +122,14 @@ public class Address {
 
     public String getWard() {
         return ward;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 
     public String getDetail() {

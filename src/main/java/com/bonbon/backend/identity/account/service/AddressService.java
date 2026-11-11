@@ -57,6 +57,7 @@ public class AddressService implements DeliveryAddresses {
         address.setLabel(req.label().strip());
         applyPlace(address, req.placeId());
         address.setDetail(blankToNull(req.detail()));
+        address.setNote(blankToNull(req.note()));
         address.setRecipientName(req.recipientName().strip());
         address.setRecipientPhone(req.recipientPhone());
         boolean makeDefault = existing == 0 || Boolean.TRUE.equals(req.makeDefault());
@@ -78,6 +79,9 @@ public class AddressService implements DeliveryAddresses {
         }
         if (req.detail() != null) {
             address.setDetail(blankToNull(req.detail()));
+        }
+        if (req.note() != null) {
+            address.setNote(blankToNull(req.note()));
         }
         if (req.recipientName() != null) {
             address.setRecipientName(req.recipientName().strip());

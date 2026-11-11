@@ -42,7 +42,7 @@ class AddressSuggestionController {
 
     @Operation(operationId = "suggestAddresses", summary = "Gợi ý địa chỉ", description = "Không cần đăng nhập: khách chưa có tài khoản cũng gõ được địa chỉ để xem quán (giới hạn theo IP). Gọi khi người dùng đã gõ từ 3 ký tự và dừng 300 ms. Trả về `placeId` để gửi kèm biểu mẫu; toạ độ chỉ được tra khi lưu. Có thể truyền toạ độ hiện tại để ưu tiên kết quả gần.")
     @ApiError(status = 429, code = "TOO_MANY_REQUESTS", when = "Gửi quá nhiều lần trong thời gian ngắn; đợi rồi thử lại.")
-    @ApiError(status = 503, code = "GEOCODING_UNAVAILABLE", when = "Dịch vụ tra địa chỉ (Goong) tạm thời không phản hồi; thử lại sau.")
+    @ApiError(status = 503, code = "GEOCODING_UNAVAILABLE", when = "Dịch vụ tra địa chỉ tạm thời không phản hồi; thử lại sau.")
     @GetMapping("/autocomplete")
     List<PlaceSuggestion> autocomplete(HttpServletRequest request, @RequestParam @Size(max = 200) String input,
             @RequestParam(required = false) Double lat, @RequestParam(required = false) Double lng) {
@@ -65,7 +65,7 @@ class AddressSuggestionController {
     @Operation(operationId = "getPlace", summary = "Toạ độ của một gợi ý địa chỉ", description = "Đổi `placeId` của một gợi ý thành điểm trên bản đồ (một lần gọi Place Detail của Goong), kèm mã tỉnh và phường/xã khớp với danh sách. Dùng khi người dùng chọn một dòng gợi ý trong cửa sổ bản đồ.")
     @ApiError(status = 400, code = "ADDRESS_NOT_FOUND", when = "Không xác định được địa chỉ này.")
     @ApiError(status = 429, code = "TOO_MANY_REQUESTS", when = "Gửi quá nhiều lần trong thời gian ngắn; đợi rồi thử lại.")
-    @ApiError(status = 503, code = "GEOCODING_UNAVAILABLE", when = "Dịch vụ tra địa chỉ (Goong) tạm thời không phản hồi; thử lại sau.")
+    @ApiError(status = 503, code = "GEOCODING_UNAVAILABLE", when = "Dịch vụ tra địa chỉ tạm thời không phản hồi; thử lại sau.")
     @GetMapping("/place")
     GeoViews.Place place(HttpServletRequest request, @RequestParam @NotBlank @Size(max = 1024) String placeId) {
         return suggestions.place(caller(request), placeId);
@@ -74,12 +74,33 @@ class AddressSuggestionController {
     @Operation(operationId = "reverseGeocode", summary = "Địa chỉ tại một điểm trên bản đồ", description = "Gọi khi người dùng dừng kéo bản đồ: đổi toạ độ ở tâm bản đồ thành địa chỉ, kèm mã tỉnh và phường/xã khớp với danh sách. Toạ độ phải nằm trong lãnh thổ Việt Nam.")
     @ApiError(status = 404, code = "ADDRESS_NOT_FOUND", when = "Không có địa chỉ nào ở vị trí này.")
     @ApiError(status = 429, code = "TOO_MANY_REQUESTS", when = "Gửi quá nhiều lần trong thời gian ngắn; đợi rồi thử lại.")
-    @ApiError(status = 503, code = "GEOCODING_UNAVAILABLE", when = "Dịch vụ tra địa chỉ (Goong) tạm thời không phản hồi; thử lại sau.")
+    @ApiError(status = 503, code = "GEOCODING_UNAVAILABLE", when = "Dịch vụ tra địa chỉ tạm thời không phản hồi; thử lại sau.")
     @GetMapping("/reverse")
     GeoViews.Place reverse(HttpServletRequest request,
             @RequestParam @DecimalMin("6.0") @DecimalMax("24.0") double lat,
             @RequestParam @DecimalMin("102.0") @DecimalMax("118.0") double lng) {
         return suggestions.reverse(caller(request), lat, lng);
+    }
+
+    @Operation(operationId = "planRoute", summary = "Đường đi giữa hai điểm", description = "Quãng đường và thời gian ước tính theo đường bộ, phương án tốt nhất trước, kèm các tuyến thay thế nếu có.")
+    @ApiError(status = 429, code = "TOO_MANY_REQUESTS", when = "Gửi quá nhiều lần trong thời gian ngắn; đợi rồi thử lại.")
+    @ApiError(status = 503, code = "GEOCODING_UNAVAILABLE", when = "Dịch vụ tính đường tạm thời không phản hồi; thử lại sau.")
+    @GetMapping("/route")
+    java.util.List<GeoViews.Route> route(HttpServletRequest request,
+            @RequestParam @DecimalMin("6.0") @DecimalMax("24.0") double fromLat,
+            @RequestParam @DecimalMin("102.0") @DecimalMax("118.0") double fromLng,
+            @RequestParam @DecimalMin("6.0") @DecimalMax("24.0") double toLat,
+            @RequestParam @DecimalMin("102.0") @DecimalMax("118.0") double toLng) {
+        return suggestions.route(caller(request), fromLat, fromLng, toLat, toLng);
+    }
+
+    @Operation(operationId = "optimizeTour", summary = "Sắp xếp thứ tự giao nhiều điểm", description = "Điểm đầu tiên là nơi xuất phát và giữ nguyên; trả về thứ tự ghé các điểm (theo vị trí trong danh sách gửi lên) để giảm quãng đường, không quay lại điểm đầu. Từ 2 đến 12 điểm.")
+    @ApiError(status = 400, code = "VALIDATION_ERROR", when = "Danh sách có ít hơn 2 hoặc nhiều hơn 12 điểm, hoặc toạ độ không hợp lệ.")
+    @ApiError(status = 429, code = "TOO_MANY_REQUESTS", when = "Gửi quá nhiều lần trong thời gian ngắn; đợi rồi thử lại.")
+    @ApiError(status = 503, code = "GEOCODING_UNAVAILABLE", when = "Dịch vụ tính đường tạm thời không phản hồi; thử lại sau.")
+    @org.springframework.web.bind.annotation.PostMapping("/tour")
+    GeoViews.Tour tour(HttpServletRequest request, @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody GeoViews.TourRequest body) {
+        return suggestions.tour(caller(request), body);
     }
 
     /** The signed-in user when the request carries a token, otherwise a guest known by IP (the proxy's forwarded address in production). */

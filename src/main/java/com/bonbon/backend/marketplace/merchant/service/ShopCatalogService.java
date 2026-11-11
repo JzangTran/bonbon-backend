@@ -218,6 +218,26 @@ class ShopCatalogService implements ShopCatalog {
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<ShopSchedule> schedule(UUID shopId) {
+        return vendors.findById(shopId).filter(v -> v.getStatus() == VendorStatus.APPROVED).map(v -> {
+            ZonedDateTime now = ZonedDateTime.now();
+            if (ShopHours.isOpen(v, now)) {
+                java.util.OptionalInt closes = ShopHours.closingMinute(v.getOpeningHours(), now);
+                return new ShopSchedule(true, closes.isPresent() ? clock(closes.getAsInt()) : null, null, null);
+            }
+            java.util.OptionalInt opens = ShopHours.nextOpeningMinute(v.getOpeningHours(), now);
+            return opens.isPresent() ? new ShopSchedule(false, null, opens.getAsInt() / 1440 + 1, clock(opens.getAsInt()))
+                    : new ShopSchedule(false, null, null, null);
+        });
+    }
+
+    private static String clock(int minuteOfWeek) {
+        int minute = minuteOfWeek % 1440;
+        return "%02d:%02d".formatted(minute / 60, minute % 60);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<ShopMenu> menu(UUID shopId, Double lat, Double lng) {
         return vendors.findById(shopId).filter(v -> v.getStatus() == VendorStatus.APPROVED).map(v -> {
             Double distance = lat == null || lng == null || v.getLat() == null ? null
