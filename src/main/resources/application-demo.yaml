@@ -1,0 +1,30 @@
+# The demo server (deploy/compose.demo.yaml in the bonbon repo): built like production, every value from the environment,
+# but payments go through the fake MoMo page and email lands in the server's Mailpit, so it runs without MoMo or SMTP accounts.
+# Never point real customers at it.
+spring:
+  datasource:
+    url: ${BONBON_DB_URL}
+    username: ${BONBON_DB_USER}
+    password: ${BONBON_DB_PASSWORD}
+
+bonbon:
+  payment:
+    provider: fake
+    fake:
+      # the "MoMo" page customers are sent to, on the demo's own address
+      base-url: ${BONBON_PUBLIC_URL}
+  geo:
+    fake-when-unconfigured: false
+  # no reCAPTCHA keys on the demo; turn it on with BONBON_CAPTCHA_ENABLED=true and BONBON_RECAPTCHA_SECRET
+  captcha:
+    enabled: ${BONBON_CAPTCHA_ENABLED:false}
+
+springdoc:
+  api-docs:
+    enabled: false
+
+server:
+  # Behind Caddy on the compose network (the backend port is never published): trust its X-Forwarded-For/-Proto.
+  forward-headers-strategy: native
+  # Finish in-flight requests on a redeploy.
+  shutdown: graceful
