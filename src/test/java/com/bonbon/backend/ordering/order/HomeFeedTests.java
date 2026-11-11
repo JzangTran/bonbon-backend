@@ -29,6 +29,8 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import tools.jackson.databind.json.JsonMapper;
 
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -225,7 +227,74 @@ class HomeFeedTests {
         call(tokenOf(shop), delete("/api/merchant/shop/logo"), null).andExpect(jsonPath("$.shop.logoUrl").doesNotExist());
     }
 
+    @Test
+    void theHomePageFiltersNarrowTheSameList() throws Exception {
+        String near = shop("Gần, 4.5 sao", baseLat, baseLng, 3, 30_000, null);
+        String far = shop("Xa, 4.8 sao, giảm giá", baseLat + 2.5 * KM, baseLng, 3, 30_000, 40_000);
+        String low = shop("Gần, 3 sao, có voucher", baseLat + KM, baseLng, 3, 30_000, null);
+        rate(near, 45, 10);
+        rate(far, 48, 10);
+        rate(low, 30, 10);
+        call(tokenOf(low), post("/api/merchant/vouchers"), Map.of("code", "GIAM10", "discountType", "PERCENT", "discountValue", 10,
+                "validFrom", Instant.now().minusSeconds(60).toString(), "validTo", Instant.now().plusSeconds(3600).toString()))
+                .andExpect(status().isCreated());
+        feed.clearCache();
+
+        feedAt(baseLat, baseLng).andExpect(jsonPath("$.items[*].shop.id", contains(near, low, far)));
+        feedAt(baseLat, baseLng, "sort", "RATING").andExpect(jsonPath("$.items[*].shop.id", contains(far, near, low)));
+        feedAt(baseLat, baseLng, "highlyRated", "true").andExpect(jsonPath("$.items[*].shop.id", contains(near, far)));
+        feedAt(baseLat, baseLng, "nearby", "true").andExpect(jsonPath("$.items[*].shop.id", contains(near, low)));
+        feedAt(baseLat, baseLng, "promotions", "true").andExpect(jsonPath("$.items[*].shop.id", contains(low, far)));
+        feedAt(baseLat, baseLng, "promotions", "true", "highlyRated", "true").andExpect(jsonPath("$.items[*].shop.id", contains(far)));
+        feedAt(baseLat, baseLng, "sort", "SOMETHING").andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_SORT"));
+    }
+
+    @Test
+    void aBestSellerHasTenDeliveredOrdersInThirtyDays() throws Exception {
+        String busy = shop("Đắt khách", baseLat, baseLng, 3, 30_000, null);
+        String quiet = shop("Vắng khách", baseLat, baseLng, 3, 30_000, null);
+        orders(busy, 10, "DELIVERED", 1);
+        orders(quiet, 9, "DELIVERED", 1);
+        orders(quiet, 5, "DELIVERED", 40);
+        orders(quiet, 5, "CANCELLED", 1);
+        feed.clearCache();
+
+        feedAt(baseLat, baseLng, "bestSellers", "true").andExpect(jsonPath("$.items[*].shop.id", contains(busy)));
+    }
+
+    @Test
+    void severalDisplayCategoriesListShopsInAnyOfThem() throws Exception {
+        String inFirst = shop("Danh mục một", baseLat, baseLng, 3, 30_000, null);
+        UUID parent = jdbc.sql("select id from categories where level = 2 order by name limit 1").query(UUID.class).single();
+        String otherLeaf = jdbc.sql("insert into categories (parent_id, level, name) values (:p, 3, :n) returning id")
+                .param("p", parent).param("n", "Lá khác " + System.nanoTime()).query(UUID.class).single().toString();
+        String otherDisplay = JsonPath.read(call(admin, post("/api/admin/display-categories"), Map.of("name", "Bún", "leafIds", List.of(otherLeaf)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+        String savedLeaf = leaf;
+        leaf = otherLeaf;
+        String inSecond = shop("Danh mục hai", baseLat, baseLng, 3, 30_000, null);
+        leaf = savedLeaf;
+
+        mvc.perform(get("/api/feed").param("lat", String.valueOf(baseLat)).param("lng", String.valueOf(baseLng)).param("displayCategoryId", display))
+                .andExpect(jsonPath("$.items[*].shop.id", contains(inFirst)));
+        mvc.perform(get("/api/feed").param("lat", String.valueOf(baseLat)).param("lng", String.valueOf(baseLng))
+                .param("displayCategoryId", display, otherDisplay)).andExpect(jsonPath("$.items[*].shop.id", containsInAnyOrder(inFirst, inSecond)));
+    }
+
     // --- helpers
+
+    private static final String ORDER_SQL = """
+            insert into orders (customer_id, vendor_id, vendor_name, status, payment_method, delivery_name, delivery_phone, delivery_address,
+                                delivery_lat, delivery_lng, items_total, delivery_fee, grand_total, idempotency_key, placed_at)
+            values (:c, :v, 'Quán', :s, 'COD', 'Khách', '0912345678', 'Địa chỉ', 0, 0, 30000, 10000, 40000, gen_random_uuid()::text, :at)""";
+
+    private void orders(String shopId, int count, String status, int daysAgo) {
+        UUID owner = jdbc.sql("select owner_user_id from vendors where id = :v").param("v", UUID.fromString(shopId)).query(UUID.class).single();
+        for (int i = 0; i < count; i++) {
+            jdbc.sql(ORDER_SQL).param("c", owner).param("v", UUID.fromString(shopId)).param("s", status)
+                    .param("at", java.sql.Timestamp.from(Instant.now().minusSeconds(daysAgo * 86_400L))).update();
+        }
+    }
 
     private final Map<String, String> tokensByShop = new java.util.HashMap<>();
 

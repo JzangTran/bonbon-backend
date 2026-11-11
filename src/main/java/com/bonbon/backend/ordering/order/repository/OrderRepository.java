@@ -25,6 +25,17 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     long countByCustomerIdAndVoucherIdAndStatusNotIn(UUID customerId, UUID voucherId, Collection<OrderStatus> statuses);
 
+    /** Shops with at least this many orders in this status since then. */
+    /** The shop's orders since then by day of the week (1 Monday) and hour, in Vietnam time. */
+    @Query(value = """
+            select cast(extract(isodow from o.placed_at at time zone 'Asia/Ho_Chi_Minh') as int),
+                   cast(extract(hour from o.placed_at at time zone 'Asia/Ho_Chi_Minh') as int), count(*)
+            from ordering.orders o where o.vendor_id = :vendorId and o.placed_at >= :since group by 1, 2""", nativeQuery = true)
+    List<Object[]> countByDayAndHour(@Param("vendorId") UUID vendorId, @Param("since") Instant since);
+
+    @Query("select o.vendorId from Order o where o.status = :status and o.placedAt >= :since group by o.vendorId having count(o) >= :minimum")
+    List<UUID> findVendorsWithOrders(@Param("status") OrderStatus status, @Param("since") Instant since, @Param("minimum") long minimum);
+
     @Query("select o from Order o where o.customerId = :customerId order by o.placedAt desc")
     Page<Order> findForCustomer(@Param("customerId") UUID customerId, Pageable pageable);
 

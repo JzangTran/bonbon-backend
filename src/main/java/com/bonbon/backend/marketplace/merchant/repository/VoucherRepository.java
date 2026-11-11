@@ -25,6 +25,12 @@ public interface VoucherRepository extends JpaRepository<Voucher, UUID> {
             order by v.validTo, v.code""")
     List<Voucher> findOffers(@Param("vendorId") UUID vendorId, @Param("now") Instant now);
 
+    @Query("""
+            select distinct v.vendorId from Voucher v
+            where v.status = 'ACTIVE' and v.validFrom <= :now and v.validTo > :now
+              and (v.usageLimit is null or v.usedCount < v.usageLimit)""")
+    List<UUID> findVendorsWithOffers(@Param("now") Instant now);
+
     /** The race for the last use is settled here: the row is only updated while a use is left. */
     @Modifying(clearAutomatically = false)
     @Query(value = """

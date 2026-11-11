@@ -3,6 +3,7 @@ package com.bonbon.backend.marketplace.merchant.service;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import com.bonbon.backend.common.exception.BusinessException;
@@ -95,6 +96,12 @@ class VoucherService implements ShopVouchers, VoucherManagement {
     }
 
     // --- ordering
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<UUID> shopsWithOffers() {
+        return Set.copyOf(vouchers.findVendorsWithOffers(Instant.now()));
+    }
 
     @Override
     @Transactional(readOnly = true)

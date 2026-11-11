@@ -3,6 +3,7 @@ package com.bonbon.backend.marketplace.merchant;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -14,6 +15,9 @@ public interface ShopVouchers {
 
     /** The shop's vouchers a customer can use now, soonest ending first; empty for a shop that is not approved. */
     List<Offer> offers(UUID vendorId);
+
+    /** The shops with a voucher a customer can use now: what the home page's "Khuyến mãi" counts besides discounted dishes. */
+    Set<UUID> shopsWithOffers();
 
     /** Works out the discount on this food value, or says why the voucher does not apply. Nothing is reserved yet. */
     Quote quote(UUID vendorId, String code, int itemsTotal);
