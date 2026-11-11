@@ -44,7 +44,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  */
 @Configuration
 @EnableMethodSecurity
-@EnableConfigurationProperties({JwtProperties.class, CorsProperties.class})
+@EnableConfigurationProperties({JwtProperties.class, CorsProperties.class, RefreshCookieProperties.class})
 class SecurityConfig {
 
     static final String[] PUBLIC_PATHS = {
@@ -83,9 +83,11 @@ class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(PUBLIC_PATHS).permitAll()
                         // Reading the category tree is public (browsing filters); writes live under /api/admin.
-                        .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/categories", "/api/display-categories").permitAll()
                         // Guests browse shops and menus before logging in (browse-vendors-in-area.md).
-                        .requestMatchers(HttpMethod.GET, "/api/vendors", "/api/vendors/*/menu", "/api/vendors/*/reviews").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/vendors", "/api/vendors/*/menu", "/api/vendors/*/reviews", "/api/vendors/*/vouchers", "/api/vendors/*/place-info", "/api/feed").permitAll()
+                        // ...and type where they want the food to go; guests are limited per IP (AddressSuggestionService).
+                        .requestMatchers(HttpMethod.GET, "/api/geo/**").permitAll()
                         // The help centre can be read without logging in (browse-help-center.md).
                         .requestMatchers(HttpMethod.GET, "/api/help-articles", "/api/help-articles/*").permitAll()
                         // MoMo calls this server to server; it carries no token, the signature is the trust (pay-online.md).
@@ -129,6 +131,10 @@ class SecurityConfig {
         cors.setAllowedOrigins(props.allowedOrigins());
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cors.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key", "X-Client-Channel", "X-App-Version", "X-App-Platform"));
+        // the web app sends its refresh-token cookie when the API is on another origin
+        cors.setAllowCredentials(true);
+        // the web app sends its refresh-token cookie when the API is on another origin
+        cors.setAllowCredentials(true);
         cors.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cors);

@@ -30,6 +30,7 @@ bonbon:
       # Tests call DishCategoryModerationService.runDue with a time they choose.
       enabled: false
   geo:
+    provider: fake
     fake-when-unconfigured: true
   captcha:
     enabled: false

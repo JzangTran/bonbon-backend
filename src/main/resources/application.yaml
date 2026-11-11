@@ -8,6 +8,10 @@ spring:
     url: ${BONBON_DB_URL:jdbc:postgresql://localhost:5432/bonbon}
     username: ${BONBON_DB_USER:bonbon}
     password: ${BONBON_DB_PASSWORD:}
+    hikari:
+      # Each module's tables live in its own schema (V0047); SQL uses bare table names, found through this path. public keeps the
+      # functions and extensions and Flyway's history.
+      connection-init-sql: SET search_path TO identity, marketplace, ordering, payments, communication, support, operations, public
   jpa:
     open-in-view: false
     hibernate:
@@ -19,6 +23,8 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    # Flyway's history stays in public whatever the search path says; migrations after V0047 name the schema of every table.
+    default-schema: public
   mail:
     host: ${SPRING_MAIL_HOST:localhost}
     port: ${SPRING_MAIL_PORT:1025}
@@ -50,6 +56,9 @@ bonbon:
       secret: ${BONBON_JWT_SECRET:}
     # AES-256 key (32 bytes, base64) for encrypted columns: identity numbers, bank accounts. Never commit.
     data-key: ${BONBON_DATA_KEY:}
+    # The web app's refresh token travels in this HttpOnly cookie. Set the domain (e.g. bonbon.com) so every subdomain shares one sign-in.
+    refresh-cookie:
+      domain: ${BONBON_REFRESH_COOKIE_DOMAIN:}
   cors:
     allowed-origins: ${BONBON_CORS_ORIGINS:http://localhost:5173}
   app:
@@ -74,9 +83,16 @@ bonbon:
     public-bucket: ${BONBON_STORAGE_PUBLIC_BUCKET:bonbon-public}
     public-base-url: ${BONBON_STORAGE_PUBLIC_BASE_URL:}
   geo:
+    # osm (default, no key), goong or openmap (OpenMap.vn), for addresses; the map and the roads stay on OpenStreetMap. Point these at your own Photon and OSRM before real traffic: the public ones are best effort.
+    provider: ${BONBON_GEO_PROVIDER:osm}
+    photon-url: ${BONBON_GEO_PHOTON_URL:https://photon.komoot.io}
+    osrm-url: ${BONBON_GEO_OSRM_URL:https://routing.openstreetmap.de/routed-car}
     goong:
       # Goong REST API key; stays on the server (clients call /api/geo/autocomplete).
       api-key: ${GOONG_API_KEY:}
+    openmap:
+      # OpenMap.vn REST key (enterprise.openmap.vn); stays on the server like the Goong key.
+      api-key: ${OPENMAP_API_KEY:}
   oauth:
     google:
       # OAuth client IDs (comma-separated) whose Google ID tokens are accepted: web, Android, iOS.
