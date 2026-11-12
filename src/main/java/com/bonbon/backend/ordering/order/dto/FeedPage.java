@@ -7,8 +7,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * One page of the home page: up to 10 shops with up to 10 dishes each. {@code dealMaxPercent} is the biggest discount among the
- * shops listed (for "Giảm đến X%"), 0 when none.
+ * shops listed (for "Giảm đến X%"), 0 when none. {@code outOfArea}: no shop delivers to the position, so these are the nearest
+ * shops to look at; none of them can take an order there.
  */
 @Schema(name = "HomeFeedPage")
-public record FeedPage(List<ShopCatalog.FeedCard> items, int page, int size, boolean hasMore, int total, int dealMaxPercent) {
+public record FeedPage(List<ShopCatalog.FeedCard> items, int page, int size, boolean hasMore, int total, int dealMaxPercent, boolean outOfArea) {
 }
