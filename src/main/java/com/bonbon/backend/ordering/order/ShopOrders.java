@@ -27,6 +27,9 @@ public interface ShopOrders {
      */
     ShopOrderDetail transition(UUID vendorId, UUID orderId, OrderStatus to, String reason, ActorType actorType, UUID actorId);
 
+    /** The shop saw the customer's bank transfer arrive: the order is paid. Only for a {@code BANK_TRANSFER} order still unpaid. */
+    ShopOrderDetail markTransferReceived(UUID vendorId, UUID orderId);
+
     /**
      * {@code phone} and {@code address} are masked once the order has finished and the report window has passed
      * (view-order-detail.md). {@code responseDeadline} counts down while the order is new; {@code handoverDeadline}

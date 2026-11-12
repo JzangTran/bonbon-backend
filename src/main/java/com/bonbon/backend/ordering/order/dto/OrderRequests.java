@@ -18,12 +18,15 @@ public final class OrderRequests {
     private OrderRequests() {
     }
 
-    /** {@code paymentMethod}: {@code COD} (pay at the door) or {@code ONLINE} (MoMo, 1.000 to 50.000.000 ₫). */
+    /**
+     * {@code paymentMethod}: {@code COD} (pay at the door), {@code ONLINE} (MoMo, 1.000 to 50.000.000 ₫) or {@code BANK_TRANSFER}
+     * (VietQR to the shop's own bank account; the shop marks it received).
+     */
     @Schema(name = "PlaceOrderRequest")
     public record Place(
             @NotNull UUID vendorId,
             @NotNull UUID addressId,
-            @NotNull @Pattern(regexp = "COD|ONLINE", message = "Phương thức thanh toán phải là COD hoặc ONLINE.") String paymentMethod,
+            @NotNull @Pattern(regexp = "COD|ONLINE|BANK_TRANSFER", message = "Phương thức thanh toán phải là COD, ONLINE hoặc BANK_TRANSFER.") String paymentMethod,
             @Size(max = 300) String note,
             @NotEmpty @Size(max = 50) List<@Valid @NotNull Line> items,
             @Size(max = 20) String voucherCode) {
