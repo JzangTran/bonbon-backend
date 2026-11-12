@@ -100,6 +100,13 @@ public class HomeFeedService {
         }
         Set<UUID> chosen = displayCategoryIds == null || displayCategoryIds.isEmpty() ? null : new TreeSet<>(displayCategoryIds);
         List<FeedEntry> entries = lat == null ? topRated(chosen, now) : reaching(lat, lng, chosen, now);
+        // nobody delivers here (owner decision 2026-11-12): show the nearest shops anyway, to look at but not to order from
+        boolean outOfArea = lat != null && entries.isEmpty();
+        if (outOfArea) {
+            entries = topRated(chosen, now).stream()
+                    .sorted(Comparator.comparingDouble(e -> GeoDistance.haversineKm(lat, lng, e.lat(), e.lng())))
+                    .toList();
+        }
         int dealMax = entries.stream().filter(e -> !excluded.contains(e.id())).mapToInt(FeedEntry::maxDiscountPercent).max().orElse(0);
         var stream = entries.stream().filter(e -> !excluded.contains(e.id()));
         if (filters.highlyRated()) {
@@ -128,7 +135,7 @@ public class HomeFeedService {
         int from = Math.min(page * PAGE_SIZE, ordered.size());
         int to = Math.min(from + PAGE_SIZE, ordered.size());
         List<UUID> ids = ordered.subList(from, to).stream().map(FeedEntry::id).toList();
-        return new FeedPage(shops.feedCards(ids, lat, lng), page, PAGE_SIZE, to < ordered.size(), ordered.size(), dealMax);
+        return new FeedPage(shops.feedCards(ids, lat, lng), page, PAGE_SIZE, to < ordered.size(), ordered.size(), dealMax, outOfArea);
     }
 
     /** Shops whose own radius covers the exact point: held-back shops last, then nearest first. */

@@ -48,6 +48,7 @@ class AddressController {
 
     @Operation(operationId = "createAddress", summary = "Thêm địa chỉ", description = "`placeId` lấy từ API gợi ý địa chỉ; máy chủ tra toạ độ một lần khi lưu. `makeDefault` đặt làm mặc định; địa chỉ đầu tiên luôn là mặc định.")
     @ApiError(status = 409, code = "ADDRESS_LIMIT_REACHED", when = "Đã có đủ 10 địa chỉ.")
+    @ApiError(status = 409, code = "ADDRESS_LABEL_TAKEN", when = "Đã có một địa chỉ tên \"Nhà\" (hoặc \"Công ty\"); mỗi tên chỉ dùng một địa chỉ, gỡ địa chỉ cũ trước.")
     @ApiError(status = 400, code = "ADDRESS_NOT_FOUND", when = "`placeId` không tra được ra địa chỉ.")
     @ApiError(status = 503, code = "GEOCODING_UNAVAILABLE", when = "Dịch vụ tra địa chỉ (Goong) tạm thời không phản hồi; thử lại sau.")
     @PostMapping
@@ -58,6 +59,7 @@ class AddressController {
 
     @Operation(operationId = "updateAddress", summary = "Sửa địa chỉ", description = "Chỉ trường gửi lên mới đổi. Đổi `placeId` thì tra lại toạ độ; chỉ đổi dòng chi tiết hay người nhận thì không. Đơn đã đặt giữ bản sao địa chỉ cũ.")
     @ApiError(status = 404, code = "ADDRESS_NOT_FOUND", when = "Địa chỉ không tồn tại hoặc của người khác.")
+    @ApiError(status = 409, code = "ADDRESS_LABEL_TAKEN", when = "Đổi tên thành \"Nhà\" hoặc \"Công ty\" khi địa chỉ khác đã mang tên đó.")
     @ApiError(status = 503, code = "GEOCODING_UNAVAILABLE", when = "Dịch vụ tra địa chỉ (Goong) tạm thời không phản hồi; thử lại sau.")
     @PatchMapping("/{id}")
     AddressDtos.View update(CurrentPrincipal principal, @PathVariable UUID id, @Valid @RequestBody AddressDtos.Update request) {
