@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -20,6 +21,7 @@ import com.bonbon.backend.common.persistence.ActorType;
 import com.bonbon.backend.common.security.CurrentPrincipal;
 import com.bonbon.backend.common.settings.SystemSettingsService;
 import com.bonbon.backend.common.web.ClientContext;
+import com.bonbon.backend.common.vietqr.VietQr;
 import com.bonbon.backend.marketplace.merchant.ShopOrdering;
 import com.bonbon.backend.marketplace.merchant.ShopVouchers;
 import com.bonbon.backend.marketplace.merchant.ShopOrdering.OrderableDish;
@@ -139,6 +141,9 @@ public class OrderService {
         Map<UUID, OrderableDish> dishes = shops.dishes(shop.id(),
                 req.items().stream().map(OrderRequests.Line::menuItemId).collect(Collectors.toSet()));
         boolean online = "ONLINE".equals(req.paymentMethod());
+        if ("BANK_TRANSFER".equals(req.paymentMethod()) && transferAccount(shop.id()).isEmpty()) {
+            throw BusinessException.conflict("BANK_TRANSFER_UNAVAILABLE", "Quán này chưa nhận chuyển khoản. Hãy chọn cách thanh toán khác.");
+        }
         Order order = new Order(customerId, shop.id(), shop.name(), online ? OrderStatus.PENDING_PAYMENT : OrderStatus.PLACED, req.paymentMethod(), address.recipientName(),
                 address.recipientPhone(), address.address(), address.lat(), address.lng(), blankToNull(req.note()), key,
                 client.ip(), truncate(userAgent, 300));
@@ -312,6 +317,32 @@ public class OrderService {
             throw BusinessException.conflict("PAYMENT_EXPIRED", "Đã hết thời hạn thanh toán của đơn này.");
         }
         return startPayment(order.getId(), order.getNumber(), order.getCustomerId(), order.getGrandTotal(), order.getPlacedAt());
+    }
+
+    /** How to pay a bank transfer order: the shop's account and the VietQR code, until the shop marks the money received. */
+    @Transactional(readOnly = true)
+    public OrderViews.BankTransfer bankTransfer(UUID customerId, UUID orderId) {
+        Order order = orders.findByIdAndCustomerId(orderId, customerId)
+                .orElseThrow(() -> BusinessException.notFound("ORDER_NOT_FOUND", "Không tìm thấy đơn hàng."));
+        if (!"BANK_TRANSFER".equals(order.getPaymentMethod())) {
+            throw BusinessException.conflict("NOT_A_BANK_TRANSFER", "Đơn này không thanh toán bằng chuyển khoản.");
+        }
+        TransferAccount account = transferAccount(order.getVendorId())
+                .orElseThrow(() -> BusinessException.conflict("BANK_TRANSFER_UNAVAILABLE", "Quán này chưa nhận chuyển khoản."));
+        String message = "BONBON" + order.getNumber();
+        return new OrderViews.BankTransfer(account.bank().shortName(), account.bank().bin(), account.account().accountNumber(),
+                account.account().holderName(), order.getGrandTotal(), message,
+                VietQr.payload(account.bank().bin(), account.account().accountNumber(), order.getGrandTotal(), message),
+                "PAID".equals(order.getPaymentStatus()));
+    }
+
+    private record TransferAccount(ShopOrdering.ReceivingAccount account, VietQr.Bank bank) {
+    }
+
+    /** The shop's receiving account when its bank is one VietQR knows. */
+    private Optional<TransferAccount> transferAccount(UUID vendorId) {
+        return shops.receivingAccount(vendorId)
+                .flatMap(a -> VietQr.bank(a.bankName()).map(bank -> new TransferAccount(a, bank)));
     }
 
     // --- reading

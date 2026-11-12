@@ -73,6 +73,17 @@ class MerchantOrderController {
         return orders.move(principal, id, OrderStatus.CONFIRMED, null);
     }
 
+    @Operation(operationId = "markShopOrderTransferReceived", summary = "Đã nhận tiền chuyển khoản", description = "Quán xác nhận khoản chuyển khoản của khách đã vào tài khoản: đơn chuyển sang đã thanh toán.")
+    @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người gọi chưa có cửa hàng được duyệt; `status` cho biết trạng thái hồ sơ.")
+    @ApiError(status = 404, code = "ORDER_NOT_FOUND", when = "Đơn không tồn tại hoặc không phải của người gọi (không tiết lộ đơn của người khác).")
+    @ApiError(status = 409, code = "NOT_A_BANK_TRANSFER", when = "Đơn không thanh toán bằng chuyển khoản.")
+    @ApiError(status = 409, code = "ALREADY_PAID", when = "Đơn đã được ghi nhận thanh toán.")
+    @PostMapping("/{id}/transfer-received")
+    @PreAuthorize("hasAuthority('order:write')")
+    ShopOrders.ShopOrderDetail transferReceived(CurrentPrincipal principal, @PathVariable UUID id) {
+        return orders.markTransferReceived(principal, id);
+    }
+
     @Operation(operationId = "rejectShopOrder", summary = "Từ chối đơn", description = "Cần lý do (khách thấy). Tồn kho được trả lại; tính là lỗi của quán.")
     @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người gọi chưa có cửa hàng được duyệt; `status` cho biết trạng thái hồ sơ.")
     @ApiError(status = 404, code = "ORDER_NOT_FOUND", when = "Đơn không tồn tại hoặc không phải của người gọi (không tiết lộ đơn của người khác).")

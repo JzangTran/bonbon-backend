@@ -120,6 +120,16 @@ class OrderController {
         return orders.pay(principal.id(), id);
     }
 
+    /** How to pay a bank transfer order. */
+    @Operation(operationId = "getOrderBankTransfer", summary = "Thông tin chuyển khoản", description = "Tài khoản ngân hàng của quán, số tiền, nội dung chuyển khoản và mã VietQR để khách quét bằng ứng dụng ngân hàng. Tiền đi thẳng vào tài khoản quán; `received` thành true khi quán xác nhận đã nhận tiền.")
+    @ApiError(status = 404, code = "ORDER_NOT_FOUND", when = "Đơn không tồn tại hoặc không phải của người gọi (không tiết lộ đơn của người khác).")
+    @ApiError(status = 409, code = "NOT_A_BANK_TRANSFER", when = "Đơn không thanh toán bằng chuyển khoản.")
+    @ApiError(status = 409, code = "BANK_TRANSFER_UNAVAILABLE", when = "Quán không còn tài khoản nhận chuyển khoản.")
+    @GetMapping("/{id}/bank-transfer")
+    OrderViews.BankTransfer bankTransfer(CurrentPrincipal principal, @PathVariable UUID id) {
+        return orders.bankTransfer(principal.id(), id);
+    }
+
     /** The customer has it in hand; the shop can also mark it delivered and the first one wins. */
     @Operation(operationId = "confirmOrderReceived", summary = "Xác nhận đã nhận món", description = "Khi đơn đang giao. Quán cũng có thể đánh dấu đã giao; ai trước được tính.")
     @ApiError(status = 404, code = "ORDER_NOT_FOUND", when = "Đơn không tồn tại hoặc không phải của người gọi (không tiết lộ đơn của người khác).")

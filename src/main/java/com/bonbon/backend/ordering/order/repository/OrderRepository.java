@@ -54,6 +54,13 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
      * {@code from}. Zero rows means somebody else moved it first. Timestamps and payment status are only set
      * when given.
      */
+    /** A bank transfer the shop saw arrive; nothing changes once it is recorded, or for any other kind of payment. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            update Order o set o.paymentStatus = 'PAID', o.paymentReceivedAt = :now, o.version = o.version + 1, o.updatedAt = :now
+            where o.id = :id and o.paymentMethod = 'BANK_TRANSFER' and o.paymentStatus = 'PENDING'""")
+    int markTransferReceived(@Param("id") UUID id, @Param("now") java.time.Instant now);
+
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             update Order o set o.status = :to, o.version = o.version + 1, o.updatedAt = :now,

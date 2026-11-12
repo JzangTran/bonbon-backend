@@ -37,6 +37,10 @@ public class MerchantOrderService {
         return orders.transition(vendorOf(caller), orderId, to, reason, caller.actorType(), caller.id());
     }
 
+    public ShopOrders.ShopOrderDetail markTransferReceived(CurrentPrincipal caller, UUID orderId) {
+        return orders.markTransferReceived(vendorOf(caller), orderId);
+    }
+
     private UUID vendorOf(CurrentPrincipal caller) {
         return shops.operatingVendorOwnedBy(caller.id()).orElseThrow(() -> new BusinessException(HttpStatus.CONFLICT, "SHOP_NOT_APPROVED",
                 "Bạn chưa có cửa hàng được duyệt."));
