@@ -115,6 +115,25 @@ class ShopOrdersService implements ShopOrders {
         return detail(orders.findById(orderId).orElseThrow());
     }
 
+    @Override
+    @Transactional
+    public TransferMatch matchTransfer(UUID vendorId, long number, long amount) {
+        Order order = orders.findByVendorIdAndNumber(vendorId, number).orElse(null);
+        if (order == null || order.getStatus() == OrderStatus.PENDING_PAYMENT) {
+            return TransferMatch.NOT_FOUND;
+        }
+        if (!"BANK_TRANSFER".equals(order.getPaymentMethod())) {
+            return TransferMatch.NOT_A_BANK_TRANSFER;
+        }
+        if (!"PENDING".equals(order.getPaymentStatus())) {
+            return TransferMatch.ALREADY_PAID;
+        }
+        if (amount < order.getGrandTotal()) {
+            return TransferMatch.AMOUNT_SHORT;
+        }
+        return orders.markTransferReceived(order.getId(), java.time.Instant.now()) == 0 ? TransferMatch.ALREADY_PAID : TransferMatch.PAID;
+    }
+
     private Order find(UUID vendorId, UUID orderId) {
         return orders.findByIdAndVendorId(orderId, vendorId)
                 .filter(o -> o.getStatus() != OrderStatus.PENDING_PAYMENT)

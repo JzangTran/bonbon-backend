@@ -34,6 +34,10 @@ class AccessTokenRevocationCheck implements TokenRevocationCheck {
             return true;
         }
         UUID userId = UUID.fromString(jwt.getSubject());
+        // a seller-team console without a shop has no user behind it; TeamTokenRevocationCheck covers the team principal
+        if (jwt.getSubject().equals(jwt.getClaimAsString(com.bonbon.backend.common.security.CurrentPrincipal.CLAIM_TEAM))) {
+            return false;
+        }
         Instant validAfter = store.cachedValidAfter(userId).orElseGet(() -> loadAndCache(userId));
         // iat has second precision; comparing at second precision keeps a token issued in the same
         // second as the stamp (the caller's fresh pair after a password change) valid.

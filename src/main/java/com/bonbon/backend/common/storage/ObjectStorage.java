@@ -20,5 +20,11 @@ public interface ObjectStorage {
 
     void delete(Visibility visibility, String key);
 
+    /**
+     * Copies a private object to a new key below {@code prefix} (same file name) and returns that key. Used to hold the pictures of
+     * reported messages, so the chat retention purge cannot remove evidence while a report or its appeal is open (report-content.md).
+     */
+    String copyPrivate(String sourceKey, String prefix);
+
     enum Visibility { PRIVATE, PUBLIC }
 }

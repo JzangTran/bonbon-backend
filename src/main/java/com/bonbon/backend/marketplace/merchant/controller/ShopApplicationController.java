@@ -44,6 +44,8 @@ class ShopApplicationController {
     /** Status NONE before the first save; otherwise the application with each step's completeness. */
     @Operation(operationId = "getMyShopApplication", summary = "Xem hồ sơ cửa hàng", description = "`status` là `NONE` trước lần lưu đầu; ngoài ra là hồ sơ kèm mức hoàn thành từng bước. Giấy tờ là liên kết ký tạm.")
     @GetMapping
+    // a main account or member reads the shop it works on (vendor:read); only the shop account itself edits the application
+    @PreAuthorize("hasAuthority('vendor:create') or hasAuthority('vendor:read')")
     ShopApplicationView current(CurrentPrincipal principal) {
         return applications.view(principal.id());
     }

@@ -39,6 +39,10 @@ class LegalGate implements WebMvcConfigurer {
                     return true;
                 }
                 CurrentPrincipal principal = CurrentPrincipal.from(jwt);
+                // a seller-team console with no shop selected has no consents of its own; with a shop it answers to the owner's
+                if (principal.isTeam() && principal.shopId() == null) {
+                    return true;
+                }
                 if (!"CUSTOMER".equals(principal.activeRole()) && !"SELLER".equals(principal.activeRole())) {
                     return true;
                 }

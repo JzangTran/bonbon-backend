@@ -103,6 +103,7 @@ public class ReportService {
         }
         UUID id = UUID.randomUUID();
         Instant now = clock.instant();
+        holdImages(id, target.evidence());
         jdbc.sql("""
                 insert into support.content_reports (id, reporter_user_id, reporter_side, target_type, target_id, target_vendor_id, target_owner_user_id,
                     reason_code, note, evidence, created_at)
@@ -187,6 +188,29 @@ public class ReportService {
             }
             default -> throw new BusinessException(HttpStatus.BAD_REQUEST, "INVALID_TYPE", "Loại nội dung không hợp lệ.");
         };
+    }
+
+    /**
+     * Copies every picture in the evidence to a hold prefix, so deleting the original under the chat retention rule cannot remove it
+     * while the report is open (report-content.md). The evidence then points at the copy; a copy that fails keeps the original key and
+     * the report is still filed.
+     */
+    @SuppressWarnings("unchecked")
+    private void holdImages(UUID reportId, Map<String, Object> evidence) {
+        for (String part : List.of("message", "before", "after")) {
+            Object value = evidence.get(part);
+            List<Object> items = value instanceof List<?> l ? (List<Object>) l : value == null ? List.of() : List.of(value);
+            for (Object item : items) {
+                if (item instanceof Map<?, ?> m && m.get("imageKey") instanceof String key) {
+                    try {
+                        ((Map<String, Object>) m).put("imageKey", storage.copyPrivate(key, "hold/reports/" + reportId));
+                        ((Map<String, Object>) m).put("originalImageKey", key);
+                    } catch (RuntimeException e) {
+                        org.slf4j.LoggerFactory.getLogger(ReportService.class).warn("Could not hold {} for report {}", key, reportId, e);
+                    }
+                }
+            }
+        }
     }
 
     // --- the administrators' queue
@@ -409,6 +433,7 @@ public class ReportService {
                 if (item instanceof Map<?, ?> m && m.get("imageKey") instanceof String key) {
                     ((Map<String, Object>) m).put("imageUrl", storage.signedUrl(key, IMAGE_URL_TTL));
                     ((Map<String, Object>) m).remove("imageKey");
+                    ((Map<String, Object>) m).remove("originalImageKey");
                 }
             }
         }

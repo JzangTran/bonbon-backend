@@ -16,6 +16,7 @@ import com.bonbon.backend.communication.notification.repository.NotificationRepo
 import com.bonbon.backend.ordering.order.OrderStatus;
 import com.bonbon.backend.ordering.order.OrderStatusChanged;
 import com.bonbon.backend.payments.payment.RefundCompleted;
+import com.bonbon.backend.identity.legal.DataRequestClosed;
 import com.bonbon.backend.support.ReportDecided;
 import com.bonbon.backend.support.TicketAnswered;
 import com.bonbon.backend.payments.settlement.CommissionStageChanged;
@@ -370,6 +371,17 @@ public class NotificationService {
         }
         notifications.saveAll(created);
         events.publishEvent(new Created(created));
+    }
+
+    /** A request about the person's data was completed or rejected; a rejection always carries its reason. */
+    @EventListener
+    void onDataRequestClosed(DataRequestClosed e) {
+        String audience = "SELLER".equals(e.audience()) ? SHOP : CUSTOMER;
+        String body = e.completed() ? "Yêu cầu về dữ liệu cá nhân của bạn đã được xử lý." + (e.note() == null ? "" : " " + e.note())
+                : "Yêu cầu về dữ liệu cá nhân của bạn không được chấp nhận. Lý do: " + e.note();
+        Notification n = new Notification(e.userId(), audience, "LEGAL_DATA_REQUEST", null, null, "Yêu cầu về dữ liệu cá nhân", body);
+        notifications.save(n);
+        events.publishEvent(new Created(List.of(n)));
     }
 
     /** The owner is told the shop is closing, and again when it is closed. */
