@@ -36,6 +36,15 @@ public interface ShopOrdering {
     /** Gives portions back (cancelled or rejected order). Dishes without stock ignore it. */
     void returnStock(UUID dishId, int quantity);
 
+    /**
+     * The bank account the shop receives money on (its payout account), the account number in clear: shown to a customer who pays
+     * this shop by bank transfer. Empty when the shop has none.
+     */
+    Optional<ReceivingAccount> receivingAccount(UUID vendorId);
+
+    record ReceivingAccount(String bankName, String accountNumber, String holderName) {
+    }
+
     /** {@code open} is the one rule of pause-orders.md: approved, accepting orders and inside an opening window now. */
     record OrderableShop(UUID id, UUID ownerUserId, String name, double lat, double lng, double radiusKm, int deliveryFee,
             Integer freeDeliveryThreshold, Integer minOrderValue, boolean open) {

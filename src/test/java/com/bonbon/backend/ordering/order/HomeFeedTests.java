@@ -124,6 +124,19 @@ class HomeFeedTests {
     }
 
     @Test
+    void whereNoShopDeliversTheNearestShopsStillShowButOutOfArea() throws Exception {
+        double lng = 120.7;   // a meridian no other test uses
+        String near = shop("Xa một chút", baseLat + 3 * KM, lng, 1, 30_000, null);
+        shop("Xa hơn", baseLat + 6 * KM, lng, 1, 30_000, null);
+
+        feedAt(baseLat, lng).andExpect(jsonPath("$.outOfArea").value(true))
+                .andExpect(jsonPath("$.items[0].shop.id").value(near))
+                .andExpect(jsonPath("$.items[0].shop.distanceKm").value(org.hamcrest.Matchers.greaterThan(2.9)));
+        // in range of one of them: the usual list, only that shop
+        feedAt(baseLat + 2.5 * KM, lng).andExpect(jsonPath("$.outOfArea").value(false)).andExpect(jsonPath("$.total").value(1));
+    }
+
+    @Test
     void withoutAPositionEveryShopBestRatedFirst() throws Exception {
         String few = shop("Một đánh giá 5 sao", baseLat, baseLng, 2, 30_000, null);
         String many = shop("Nhiều đánh giá 4.6", baseLat, baseLng, 2, 30_000, null);

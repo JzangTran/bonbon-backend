@@ -23,6 +23,8 @@ import com.bonbon.backend.marketplace.merchant.entity.Vendor;
 import com.bonbon.backend.marketplace.merchant.repository.MenuItemRepository;
 import com.bonbon.backend.marketplace.merchant.repository.OptionGroupRepository;
 import com.bonbon.backend.marketplace.merchant.repository.OptionRepository;
+import com.bonbon.backend.marketplace.merchant.repository.PayoutAccountRepository;
+import com.bonbon.backend.common.crypto.FieldCipher;
 import com.bonbon.backend.marketplace.merchant.repository.VendorRepository;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
@@ -38,9 +40,14 @@ class ShopOrderingService implements ShopOrdering {
     private final OptionRepository options;
     private final OptionService optionService;
     private final JdbcClient jdbc;
+    private final PayoutAccountRepository payoutAccounts;
+    private final FieldCipher cipher;
 
     ShopOrderingService(VendorRepository vendors, MenuItemRepository items, OptionGroupRepository groups,
-            OptionRepository options, OptionService optionService, JdbcClient jdbc) {
+            OptionRepository options, OptionService optionService, JdbcClient jdbc, PayoutAccountRepository payoutAccounts,
+            FieldCipher cipher) {
+        this.payoutAccounts = payoutAccounts;
+        this.cipher = cipher;
         this.vendors = vendors;
         this.items = items;
         this.groups = groups;
@@ -65,6 +72,14 @@ class ShopOrderingService implements ShopOrdering {
     @Transactional(readOnly = true)
     public Optional<UUID> ownerOf(UUID vendorId) {
         return vendors.findById(vendorId).map(Vendor::getOwnerUserId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ReceivingAccount> receivingAccount(UUID vendorId) {
+        return payoutAccounts.findActive(vendorId)
+                .filter(a -> a.getBankName() != null && a.getAccountNumberEncrypted() != null && a.getAccountHolderName() != null)
+                .map(a -> new ReceivingAccount(a.getBankName(), cipher.decrypt(a.getAccountNumberEncrypted()), a.getAccountHolderName()));
     }
 
     @Override

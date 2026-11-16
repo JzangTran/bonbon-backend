@@ -66,6 +66,15 @@ public final class OrderViews {
     public record Reviewed(UUID id, int rating, boolean hidden) {
     }
 
+    /**
+     * What a banking app needs to pay a {@code BANK_TRANSFER} order: the shop's account, the amount and the message that matches the
+     * money to the order. {@code qrPayload} is the VietQR code to draw; scanning it fills in all of it.
+     */
+    @Schema(name = "OrderBankTransfer")
+    public record BankTransfer(String bankName, String bankBin, String accountNumber, String accountName, int amount, String message,
+            String qrPayload, boolean received) {
+    }
+
     @Schema(name = "OrderShop")
     public record Shop(UUID id, String name) {
     }

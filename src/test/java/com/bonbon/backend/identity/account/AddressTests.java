@@ -130,6 +130,26 @@ class AddressTests {
     }
 
     @Test
+    void nhaAndCongTyAreOneAddressEachUntilTheOldOneIsRemoved() throws Exception {
+        String home = create("Nhà", "Toà S3", false);
+        create("Công ty", "Toà S4", false);
+        // the same name again, in any case or without accents, is refused
+        for (String again : new String[] {"Nhà", "nhà", "NHA", " Công  ty ", "cong ty"}) {
+            send(post("/api/account/addresses"), body(again, placeOf("Toà S5"))).andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("ADDRESS_LABEL_TAKEN"));
+        }
+        // other names are free, and renaming another address to a taken name is refused too
+        String other = create("Nhà bạn", "Toà S6", false);
+        send(patch("/api/account/addresses/" + other), Map.of("label", "Nhà")).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ADDRESS_LABEL_TAKEN"));
+        // an address keeps its own name when it is edited
+        send(patch("/api/account/addresses/" + home), Map.of("label", "Nhà", "detail", "Tầng 9")).andExpect(status().isOk());
+        // removing it frees the name
+        mvc.perform(auth(delete("/api/account/addresses/" + home), customer)).andExpect(status().isNoContent());
+        create("Nhà", "Toà S7", false);
+    }
+
+    @Test
     void addressesArePrivateAndCustomerOnly() throws Exception {
         String id = create("Nhà", "Toà riêng", false);
         String other = token(Role.CUSTOMER);
