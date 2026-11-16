@@ -122,6 +122,29 @@ class RegistrationTests {
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
     }
 
+    /** The password policy runs after the record's checks, with the field named so the form can show the reason under it. */
+    @Test
+    void aCommonPasswordIsRefusedUnderTheField() throws Exception {
+        mvc.perform(register(unique("weak"), "matkhau123", "Dung", "CUSTOMER", customerTermsId, privacyId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PASSWORD_TOO_WEAK"))
+                .andExpect(jsonPath("$.errors[0].field").value("password"));
+        String email = unique("chuaemail");
+        mvc.perform(register(email, email.split("@")[0] + "!", "Dung", "CUSTOMER", customerTermsId, privacyId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PASSWORD_TOO_WEAK"));
+    }
+
+    @Test
+    void aNameWithDigitsOrAnUndeliverableEmailFailsValidation() throws Exception {
+        mvc.perform(register(unique("so"), "Bep-Sen-2027", "Dung 2", "CUSTOMER", customerTermsId, privacyId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("name"));
+        mvc.perform(register("an@gmail", "Bep-Sen-2027", "Dung", "CUSTOMER", customerTermsId, privacyId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("email"));
+    }
+
     @Test
     void theEmailStatusSaysWhatTheSellerSignUpAsksNext() throws Exception {
         String email = "status-" + System.nanoTime() + "@example.com";

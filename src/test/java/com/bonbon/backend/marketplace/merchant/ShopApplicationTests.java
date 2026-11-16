@@ -220,6 +220,26 @@ class ShopApplicationTests {
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("LEGAL_DOCUMENTS_CHANGED"));
         step(4, Map.of("docType", "CCCD", "docNumber", "123456789"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("DOC_NUMBER_INVALID"));
+        // a CCCD number begins with a province code: 003 is not one
+        step(4, Map.of("docType", "CCCD", "docNumber", "003200012345"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("DOC_NUMBER_INVALID"))
+                .andExpect(jsonPath("$.errors[0].field").value("docNumber"));
+        // the old card has 9 digits, or 12 built like a CCCD number
+        step(4, Map.of("docType", "CMND", "docNumber", "123456789")).andExpect(status().isOk());
+        step(4, Map.of("docType", "CMND", "docNumber", "12345678"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        step(4, Map.of("docType", "CMND", "docNumber", "999200012345"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("DOC_NUMBER_INVALID"));
+    }
+
+    @Test
+    void aShopPhoneMustExistAndAPayoutBankMustBeInTheList() throws Exception {
+        step(1, Map.of("phone", "02838123456")).andExpect(status().isOk());
+        step(1, Map.of("phone", "0000000000"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors[0].field").value("phone"));
+        step(3, Map.of("bankName", "Vietcombak"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors[0].field").value("bankName"));
+        step(3, Map.of("bankName", "vcb")).andExpect(status().isOk());
     }
 
     @Test

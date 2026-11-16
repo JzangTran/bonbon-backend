@@ -121,6 +121,16 @@ class RefundTests {
         jdbc.sql("update addresses set lat = :la, lng = :ln where id = :i::uuid").param("la", lat + 0.003).param("ln", lng).param("i", addressId).update();
     }
 
+    /** The apps offer this list instead of a free-text bank, so whatever is saved is a bank VietQR knows. */
+    @Test
+    void theBankListIsPublicAndCached() throws Exception {
+        mvc.perform(get("/api/public/banks"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.code == 'VCB')].shortName").value(org.hamcrest.Matchers.hasItem("Vietcombank")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Cache-Control",
+                        org.hamcrest.Matchers.containsString("max-age=86400")));
+    }
+
     @Test
     void aPaidOrderThatIsCancelledGetsItsMoneyBackThroughMomo() throws Exception {
         String id = paidOrder(1);

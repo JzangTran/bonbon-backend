@@ -92,6 +92,16 @@ class AccountTests {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
 
+        mvc.perform(json(post("/api/account/change-password"), "{\"currentPassword\":\"" + PASSWORD + "\",\"newPassword\":\"" + PASSWORD + "\"}")
+                        .header("Authorization", "Bearer " + thisDevice))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PASSWORD_UNCHANGED"));
+        mvc.perform(json(post("/api/account/change-password"), "{\"currentPassword\":\"" + PASSWORD + "\",\"newPassword\":\"12345678\"}")
+                        .header("Authorization", "Bearer " + thisDevice))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PASSWORD_TOO_WEAK"))
+                .andExpect(jsonPath("$.errors[0].field").value("newPassword"));
+
         String body = mvc.perform(json(post("/api/account/change-password"),
                         "{\"currentPassword\":\"" + PASSWORD + "\",\"newPassword\":\"matkhaumoi456\"}")
                         .header("Authorization", "Bearer " + thisDevice))
