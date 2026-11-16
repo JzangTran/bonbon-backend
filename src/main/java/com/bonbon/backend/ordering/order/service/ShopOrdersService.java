@@ -102,6 +102,19 @@ class ShopOrdersService implements ShopOrders {
 
     // --- internals
 
+    @Override
+    @Transactional
+    public ShopOrderDetail markTransferReceived(UUID vendorId, UUID orderId) {
+        Order order = find(vendorId, orderId);
+        if (!"BANK_TRANSFER".equals(order.getPaymentMethod())) {
+            throw BusinessException.conflict("NOT_A_BANK_TRANSFER", "Đơn này không thanh toán bằng chuyển khoản.");
+        }
+        if (orders.markTransferReceived(orderId, java.time.Instant.now()) == 0) {
+            throw BusinessException.conflict("ALREADY_PAID", "Đơn này đã được ghi nhận thanh toán.");
+        }
+        return detail(orders.findById(orderId).orElseThrow());
+    }
+
     private Order find(UUID vendorId, UUID orderId) {
         return orders.findByIdAndVendorId(orderId, vendorId)
                 .filter(o -> o.getStatus() != OrderStatus.PENDING_PAYMENT)

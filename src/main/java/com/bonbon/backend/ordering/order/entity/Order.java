@@ -58,6 +58,10 @@ public class Order {
     @Column(name = "payment_status", nullable = false, columnDefinition = "text")
     private String paymentStatus = "PENDING";
 
+    /** When the shop saw a bank transfer arrive. */
+    @Column(name = "payment_received_at")
+    private java.time.Instant paymentReceivedAt;
+
     @Column(name = "delivery_name", nullable = false, columnDefinition = "text")
     private String deliveryName;
 
