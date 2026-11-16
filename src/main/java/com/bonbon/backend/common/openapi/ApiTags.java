@@ -23,6 +23,8 @@ public final class ApiTags {
     public static final String HELP_CENTER = "Trợ giúp";
     public static final String SUPPORT_TICKETS = "Phiếu hỗ trợ";
     public static final String CONTACT = "Liên hệ hỗ trợ";
+    public static final String REPORTS = "Báo cáo vi phạm";
+    public static final String HELP_CHAT = "Hỏi đáp tự động";
     public static final String PUSH_DEVICES = "Thiết bị nhận thông báo đẩy";
     public static final String ADDRESS_SUGGESTIONS = "Gợi ý địa chỉ";
     public static final String CATEGORIES = "Ngành hàng";
@@ -76,16 +78,17 @@ public final class ApiTags {
     public static final String ADMIN_TICKETS = "Quản trị — Phiếu hỗ trợ";
     public static final String ADMIN_CONTACT = "Quản trị — Liên hệ";
     public static final String ADMIN_LOOKUP = "Quản trị — Tra cứu đơn & khách";
+    public static final String ADMIN_REPORTS = "Quản trị — Báo cáo vi phạm";
 
     /** Sidebar groups of the reference (the {@code x-tagGroups} extension Scalar reads), in display order. */
     public static final Map<String, List<String>> GROUPS = groups();
 
     private static Map<String, List<String>> groups() {
         Map<String, List<String>> g = new LinkedHashMap<>();
-        g.put("Chung", List.of(LOGIN, REGISTRATION, SESSION, ACCOUNT, NOTIFICATIONS, CHAT, HELP_CENTER, SUPPORT_TICKETS, CONTACT, PUSH_DEVICES, ADDRESS_SUGGESTIONS, CATEGORIES, LEGAL, APP_CONFIG, PAYMENT_WEBHOOK));
+        g.put("Chung", List.of(LOGIN, REGISTRATION, SESSION, ACCOUNT, NOTIFICATIONS, CHAT, HELP_CENTER, SUPPORT_TICKETS, CONTACT, REPORTS, HELP_CHAT, PUSH_DEVICES, ADDRESS_SUGGESTIONS, CATEGORIES, LEGAL, APP_CONFIG, PAYMENT_WEBHOOK));
         g.put("Khách", List.of(CUSTOMER_ADDRESSES, CUSTOMER_BROWSE, CUSTOMER_FAVORITES, CUSTOMER_ORDERS, CUSTOMER_ORDER_CASES, CUSTOMER_REVIEWS, CUSTOMER_PAYMENTS));
         g.put("Người bán", List.of(SELLER_OPEN_SHOP, SELLER_SHOP, SELLER_MENU, SELLER_VOUCHERS, SELLER_OPTIONS, SELLER_ORDERS, SELLER_ORDER_CASES, SELLER_PERFORMANCE, SELLER_REVIEWS, SELLER_EARNINGS, SELLER_STATS, SELLER_CATEGORY_CASES));
-        g.put("Quản trị", List.of(ADMIN_AUTH, ADMIN_ADMINS, ADMIN_CATEGORIES, ADMIN_DISH_CATEGORIES, ADMIN_SHOP_REVIEW, ADMIN_SERVICE_AREAS, ADMIN_REVIEWS, ADMIN_REFUNDS, ADMIN_COMMISSION, ADMIN_SETTLEMENT, ADMIN_ORDER_CASES, ADMIN_PENALTIES, ADMIN_CONVERSATIONS, ADMIN_LOOKUP, ADMIN_HELP, ADMIN_TICKETS, ADMIN_CONTACT, ADMIN_PLATFORM_STATS, ADMIN_MERCHANTS, ADMIN_LEGAL, ADMIN_APP_CONFIG, ADMIN_OPS));
+        g.put("Quản trị", List.of(ADMIN_AUTH, ADMIN_ADMINS, ADMIN_CATEGORIES, ADMIN_DISH_CATEGORIES, ADMIN_SHOP_REVIEW, ADMIN_SERVICE_AREAS, ADMIN_REVIEWS, ADMIN_REFUNDS, ADMIN_COMMISSION, ADMIN_SETTLEMENT, ADMIN_ORDER_CASES, ADMIN_PENALTIES, ADMIN_CONVERSATIONS, ADMIN_REPORTS, ADMIN_LOOKUP, ADMIN_HELP, ADMIN_TICKETS, ADMIN_CONTACT, ADMIN_PLATFORM_STATS, ADMIN_MERCHANTS, ADMIN_LEGAL, ADMIN_APP_CONFIG, ADMIN_OPS));
         return g;
     }
 }

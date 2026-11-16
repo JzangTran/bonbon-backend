@@ -16,6 +16,7 @@ import com.bonbon.backend.communication.notification.repository.NotificationRepo
 import com.bonbon.backend.ordering.order.OrderStatus;
 import com.bonbon.backend.ordering.order.OrderStatusChanged;
 import com.bonbon.backend.payments.payment.RefundCompleted;
+import com.bonbon.backend.support.ReportDecided;
 import com.bonbon.backend.support.TicketAnswered;
 import com.bonbon.backend.payments.settlement.CommissionStageChanged;
 import com.bonbon.backend.payments.settlement.CommissionStatementIssued;
@@ -340,6 +341,35 @@ public class NotificationService {
         Notification n = new Notification(e.userId(), e.audience(), "SUPPORT_REPLY", null, null, "Hỗ trợ đã trả lời phiếu của bạn", "Phiếu: " + e.subject());
         notifications.save(n);
         events.publishEvent(new Created(List.of(n)));
+    }
+
+    /**
+     * A content report was decided (review-reports.md): the reporter hears whether something was done, never what was done to whom; the
+     * person whose content was actioned hears what, why and until when they can contest.
+     */
+    @EventListener
+    void onReportDecided(ReportDecided e) {
+        String outcome = e.actioned() ? "Chúng tôi đã xem xét và xử lý nội dung bạn báo cáo. Cảm ơn bạn đã giúp bonbon an toàn hơn."
+                : "Chúng tôi đã xem xét báo cáo của bạn và không thấy vi phạm quy định.";
+        List<Notification> created = new ArrayList<>();
+        created.add(new Notification(e.reporterUserId(), e.reporterAudience(), "REPORT_DECIDED", null, null, "Kết quả báo cáo của bạn", outcome));
+        if (e.actioned() && e.affectedUserId() != null) {
+            String what = switch (e.decisionCode()) {
+                case "MESSAGING_RESTRICTED" -> "Một tin nhắn của bạn đã bị gỡ và bạn tạm thời không gửi được tin nhắn.";
+                case "CONTENT_HIDDEN" -> switch (e.targetType()) {
+                    case "MESSAGE" -> "Một tin nhắn của bạn đã bị gỡ.";
+                    case "REVIEW" -> "Một đánh giá của bạn đã bị ẩn.";
+                    default -> "Một phản hồi đánh giá của quán đã bị ẩn.";
+                };
+                default -> "Nội dung của bạn đã được chuyển cho bộ phận xử lý vi phạm.";
+            };
+            String until = e.contestUntil() == null ? "" : " Bạn có thể khiếu nại tới " + java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                    .withZone(java.time.ZoneId.of("Asia/Ho_Chi_Minh")).format(e.contestUntil()) + ".";
+            created.add(new Notification(e.affectedUserId(), e.affectedAudience(), "REPORT_ACTIONED", null, null, "Nội dung vi phạm quy định",
+                    what + " Lý do: " + e.reason() + until));
+        }
+        notifications.saveAll(created);
+        events.publishEvent(new Created(created));
     }
 
     /** The owner is told the shop is closing, and again when it is closed. */

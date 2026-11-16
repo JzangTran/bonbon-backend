@@ -16,6 +16,7 @@ import com.bonbon.backend.common.security.CurrentPrincipal;
 import com.bonbon.backend.common.storage.ObjectStorage;
 import com.bonbon.backend.common.storage.ObjectStorage.Visibility;
 import com.bonbon.backend.common.storage.ValidatedFile;
+import com.bonbon.backend.marketplace.merchant.ShopAutoReplies;
 import com.bonbon.backend.marketplace.merchant.ShopNames;
 import com.bonbon.backend.marketplace.merchant.ShopOrdering;
 import com.bonbon.backend.support.ConversationOpenedByAdmin;
@@ -50,9 +51,13 @@ public class ChatService {
     private final ObjectStorage storage;
     private final RateLimiter limiter;
     private final ApplicationEventPublisher events;
+    private final ShopAutoReplies autoReplies;
+    private final MessageModerationService moderation;
 
     ChatService(JdbcClient jdbc, Clock clock, ShopOrdering shops, ShopNames shopNames, UserNames userNames, ObjectStorage storage, RateLimiter limiter,
-            ApplicationEventPublisher events) {
+            ApplicationEventPublisher events, ShopAutoReplies autoReplies, MessageModerationService moderation) {
+        this.autoReplies = autoReplies;
+        this.moderation = moderation;
         this.jdbc = jdbc;
         this.clock = clock;
         this.shops = shops;
@@ -104,26 +109,29 @@ public class ChatService {
         long total = jdbc.sql("select count(*) from conversations c where c." + side.column() + " = :me").param("me", side.id()).query(Long.class).single();
         long unreadCount = jdbc.sql("select count(*) from conversations c where c." + side.column() + " = :me and " + unread)
                 .param("me", side.id()).query(Long.class).single();
-        record Row(UUID id, UUID customerId, UUID vendorId, String text, boolean hasImage, String sender, Instant sentAt, boolean unread) {
+        record Row(UUID id, UUID customerId, UUID vendorId, String text, boolean hasImage, String sender, Instant sentAt, boolean unread,
+                boolean blockedByMe, boolean blockedByOther) {
         }
         List<Row> rows = jdbc.sql("""
-                select c.id, c.customer_id, c.vendor_id, lm.text, lm.image_key is not null as has_image, lm.sender_type, lm.created_at, %s as unread
+                select c.id, c.customer_id, c.vendor_id, lm.text, lm.image_key is not null as has_image, lm.sender_type, lm.created_at, %s as unread,
+                       %s
                 from conversations c
-                join lateral (select text, image_key, sender_type, created_at from messages m where m.conversation_id = c.id
+                join lateral (select case when hidden_at is null then text end as text, case when hidden_at is null then image_key end as image_key, sender_type, created_at from messages m where m.conversation_id = c.id
                               order by m.created_at desc, m.id desc limit 1) lm on true
                 where c.%s = :me
                 order by c.last_message_at desc, c.id
-                limit :limit offset :offset""".formatted(unread, side.column()))
+                limit :limit offset :offset""".formatted(unread, blockSql(side), side.column()))
                 .param("me", side.id()).param("limit", size).param("offset", (long) page * size)
                 .query((rs, n) -> new Row(rs.getObject("id", UUID.class), rs.getObject("customer_id", UUID.class), rs.getObject("vendor_id", UUID.class),
                         rs.getString("text"), rs.getBoolean("has_image"), rs.getString("sender_type"), rs.getTimestamp("created_at").toInstant(),
-                        rs.getBoolean("unread")))
+                        rs.getBoolean("unread"), rs.getBoolean("blocked_by_me"), rs.getBoolean("blocked_by_other")))
                 .list();
         Map<UUID, String> shopLabels = shopNames.names(rows.stream().map(Row::vendorId).distinct().toList());
         Map<UUID, String> customerLabels = userNames.names(rows.stream().map(Row::customerId).distinct().toList());
         List<ChatViews.Conversation> items = rows.stream()
                 .map(r -> new ChatViews.Conversation(r.id(), r.vendorId(), shopLabels.getOrDefault(r.vendorId(), "Cửa hàng"),
-                        customerLabels.getOrDefault(r.customerId(), "Khách"), new ChatViews.LastMessage(r.text(), r.hasImage(), r.sender(), r.sentAt()), r.unread()))
+                        customerLabels.getOrDefault(r.customerId(), "Khách"), new ChatViews.LastMessage(preview(r.text(), r.sender(), side), r.hasImage(), r.sender(), r.sentAt()),
+                        r.unread(), r.blockedByMe(), r.blockedByOther()))
                 .toList();
         return new ChatViews.Page(items, page, size, total, unreadCount);
     }
@@ -206,6 +214,28 @@ public class ChatService {
         return new ChatViews.Upload(key, storage.signedUrl(key, IMAGE_URL_TTL));
     }
 
+    // --- blocking (send-message.md "Blocking a conversation"): messaging only; ordering and order notifications are never affected
+
+    @Transactional
+    public ChatViews.Conversation block(CurrentPrincipal caller, UUID conversationId) {
+        Side side = side(caller);
+        conversationOf(side, conversationId);
+        jdbc.sql("""
+                insert into communication.conversation_blocks (conversation_id, blocked_by_side, blocked_by_user_id, created_at)
+                values (:c, :side, :by, :now) on conflict do nothing""")
+                .param("c", conversationId).param("side", side.name()).param("by", caller.id()).param("now", Timestamp.from(clock.instant())).update();
+        return summary(side, conversationId);
+    }
+
+    @Transactional
+    public ChatViews.Conversation unblock(CurrentPrincipal caller, UUID conversationId) {
+        Side side = side(caller);
+        conversationOf(side, conversationId);
+        jdbc.sql("delete from communication.conversation_blocks where conversation_id = :c and blocked_by_side = :side")
+                .param("c", conversationId).param("side", side.name()).update();
+        return summary(side, conversationId);
+    }
+
     // --- administrators (view-any-conversation.md): read only, and every opening is announced so it can be audited
 
     @Transactional(readOnly = true)
@@ -262,6 +292,18 @@ public class ChatService {
         if (!side.shop() && shops.shop(vendorId).isEmpty()) {
             throw new BusinessException(HttpStatus.CONFLICT, "SHOP_UNAVAILABLE", "Cửa hàng hiện không nhận tin nhắn.");
         }
+        moderation.restrictedUntil(senderId).ifPresent(until -> {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "MESSAGING_RESTRICTED",
+                    "Bạn tạm thời không gửi được tin nhắn do vi phạm quy định, tới " + until + ".").withProperty("until", until);
+        });
+        List<String> blockers = jdbc.sql("select blocked_by_side from communication.conversation_blocks where conversation_id = :c")
+                .param("c", conversationId).query(String.class).list();
+        if (blockers.contains(side.name())) {
+            throw new BusinessException(HttpStatus.CONFLICT, "CONVERSATION_BLOCKED_BY_YOU", "Bạn đã chặn cuộc trò chuyện này. Bỏ chặn để gửi tin.");
+        }
+        if (blockers.contains(side.other())) {
+            throw new BusinessException(HttpStatus.CONFLICT, "CONVERSATION_BLOCKED", "Bên kia đã đóng cuộc trò chuyện này.");
+        }
         if (!limiter.tryAcquire("chat-send:" + senderId, 30, Duration.ofMinutes(1))) {
             throw new BusinessException(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_MESSAGES", "Bạn gửi quá nhanh, hãy thử lại sau ít phút.");
         }
@@ -272,10 +314,41 @@ public class ChatService {
                 values (:id, :c, :type, :sender, :text, :image, :reply, :now)""")
                 .param("id", id).param("c", conversationId).param("type", side.name()).param("sender", senderId).param("text", text)
                 .param("image", image).param("reply", replyTo).param("now", now).update();
-        jdbc.sql("update conversations set last_message_at = :now, " + side.readColumn() + " = :now where id = :id").param("now", now)
+        // a real message from the shop ends the customer's unanswered streak, so the next customer message may be auto-answered again
+        jdbc.sql("update conversations set last_message_at = :now, " + side.readColumn() + " = :now"
+                        + (side.shop() ? ", auto_reply_pending_reset = false" : "") + " where id = :id").param("now", now)
                 .param("id", conversationId).update();
         events.publishEvent(new MessageSent(id, conversationId, customerId, vendorId, side.name(), now.toInstant()));
+        if (!side.shop()) {
+            autoReply(conversationId, customerId, vendorId, now.toInstant());
+        }
         return jdbc.sql(MESSAGE_SELECT + "where m.id = :id").param("id", id).query((rs, n) -> toMessage(rs, side)).single();
+    }
+
+    /**
+     * Once per unanswered streak (configure-auto-reply.md): in the same transaction as the customer's message, so a second message cannot
+     * race past the check. The customer sees it as the shop's message with an auto-reply mark; the audit actor is the system.
+     */
+    private void autoReply(UUID conversationId, UUID customerId, UUID vendorId, Instant after) {
+        int claimed = jdbc.sql("update conversations set auto_reply_pending_reset = true where id = :id and not auto_reply_pending_reset")
+                .param("id", conversationId).update();
+        if (claimed == 0) {
+            return;
+        }
+        String text = autoReplies.autoReplyOf(vendorId).orElse(null);
+        UUID owner = shops.ownerOf(vendorId).orElse(null);
+        if (text == null || owner == null) {
+            jdbc.sql("update conversations set auto_reply_pending_reset = false where id = :id").param("id", conversationId).update();
+            return;
+        }
+        UUID id = UUID.randomUUID();
+        Timestamp at = Timestamp.from(after.plusMillis(1));
+        jdbc.sql("""
+                insert into messages (id, conversation_id, sender_type, sender_id, text, created_at, is_auto_reply)
+                values (:id, :c, 'SHOP', :sender, :text, :at, true)""")
+                .param("id", id).param("c", conversationId).param("sender", owner).param("text", text).param("at", at).update();
+        jdbc.sql("update conversations set last_message_at = :at where id = :id").param("at", at).param("id", conversationId).update();
+        events.publishEvent(new MessageSent(id, conversationId, customerId, vendorId, "SHOP", at.toInstant()));
     }
 
     private void conversationOf(Side side, UUID conversationId) {
@@ -288,21 +361,35 @@ public class ChatService {
 
     private ChatViews.Conversation summary(Side side, UUID conversationId) {
         String unread = unreadSql(side);
-        record Row(UUID customerId, UUID vendorId, String text, boolean hasImage, String sender, Instant sentAt, boolean unread) {
+        record Row(UUID customerId, UUID vendorId, String text, boolean hasImage, String sender, Instant sentAt, boolean unread, boolean blockedByMe,
+                boolean blockedByOther) {
         }
         Row r = jdbc.sql("""
-                select c.customer_id, c.vendor_id, lm.text, lm.image_key is not null as has_image, lm.sender_type, lm.created_at, %s as unread
+                select c.customer_id, c.vendor_id, lm.text, lm.image_key is not null as has_image, lm.sender_type, lm.created_at, %s as unread, %s
                 from conversations c
-                join lateral (select text, image_key, sender_type, created_at from messages m where m.conversation_id = c.id
+                join lateral (select case when hidden_at is null then text end as text, case when hidden_at is null then image_key end as image_key, sender_type, created_at from messages m where m.conversation_id = c.id
                               order by m.created_at desc, m.id desc limit 1) lm on true
-                where c.id = :id""".formatted(unread)).param("id", conversationId)
+                where c.id = :id""".formatted(unread, blockSql(side))).param("id", conversationId)
                 .query((rs, n) -> new Row(rs.getObject("customer_id", UUID.class), rs.getObject("vendor_id", UUID.class), rs.getString("text"),
-                        rs.getBoolean("has_image"), rs.getString("sender_type"), rs.getTimestamp("created_at").toInstant(), rs.getBoolean("unread")))
+                        rs.getBoolean("has_image"), rs.getString("sender_type"), rs.getTimestamp("created_at").toInstant(), rs.getBoolean("unread"),
+                        rs.getBoolean("blocked_by_me"), rs.getBoolean("blocked_by_other")))
                 .single();
         String shop = shopNames.names(List.of(r.vendorId())).getOrDefault(r.vendorId(), "Cửa hàng");
         String customer = userNames.names(List.of(r.customerId())).getOrDefault(r.customerId(), "Khách");
         return new ChatViews.Conversation(conversationId, r.vendorId(), shop, customer,
-                new ChatViews.LastMessage(r.text(), r.hasImage(), r.sender(), r.sentAt()), r.unread());
+                new ChatViews.LastMessage(preview(r.text(), r.sender(), side), r.hasImage(), r.sender(), r.sentAt()), r.unread(), r.blockedByMe(),
+                r.blockedByOther());
+    }
+
+    private static String blockSql(Side side) {
+        return "exists (select 1 from communication.conversation_blocks b where b.conversation_id = c.id and b.blocked_by_side = '" + side.name()
+                + "') as blocked_by_me, exists (select 1 from communication.conversation_blocks b where b.conversation_id = c.id and b.blocked_by_side = '"
+                + side.other() + "') as blocked_by_other";
+    }
+
+    /** The list preview as the caller reads it: the other side's words masked like in the conversation. */
+    private String preview(String text, String sender, Side side) {
+        return sender != null && !sender.equals(side.name()) ? moderation.mask(text) : text;
     }
 
     private static String unreadSql(Side side) {
@@ -311,8 +398,8 @@ public class ChatService {
     }
 
     private static final String MESSAGE_SELECT = """
-            select m.id, m.conversation_id, m.sender_type, m.text, m.image_key, m.created_at,
-                   r.id as reply_id, r.text as reply_text, r.image_key is not null as reply_has_image, r.sender_type as reply_sender
+            select m.id, m.conversation_id, m.sender_type, m.text, m.image_key, m.created_at, m.is_auto_reply, m.hidden_at is not null as removed,
+                   r.id as reply_id, case when r.hidden_at is null then r.text end as reply_text, (r.image_key is not null and r.hidden_at is null) as reply_has_image, r.sender_type as reply_sender
             from messages m left join messages r on r.id = m.reply_to_message_id
             """;
 
@@ -322,12 +409,20 @@ public class ChatService {
 
     /** {@code mine} is the sender side the caller speaks for, or null when the caller is on neither (an administrator). */
     private ChatViews.Message toMessage(java.sql.ResultSet rs, String mine) throws java.sql.SQLException {
-        String image = rs.getString("image_key");
+        String sender = rs.getString("sender_type");
+        boolean removed = rs.getBoolean("removed");
+        // a participant never sees a removed message; the other side reads listed words as ***
+        boolean participant = mine != null;
+        String text = participant && removed ? null : rs.getString("text");
+        if (participant && !sender.equals(mine)) {
+            text = moderation.mask(text);
+        }
+        String image = participant && removed ? null : rs.getString("image_key");
         ChatViews.Reply reply = rs.getObject("reply_id", UUID.class) == null ? null
                 : new ChatViews.Reply(rs.getObject("reply_id", UUID.class), rs.getString("reply_text"), rs.getBoolean("reply_has_image"), rs.getString("reply_sender"));
-        String sender = rs.getString("sender_type");
         return new ChatViews.Message(rs.getObject("id", UUID.class), rs.getObject("conversation_id", UUID.class), sender, sender.equals(mine),
-                rs.getString("text"), image == null ? null : storage.signedUrl(image, IMAGE_URL_TTL), reply, rs.getTimestamp("created_at").toInstant());
+                text, image == null ? null : storage.signedUrl(image, IMAGE_URL_TTL), reply, rs.getTimestamp("created_at").toInstant(),
+                rs.getBoolean("is_auto_reply"), removed);
     }
 
     private static String prefix(UUID userId) {

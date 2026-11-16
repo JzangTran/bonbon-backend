@@ -96,6 +96,8 @@ class ChatTests {
         UUID sellerId = newUser("Chủ quán", Role.SELLER);
         seller = tokenOf(sellerId, Role.SELLER);
         vendorId = newShop(sellerId, "Quán Trò Chuyện " + System.nanoTime(), "APPROVED");
+        // these tests are about plain chat; the auto-reply (on by default) has its own tests in ReportingTests
+        jdbc.sql("update marketplace.vendors set auto_reply_enabled = false where id = :id").param("id", vendorId).update();
         customerId = newUser("Khách Hàng", Role.CUSTOMER);
         customer = tokenOf(customerId, Role.CUSTOMER);
     }

@@ -3,12 +3,14 @@ package com.bonbon.backend.marketplace.merchant.controller;
 import com.bonbon.backend.common.security.CurrentPrincipal;
 import com.bonbon.backend.marketplace.merchant.dto.ShopApplicationView;
 import com.bonbon.backend.marketplace.merchant.dto.ShopProfileRequests;
+import com.bonbon.backend.marketplace.merchant.service.AutoReplyService;
 import com.bonbon.backend.marketplace.merchant.service.ShopProfileService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -31,9 +33,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 class ShopProfileController {
 
     private final ShopProfileService profiles;
+    private final AutoReplyService autoReplies;
 
-    ShopProfileController(ShopProfileService profiles) {
+    ShopProfileController(ShopProfileService profiles, AutoReplyService autoReplies) {
         this.profiles = profiles;
+        this.autoReplies = autoReplies;
     }
 
     /** Partial update; a changed address returns the shop to PENDING until approved again. */
@@ -110,5 +114,21 @@ class ShopProfileController {
     @PutMapping("/accepting-orders")
     ShopApplicationView acceptingOrders(CurrentPrincipal principal, @Valid @RequestBody ShopProfileRequests.AcceptingOrders request) {
         return profiles.setAcceptingOrders(principal, request.accepting());
+    }
+
+    @Operation(operationId = "getMyAutoReply", summary = "Xem tin trả lời tự động", description = "Mặc định bật với câu chào sẵn.")
+    @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người gọi chưa có cửa hàng được duyệt.")
+    @GetMapping("/auto-reply")
+    ShopProfileRequests.AutoReply autoReply(CurrentPrincipal principal) {
+        return autoReplies.get(principal);
+    }
+
+    @Operation(operationId = "setMyAutoReply", summary = "Đặt tin trả lời tự động",
+            description = "Quán gửi tin này một lần khi khách nhắn mà quán chưa trả lời; tin quán gửi tiếp theo đặt lại lượt. Khách thấy tin như tin của quán, có nhãn tự động.")
+    @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người gọi chưa có cửa hàng được duyệt.")
+    @ApiError(status = 400, code = "AUTO_REPLY_EMPTY", when = "Nội dung rỗng.")
+    @PutMapping("/auto-reply")
+    ShopProfileRequests.AutoReply setAutoReply(CurrentPrincipal principal, @Valid @RequestBody ShopProfileRequests.AutoReply request) {
+        return autoReplies.update(principal, request);
     }
 }

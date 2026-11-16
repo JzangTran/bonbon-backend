@@ -5,7 +5,14 @@ import java.util.UUID;
 import com.bonbon.backend.common.openapi.ApiError;
 import com.bonbon.backend.common.openapi.ApiTags;
 import com.bonbon.backend.support.dto.HelpViews;
+import com.bonbon.backend.common.web.ClientContext;
+import com.bonbon.backend.support.dto.HelpChatDtos;
 import com.bonbon.backend.support.service.HelpArticleService;
+import com.bonbon.backend.support.service.HelpChatService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,9 +29,23 @@ import org.springframework.web.bind.annotation.RestController;
 class HelpArticleController {
 
     private final HelpArticleService help;
+    private final HelpChatService chat;
 
-    HelpArticleController(HelpArticleService help) {
+    HelpArticleController(HelpArticleService help, HelpChatService chat) {
         this.help = help;
+        this.chat = chat;
+    }
+
+    @Operation(operationId = "askHelpChat", summary = "Hỏi trợ lý trả lời tự động",
+            description = "Không cần đăng nhập. So khớp câu hỏi với từ khoá của các bài trợ giúp đã đăng dành cho người hỏi (không phân biệt dấu), trả nguyên văn bài phù hợp nhất; "
+                    + "không có mô hình sinh văn bản nên không bịa câu trả lời. Không nhớ câu trước: mỗi câu hỏi được trả lời riêng. Tối đa 20 câu một phút.")
+    @ApiError(status = 429, code = "TOO_MANY_QUESTIONS", when = "Quá 20 câu hỏi trong một phút.")
+    @PostMapping("/ask")
+    HelpChatDtos.Answer ask(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody HelpChatDtos.Ask request, HttpServletRequest http) {
+        String role = role(jwt);
+        String audience = role != null ? ("SELLER".equals(role) ? "SELLER" : "CUSTOMER") : (request.audience() == null ? "CUSTOMER" : request.audience());
+        java.util.UUID asker = jwt == null || jwt.getSubject() == null ? null : java.util.UUID.fromString(jwt.getSubject());
+        return chat.ask(request.question(), audience, asker, ClientContext.from(http).ip());
     }
 
     @Operation(operationId = "searchHelpArticles", summary = "Tìm bài trợ giúp", description = "Chỉ các bài đã đăng, mới cập nhật trước, tối đa 50. `q` tìm trong tiêu đề, nội dung và từ khoá, không phân biệt hoa thường và dấu. Bỏ `q` để xem tất cả.")
