@@ -1,5 +1,7 @@
 package com.bonbon.backend.marketplace.merchant.dto;
 
+import com.bonbon.backend.common.validation.VnPhone;
+import com.bonbon.backend.common.validation.RealEmail;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -7,7 +9,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -36,8 +37,8 @@ public final class ShopProfileRequests {
     @Schema(name = "ShopProfileUpdateRequest")
     public record Update(
             @Size(min = 1, max = 100) String name,
-            @Pattern(regexp = ShopApplicationRequests.VN_PHONE, message = "Số điện thoại không hợp lệ") String phone,
-            @Email @Size(max = 255) String email,
+            @VnPhone(kind = VnPhone.Kind.ANY, message = "Số điện thoại không hợp lệ: số di động hoặc số bàn có mã vùng, ví dụ 0912345678 hay 02838123456") String phone,
+            @RealEmail @Size(max = 255) String email,
             @Min(1) @Max(1000) Integer provinceCode,
             @Min(1) @Max(100_000) Integer wardCode,
             @Size(max = 200) String addressDetail,

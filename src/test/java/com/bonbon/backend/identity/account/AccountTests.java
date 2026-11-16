@@ -34,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AccountTests {
 
     private static final AtomicInteger IP = new AtomicInteger(1);
-    private static final String PASSWORD = "matkhau123";
+    private static final String PASSWORD = "Bep-Sen-2027";
 
     @Autowired
     MockMvc mvc;

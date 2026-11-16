@@ -1,10 +1,11 @@
 package com.bonbon.backend.identity.authentication.dto;
 
+import com.bonbon.backend.common.validation.RealEmail;
+import com.bonbon.backend.common.validation.PersonName;
 import java.util.Set;
 import java.util.UUID;
 
 import com.bonbon.backend.identity.authentication.Role;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -16,9 +17,9 @@ import jakarta.validation.constraints.Size;
  * are then among the documents to accept.
  */
 public record RegisterRequest(
-        @NotBlank @Email @Size(max = 255) String email,
+        @NotBlank @RealEmail @Size(max = 255) String email,
         @Size(min = 8, max = 100) String password,
-        @Size(max = 100) String name,
+        @Size(max = 100) @PersonName String name,
         @NotNull Role role,
         Set<UUID> acceptedDocumentIds,
         Boolean marketingConsent,

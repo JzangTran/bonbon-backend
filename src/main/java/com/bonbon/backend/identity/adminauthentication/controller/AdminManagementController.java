@@ -1,11 +1,12 @@
 package com.bonbon.backend.identity.adminauthentication.controller;
 
+import com.bonbon.backend.common.validation.RealEmail;
+import com.bonbon.backend.common.validation.PersonName;
 import java.util.Map;
 import java.util.UUID;
 
 import com.bonbon.backend.identity.authentication.AdminAccountService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
@@ -25,7 +26,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RequestMapping("/api/admin/manage/admins")
 class AdminManagementController {
 
-    record CreateAdminRequest(@NotBlank @Email @Size(max = 255) String email, @NotBlank @Size(max = 100) String name) {
+    record CreateAdminRequest(@NotBlank @RealEmail @Size(max = 255) String email, @NotBlank @Size(max = 100) @PersonName String name) {
     }
 
     private final AdminAccountService admins;

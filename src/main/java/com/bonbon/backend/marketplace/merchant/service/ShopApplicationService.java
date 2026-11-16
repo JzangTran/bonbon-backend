@@ -141,9 +141,14 @@ public class ShopApplicationService {
         VendorIdentity identity = identities.findById(vendor.getId()).orElseGet(() -> new VendorIdentity(vendor.getId()));
         identity.setDocument(req.docType(), blankToNull(req.fullName()));
         if (req.docNumber() != null) {
-            if (req.docType() == VendorIdentity.DocType.CCCD && req.docNumber().length() != 12) {
-                throw new BusinessException(HttpStatus.BAD_REQUEST, "DOC_NUMBER_INVALID", "Số CCCD gồm 12 chữ số.");
-            }
+            VendorIdentity.DocType type = req.docType() != null ? req.docType() : identity.getDocType();
+            java.util.Optional<String> problem = type == VendorIdentity.DocType.CMND
+                    ? com.bonbon.backend.common.validation.VnIdNumber.identityCardProblem(req.docNumber())
+                    : com.bonbon.backend.common.validation.VnIdNumber.citizenIdProblem(req.docNumber());
+            problem.ifPresent(message -> {
+                throw new BusinessException(HttpStatus.BAD_REQUEST, "DOC_NUMBER_INVALID", message)
+                        .withProperty("errors", java.util.List.of(java.util.Map.of("field", "docNumber", "message", message)));
+            });
             identity.setDocNumber(cipher.encrypt(req.docNumber()), last4(req.docNumber()));
         }
         if (req.accuracyConfirmed() != null) {

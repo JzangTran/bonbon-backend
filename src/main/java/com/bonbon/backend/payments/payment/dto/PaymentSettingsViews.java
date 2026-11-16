@@ -1,5 +1,6 @@
 package com.bonbon.backend.payments.payment.dto;
 
+import com.bonbon.backend.common.validation.VnPhone;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,7 +24,7 @@ public final class PaymentSettingsViews {
     }
 
     @Schema(name = "LinkPaymentMethodRequest", description = "MoMo: the phone number of the MoMo wallet.")
-    public record Link(@NotBlank String provider, @NotBlank @Pattern(regexp = "^(0|\\+84)(3|5|7|8|9)\\d{8}$", message = "Số điện thoại di động Việt Nam không hợp lệ") String account) {
+    public record Link(@NotBlank String provider, @NotBlank @VnPhone(message = "Số điện thoại di động Việt Nam không hợp lệ") String account) {
     }
 
     @Schema(name = "PaymentMethodPrimaryRequest")

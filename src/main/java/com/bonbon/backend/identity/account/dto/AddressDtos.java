@@ -1,5 +1,7 @@
 package com.bonbon.backend.identity.account.dto;
 
+import com.bonbon.backend.common.validation.VnPhone;
+import com.bonbon.backend.common.validation.PersonName;
 import java.util.UUID;
 
 import com.bonbon.backend.identity.account.entity.Address;
@@ -22,8 +24,8 @@ public final class AddressDtos {
             @NotBlank @Size(max = 30) String label,
             @NotBlank @Size(max = 1024) String placeId,
             @Size(max = 200) String detail,
-            @NotBlank @Size(max = 100) String recipientName,
-            @NotBlank @Pattern(regexp = VN_MOBILE, message = "Số điện thoại di động Việt Nam không hợp lệ") String recipientPhone,
+            @NotBlank @Size(max = 100) @PersonName String recipientName,
+            @NotBlank @VnPhone(message = "Số điện thoại di động Việt Nam không hợp lệ") String recipientPhone,
             Boolean makeDefault,
             @Size(max = 300) String note) {
     }
@@ -34,8 +36,8 @@ public final class AddressDtos {
             @Size(min = 1, max = 30) String label,
             @Size(min = 1, max = 1024) String placeId,
             @Size(max = 200) String detail,
-            @Size(min = 1, max = 100) String recipientName,
-            @Pattern(regexp = VN_MOBILE, message = "Số điện thoại di động Việt Nam không hợp lệ") String recipientPhone,
+            @Size(min = 1, max = 100) @PersonName String recipientName,
+            @VnPhone(message = "Số điện thoại di động Việt Nam không hợp lệ") String recipientPhone,
             @Size(max = 300) String note) {
     }
 

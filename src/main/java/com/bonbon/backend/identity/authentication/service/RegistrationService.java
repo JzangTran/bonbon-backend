@@ -1,5 +1,6 @@
 package com.bonbon.backend.identity.authentication.service;
 
+import com.bonbon.backend.common.validation.PasswordPolicy;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -106,6 +107,7 @@ public class RegistrationService {
         if (req.name() == null || req.name().isBlank()) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "NAME_REQUIRED", "Vui lòng nhập họ tên.");
         }
+        PasswordPolicy.require(req.password(), req.email(), req.name(), "password");
         User user = new User(req.email().trim(), passwords.encode(req.password()), req.name().trim());
         user.addRole(req.role());
         boolean bothModes = req.role() == Role.SELLER && Boolean.TRUE.equals(req.alsoCustomer());
