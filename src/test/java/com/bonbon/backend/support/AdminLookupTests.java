@@ -83,6 +83,8 @@ class AdminLookupTests {
         jdbc.sql("update vendors set status = 'APPROVED', decided_at = now(), lat = :la, lng = :ln where owner_user_id = :o")
                 .param("la", lat).param("ln", lng).param("o", sellerId).update();
         vendorId = jdbc.sql("select id from vendors where owner_user_id = :o").param("o", sellerId).query(UUID.class).single();
+        // counts messages exactly; the shop auto-reply (on by default) is tested in ReportingTests
+        jdbc.sql("update marketplace.vendors set auto_reply_enabled = false where id = :v").param("v", vendorId).update();
         String section = JsonPath.read(call(seller, post("/api/merchant/menu-sections"), Map.of("name", "Món")).andReturn().getResponse().getContentAsString(), "$.sections[0].id");
         dishId = JsonPath.read(call(seller, post("/api/merchant/menu-items"), Map.of("sectionId", section, "categoryId", leaf, "name", "Cơm", "price", 40000))
                 .andReturn().getResponse().getContentAsString(), "$.sections[0].items[0].id");
