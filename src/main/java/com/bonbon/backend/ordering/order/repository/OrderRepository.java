@@ -49,6 +49,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     Optional<Order> findByIdAndVendorId(UUID id, UUID vendorId);
 
+    Optional<Order> findByVendorIdAndNumber(UUID vendorId, Long number);
+
     /**
      * The one conditional update behind every status change: it only happens when the order is still in
      * {@code from}. Zero rows means somebody else moved it first. Timestamps and payment status are only set

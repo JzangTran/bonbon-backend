@@ -96,6 +96,8 @@ class SecurityConfig {
                         // The fake-pay pages exist only outside production (FakePayController).
                         .requestMatchers(HttpMethod.POST, "/api/payments/momo/ipn").permitAll()
                         .requestMatchers("/api/payments/fake/**").permitAll()
+                        // SePay reports each shop's incoming transfers; the per-shop API key is the trust (SepayService).
+                        .requestMatchers(HttpMethod.POST, "/api/payments/sepay/*").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(rs -> rs
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(permissionsConverter()))

@@ -110,6 +110,9 @@ bonbon:
       # Where the customer lands after paying (shown only, never trusted) and where MoMo reports the result.
       redirect-url: ${MOMO_REDIRECT_URL:${bonbon.app.web-url}/payment/return}
       ipn-url: ${MOMO_IPN_URL:http://localhost:8080/api/payments/momo/ipn}
+    sepay:
+      # Public address of this API, shown to each shop as the webhook to paste into SePay.
+      webhook-base-url: ${SEPAY_WEBHOOK_BASE_URL:http://localhost:8080}
   captcha:
     enabled: ${BONBON_CAPTCHA_ENABLED:true}
     secret: ${BONBON_RECAPTCHA_SECRET:}

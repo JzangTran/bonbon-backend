@@ -31,6 +31,16 @@ public interface ShopOrders {
     ShopOrderDetail markTransferReceived(UUID vendorId, UUID orderId);
 
     /**
+     * The shop's bank feed saw {@code amount} arrive with the transfer code of order {@code number}: the order is paid when it is
+     * that shop's bank-transfer order, still unpaid, and the money covers its total. Never throws for a mismatch; the outcome says why.
+     */
+    TransferMatch matchTransfer(UUID vendorId, long number, long amount);
+
+    enum TransferMatch {
+        PAID, NOT_FOUND, NOT_A_BANK_TRANSFER, ALREADY_PAID, AMOUNT_SHORT
+    }
+
+    /**
      * {@code phone} and {@code address} are masked once the order has finished and the report window has passed
      * (view-order-detail.md). {@code responseDeadline} counts down while the order is new; {@code handoverDeadline}
      * from the moment it is confirmed until it leaves the kitchen.
