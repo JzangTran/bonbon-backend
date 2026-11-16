@@ -1,5 +1,6 @@
 package com.bonbon.backend.identity.authentication.controller;
 
+import com.bonbon.backend.common.validation.RealEmail;
 import java.util.Optional;
 
 import com.bonbon.backend.identity.authentication.dto.EmailRequest;
@@ -11,7 +12,6 @@ import com.bonbon.backend.identity.authentication.service.RegistrationService;
 import com.bonbon.backend.common.security.CurrentPrincipal;
 import com.bonbon.backend.common.web.ClientContext;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.Valid;
@@ -55,7 +55,7 @@ class RegistrationController {
         return new EmailStatusResponse(registration.emailStatus(request.email(), ClientContext.from(http)));
     }
 
-    record EmailStatusRequest(@NotBlank @Email @Size(max = 255) String email) {
+    record EmailStatusRequest(@NotBlank @RealEmail @Size(max = 255) String email) {
     }
 
     record EmailStatusResponse(RegistrationService.EmailStatus status) {

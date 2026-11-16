@@ -82,7 +82,7 @@ class RegistrationTests {
     @Test
     void newCustomerIsCreatedUnverifiedWithConsentAndCanVerifyByLink() throws Exception {
         String email = unique("an");
-        mvc.perform(register(email, "matkhau123", "An", "CUSTOMER", customerTermsId, privacyId))
+        mvc.perform(register(email, "Bep-Sen-2027", "An", "CUSTOMER", customerTermsId, privacyId))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("VERIFICATION_SENT"));
 
@@ -103,14 +103,14 @@ class RegistrationTests {
 
     @Test
     void registrationWithoutConsentIsRejected() throws Exception {
-        mvc.perform(register(unique("noconsent"), "matkhau123", "Binh", "CUSTOMER"))
+        mvc.perform(register(unique("noconsent"), "Bep-Sen-2027", "Binh", "CUSTOMER"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("CONSENT_REQUIRED"));
     }
 
     @Test
     void outdatedDocumentVersionIsRejectedWithConflict() throws Exception {
-        mvc.perform(register(unique("stale"), "matkhau123", "Chi", "CUSTOMER", UUID.randomUUID().toString(), privacyId))
+        mvc.perform(register(unique("stale"), "Bep-Sen-2027", "Chi", "CUSTOMER", UUID.randomUUID().toString(), privacyId))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("LEGAL_DOCUMENTS_CHANGED"));
     }
@@ -122,12 +122,35 @@ class RegistrationTests {
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
     }
 
+    /** The password policy runs after the record's checks, with the field named so the form can show the reason under it. */
+    @Test
+    void aCommonPasswordIsRefusedUnderTheField() throws Exception {
+        mvc.perform(register(unique("weak"), "matkhau123", "Dung", "CUSTOMER", customerTermsId, privacyId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PASSWORD_TOO_WEAK"))
+                .andExpect(jsonPath("$.errors[0].field").value("password"));
+        String email = unique("chuaemail");
+        mvc.perform(register(email, email.split("@")[0] + "!", "Dung", "CUSTOMER", customerTermsId, privacyId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PASSWORD_TOO_WEAK"));
+    }
+
+    @Test
+    void aNameWithDigitsOrAnUndeliverableEmailFailsValidation() throws Exception {
+        mvc.perform(register(unique("so"), "Bep-Sen-2027", "Dung 2", "CUSTOMER", customerTermsId, privacyId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("name"));
+        mvc.perform(register("an@gmail", "Bep-Sen-2027", "Dung", "CUSTOMER", customerTermsId, privacyId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("email"));
+    }
+
     @Test
     void theEmailStatusSaysWhatTheSellerSignUpAsksNext() throws Exception {
         String email = "status-" + System.nanoTime() + "@example.com";
         emailStatus(email).andExpect(jsonPath("$.status").value("NEW"));
 
-        mvc.perform(register(email, "password123", "Khách", "CUSTOMER", docId("CUSTOMER_TERMS"), docId("PRIVACY_POLICY")))
+        mvc.perform(register(email, "Bep-Sen-2027", "Khách", "CUSTOMER", docId("CUSTOMER_TERMS"), docId("PRIVACY_POLICY")))
                 .andExpect(status().isCreated());
         emailStatus(email).andExpect(jsonPath("$.status").value("ACCOUNT"));
 
@@ -154,7 +177,7 @@ class RegistrationTests {
     }
 
     private MockHttpServletRequestBuilder bothRoles(String email, String... docIds) {
-        String body = json(email, "password123", "Chủ quán", "SELLER", docIds);
+        String body = json(email, "Bep-Sen-2027", "Chủ quán", "SELLER", docIds);
         return withIp(post("/api/auth/register")).contentType(MediaType.APPLICATION_JSON)
                 .content(body.substring(0, body.length() - 1) + ",\"alsoCustomer\":true}");
     }
@@ -167,8 +190,8 @@ class RegistrationTests {
     @Test
     void sameRoleTwiceIsRejected() throws Exception {
         String email = unique("dup");
-        mvc.perform(register(email, "matkhau123", "Em", "CUSTOMER", customerTermsId, privacyId)).andExpect(status().isCreated());
-        mvc.perform(register(email.toUpperCase(), "matkhau123", "Em", "CUSTOMER", customerTermsId, privacyId))
+        mvc.perform(register(email, "Bep-Sen-2027", "Em", "CUSTOMER", customerTermsId, privacyId)).andExpect(status().isCreated());
+        mvc.perform(register(email.toUpperCase(), "Bep-Sen-2027", "Em", "CUSTOMER", customerTermsId, privacyId))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("EMAIL_ALREADY_REGISTERED"));
     }
@@ -181,7 +204,7 @@ class RegistrationTests {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
 
-        mvc.perform(register(email, "matkhau123", null, "SELLER", sellerTermsId))
+        mvc.perform(register(email, "Bep-Sen-2027", null, "SELLER", sellerTermsId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ROLE_ADDED"))
                 .andExpect(jsonPath("$.tokens").doesNotExist());
@@ -192,8 +215,8 @@ class RegistrationTests {
     @Test
     void unverifiedIdentityCannotGetASecondRole() throws Exception {
         String email = unique("hoa");
-        mvc.perform(register(email, "matkhau123", "Hoa", "CUSTOMER", customerTermsId, privacyId)).andExpect(status().isCreated());
-        mvc.perform(register(email, "matkhau123", null, "SELLER", sellerTermsId))
+        mvc.perform(register(email, "Bep-Sen-2027", "Hoa", "CUSTOMER", customerTermsId, privacyId)).andExpect(status().isCreated());
+        mvc.perform(register(email, "Bep-Sen-2027", null, "SELLER", sellerTermsId))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("IDENTITY_NOT_VERIFIED"));
     }
@@ -217,10 +240,10 @@ class RegistrationTests {
     void sixthRegistrationFromOneIpInAnHourIsRefused() throws Exception {
         String ip = "10.9.9." + IP.incrementAndGet();
         for (int i = 0; i < 5; i++) {
-            mvc.perform(register(unique("burst" + i), "matkhau123", "Burst", "CUSTOMER", customerTermsId, privacyId)
+            mvc.perform(register(unique("burst" + i), "Bep-Sen-2027", "Burst", "CUSTOMER", customerTermsId, privacyId)
                     .with(r -> { r.setRemoteAddr(ip); return r; })).andExpect(status().isCreated());
         }
-        mvc.perform(register(unique("burst6"), "matkhau123", "Burst", "CUSTOMER", customerTermsId, privacyId)
+        mvc.perform(register(unique("burst6"), "Bep-Sen-2027", "Burst", "CUSTOMER", customerTermsId, privacyId)
                         .with(r -> { r.setRemoteAddr(ip); return r; }))
                 .andExpect(status().isTooManyRequests());
     }
@@ -233,7 +256,7 @@ class RegistrationTests {
         verify(emailSender, never()).send(any());
 
         String email = unique("lan");
-        mvc.perform(register(email, "matkhau123", "Lan", "CUSTOMER", customerTermsId, privacyId)).andExpect(status().isCreated());
+        mvc.perform(register(email, "Bep-Sen-2027", "Lan", "CUSTOMER", customerTermsId, privacyId)).andExpect(status().isCreated());
         tokenFromEmailTo(email);
         clearInvocations(emailSender);
 
@@ -252,7 +275,7 @@ class RegistrationTests {
 
     @Test
     void adminCannotBeSelfRegistered() throws Exception {
-        mvc.perform(register(unique("admin"), "matkhau123", "Admin", "ADMIN", customerTermsId, privacyId))
+        mvc.perform(register(unique("admin"), "Bep-Sen-2027", "Admin", "ADMIN", customerTermsId, privacyId))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("ROLE_NOT_SELF_REGISTERABLE"));
     }
@@ -266,7 +289,7 @@ class RegistrationTests {
     }
 
     private String verifiedUser(String prefix, Role role) {
-        User user = new User(unique(prefix), passwords.encode("matkhau123"), prefix);
+        User user = new User(unique(prefix), passwords.encode("Bep-Sen-2027"), prefix);
         user.addRole(role);
         user.markEmailVerified();
         return users.saveAndFlush(user).getEmail();

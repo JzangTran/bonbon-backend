@@ -1,5 +1,9 @@
 package com.bonbon.backend.marketplace.merchant.dto;
 
+import com.bonbon.backend.common.validation.VnPhone;
+import com.bonbon.backend.common.validation.RealEmail;
+import com.bonbon.backend.common.validation.PersonName;
+import com.bonbon.backend.common.validation.KnownBank;
 import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.util.List;
@@ -11,7 +15,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -40,8 +43,8 @@ public final class ShopApplicationRequests {
 
     public record Step1(
             @Size(max = 100) String name,
-            @Pattern(regexp = VN_PHONE, message = "Số điện thoại không hợp lệ") String phone,
-            @Email @Size(max = 255) String email,
+            @VnPhone(kind = VnPhone.Kind.ANY, message = "Số điện thoại không hợp lệ: số di động hoặc số bàn có mã vùng, ví dụ 0912345678 hay 02838123456") String phone,
+            @RealEmail @Size(max = 255) String email,
             @Min(1) @Max(1000) Integer provinceCode,
             @Min(1) @Max(100_000) Integer wardCode,
             @Size(max = 200) String addressDetail,
@@ -74,10 +77,10 @@ public final class ShopApplicationRequests {
             @Size(max = 200) String businessName,
             @Size(max = 300) String businessAddress,
             @Pattern(regexp = TAX_CODE, message = "Mã số thuế không hợp lệ") String taxCode,
-            @Size(max = 5, message = "Tối đa 5 email nhận hoá đơn") List<@NotBlank @Email @Size(max = 255) String> invoiceEmails,
-            @Size(max = 100) String bankName,
+            @Size(max = 5, message = "Tối đa 5 email nhận hoá đơn") List<@NotBlank @RealEmail @Size(max = 255) String> invoiceEmails,
+            @Size(max = 100) @KnownBank String bankName,
             @Pattern(regexp = "^\\d{6,19}$", message = "Số tài khoản gồm 6–19 chữ số") String accountNumber,
-            @Size(max = 100) String accountHolderName) {
+            @Size(max = 100) @PersonName(message = "Tên chủ tài khoản chỉ gồm chữ cái và khoảng trắng") String accountHolderName) {
     }
 
     /**
@@ -88,7 +91,7 @@ public final class ShopApplicationRequests {
     public record Step4(
             DocType docType,
             @Pattern(regexp = "^(\\d{9}|\\d{12})$", message = "Số giấy tờ gồm 9 hoặc 12 chữ số") String docNumber,
-            @Size(max = 100) String fullName,
+            @Size(max = 100) @PersonName(message = "Họ tên ghi đúng như trên giấy tờ, chỉ gồm chữ cái và khoảng trắng") String fullName,
             Boolean accuracyConfirmed,
             UUID sellerTermsDocumentId,
             UUID privacyPolicyDocumentId) {

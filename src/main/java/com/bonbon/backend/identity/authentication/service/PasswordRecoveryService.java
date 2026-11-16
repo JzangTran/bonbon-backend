@@ -1,5 +1,6 @@
 package com.bonbon.backend.identity.authentication.service;
 
+import com.bonbon.backend.common.validation.PasswordPolicy;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
@@ -88,6 +89,7 @@ public class PasswordRecoveryService {
                 .orElseThrow(() -> new BusinessException(HttpStatus.BAD_REQUEST, "INVALID_OR_EXPIRED_TOKEN",
                         "Liên kết không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu liên kết mới."));
         User user = users.findById(token.getUserId()).orElseThrow();
+        PasswordPolicy.require(newPassword, user.getEmail(), user.getName(), "newPassword");
         user.setPasswordHash(passwords.encode(newPassword));
         resetTokens.deleteAllForUser(user.getId());
         tokens.invalidateAllSessions(user);

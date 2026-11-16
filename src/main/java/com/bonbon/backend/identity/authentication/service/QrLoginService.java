@@ -176,7 +176,7 @@ public class QrLoginService {
         return value.length() <= max ? value : value.substring(0, max);
     }
 
-    /** "Chrome trên Windows" from a User-Agent; enough for a person to recognise their own browser. */
+    /** ‘Chrome trên Windows’ from a User-Agent; enough for a person to recognise their own browser. */
     public static String describe(String userAgent) {
         if (userAgent == null || userAgent.isBlank()) {
             return "Trình duyệt không rõ";

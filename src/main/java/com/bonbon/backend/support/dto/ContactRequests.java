@@ -1,7 +1,8 @@
 package com.bonbon.backend.support.dto;
 
+import com.bonbon.backend.common.validation.RealEmail;
+import com.bonbon.backend.common.validation.PersonName;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -13,8 +14,8 @@ public final class ContactRequests {
 
     @Schema(name = "SubmitContactRequest")
     public record Submit(
-            @Schema(description = "Họ tên, tối đa 100 ký tự.") @NotBlank @Size(max = 100) String fullName,
-            @Schema(description = "Email nhận câu trả lời.") @NotBlank @Email @Size(max = 255) String email,
+            @Schema(description = "Họ tên, tối đa 100 ký tự.") @NotBlank @Size(max = 100) @PersonName String fullName,
+            @Schema(description = "Email nhận câu trả lời.") @NotBlank @RealEmail @Size(max = 255) String email,
             @Schema(description = "Người gửi là ai: `CUSTOMER` (đặt món), `SELLER` (bán hàng) hoặc `OTHER`.") @NotBlank @Pattern(regexp = "CUSTOMER|SELLER|OTHER") String role,
             @Schema(description = "Chủ đề: `ORDER`, `ACCOUNT`, `SHOP`, `PAYMENT` hoặc `OTHER`.") @NotBlank @Pattern(regexp = "ORDER|ACCOUNT|SHOP|PAYMENT|OTHER") String topic,
             @Schema(description = "Nội dung, tối đa 2.000 ký tự.") @NotBlank @Size(max = 2000) String message,

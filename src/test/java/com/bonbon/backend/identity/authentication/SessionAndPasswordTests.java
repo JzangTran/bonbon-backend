@@ -47,7 +47,7 @@ class SessionAndPasswordTests {
 
     private static final AtomicInteger IP = new AtomicInteger(1);
     private static final Pattern TOKEN = Pattern.compile("token=([A-Za-z0-9_-]+)");
-    private static final String PASSWORD = "matkhau123";
+    private static final String PASSWORD = "Bep-Sen-2027";
 
     @Autowired
     MockMvc mvc;

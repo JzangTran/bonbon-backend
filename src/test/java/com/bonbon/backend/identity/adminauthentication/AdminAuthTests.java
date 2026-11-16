@@ -47,7 +47,7 @@ class AdminAuthTests {
 
     private static final AtomicInteger IP = new AtomicInteger(1);
     private static final Pattern TOKEN = Pattern.compile("token=([A-Za-z0-9_-]+)");
-    private static final String PASSWORD = "matkhau123";
+    private static final String PASSWORD = "Bep-Sen-2027";
 
     @Autowired
     MockMvc mvc;
@@ -161,7 +161,7 @@ class AdminAuthTests {
     }
 
     private ResultActions createAdmin(String access, String email) throws Exception {
-        MockHttpServletRequestBuilder req = json(post("/api/admin/manage/admins"), "{\"email\":\"" + email + "\",\"name\":\"Quản trị 2\"}");
+        MockHttpServletRequestBuilder req = json(post("/api/admin/manage/admins"), "{\"email\":\"" + email + "\",\"name\":\"Quản trị Hai\"}");
         if (access != null) {
             req = req.header("Authorization", "Bearer " + access);
         }

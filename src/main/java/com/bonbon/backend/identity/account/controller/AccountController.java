@@ -1,5 +1,7 @@
 package com.bonbon.backend.identity.account.controller;
 
+import com.bonbon.backend.common.validation.VnPhone;
+import com.bonbon.backend.common.validation.PersonName;
 import java.time.Instant;
 
 import com.bonbon.backend.identity.authentication.IssuedSession;
@@ -33,8 +35,8 @@ class AccountController {
     /** Vietnamese mobile number: 0 or +84 followed by 9 digits starting 3, 5, 7, 8 or 9. */
     static final String VN_MOBILE = "^(0|\\+84)(3|5|7|8|9)\\d{8}$";
 
-    record UpdateProfileRequest(@Size(min = 1, max = 100) String name,
-            @Pattern(regexp = VN_MOBILE + "|^$", message = "Số điện thoại di động Việt Nam không hợp lệ") String phone) {
+    record UpdateProfileRequest(@Size(min = 1, max = 100) @PersonName String name,
+            @VnPhone(allowEmpty = true, message = "Số điện thoại di động Việt Nam không hợp lệ") String phone) {
     }
 
     record ChangePasswordRequest(@NotBlank @Size(max = 100) String currentPassword, @NotBlank @Size(min = 8, max = 100) String newPassword) {

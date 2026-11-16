@@ -115,7 +115,7 @@ class OAuthLoginTests {
     @Test
     void unverifiedGoogleEmailNeverCreatesOrLinks() throws Exception {
         String email = verifiedUser("chuaxacminh", Role.CUSTOMER);
-        oauth(Map.of("provider", "GOOGLE", "token", googleToken(email, false), "password", "matkhau123"))
+        oauth(Map.of("provider", "GOOGLE", "token", googleToken(email, false), "password", "Bep-Sen-2027"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("OAUTH_EMAIL_UNVERIFIED"));
         assertThat(providers.isLinked(users.findByEmail(email).orElseThrow().getId(), AuthProvider.GOOGLE)).isFalse();
@@ -136,7 +136,7 @@ class OAuthLoginTests {
                 .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
         assertThat(providers.isLinked(id, AuthProvider.GOOGLE)).isFalse();
 
-        oauth(Map.of("provider", "GOOGLE", "token", token, "password", "matkhau123"))
+        oauth(Map.of("provider", "GOOGLE", "token", token, "password", "Bep-Sen-2027"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user.id").value(id.toString()));
         assertThat(providers.isLinked(id, AuthProvider.GOOGLE)).isTrue();
@@ -148,7 +148,7 @@ class OAuthLoginTests {
 
     @Test
     void googleTakesOverAnUnverifiedAccountAndDropsItsPassword() throws Exception {
-        User user = new User(unique("chuaverify"), passwords.encode("matkhau123"), "Chưa xác thực");
+        User user = new User(unique("chuaverify"), passwords.encode("Bep-Sen-2027"), "Chưa xác thực");
         user.addRole(Role.CUSTOMER);
         User saved = users.saveAndFlush(user);
         String email = saved.getEmail();
@@ -166,13 +166,13 @@ class OAuthLoginTests {
 
         // The password set before the email was proven (maybe by someone else) no longer works.
         mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
-                        .content(JSON.writeValueAsString(Map.of("email", email, "password", "matkhau123", "role", "CUSTOMER"))))
+                        .content(JSON.writeValueAsString(Map.of("email", email, "password", "Bep-Sen-2027", "role", "CUSTOMER"))))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void unverifiedGoogleEmailDoesNotTakeOverAnUnverifiedAccount() throws Exception {
-        User user = new User(unique("chuaverify2"), passwords.encode("matkhau123"), "Chưa xác thực");
+        User user = new User(unique("chuaverify2"), passwords.encode("Bep-Sen-2027"), "Chưa xác thực");
         user.addRole(Role.CUSTOMER);
         User saved = users.saveAndFlush(user);
         oauth(Map.of("provider", "GOOGLE", "token", googleToken(saved.getEmail(), false)))
@@ -186,7 +186,7 @@ class OAuthLoginTests {
     @Test
     void adminEmailCannotBeTakenOverThroughGoogle() throws Exception {
         String email = verifiedUser("quantri", Role.ADMIN);
-        oauth(Map.of("provider", "GOOGLE", "token", googleToken(email, true), "password", "matkhau123"))
+        oauth(Map.of("provider", "GOOGLE", "token", googleToken(email, true), "password", "Bep-Sen-2027"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
     }
@@ -263,7 +263,7 @@ class OAuthLoginTests {
     }
 
     private String verifiedUser(String prefix, Role role) {
-        User user = new User(unique(prefix), passwords.encode("matkhau123"), prefix);
+        User user = new User(unique(prefix), passwords.encode("Bep-Sen-2027"), prefix);
         user.addRole(role);
         user.markEmailVerified();
         return users.saveAndFlush(user).getEmail();

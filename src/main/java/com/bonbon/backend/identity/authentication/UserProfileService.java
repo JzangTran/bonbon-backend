@@ -1,5 +1,6 @@
 package com.bonbon.backend.identity.authentication;
 
+import com.bonbon.backend.common.validation.PasswordPolicy;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
@@ -68,6 +69,11 @@ public class UserProfileService {
         if (!passwords.matches(currentPassword, user.getPasswordHash())) {
             throw new BusinessException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Mật khẩu hiện tại không đúng.");
         }
+        if (passwords.matches(newPassword, user.getPasswordHash())) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "PASSWORD_UNCHANGED", "Mật khẩu mới phải khác mật khẩu hiện tại.")
+                    .withProperty("errors", java.util.List.of(java.util.Map.of("field", "newPassword", "message", "Mật khẩu mới phải khác mật khẩu hiện tại.")));
+        }
+        PasswordPolicy.require(newPassword, user.getEmail(), user.getName(), "newPassword");
         user.setPasswordHash(passwords.encode(newPassword));
         tokens.invalidateAllSessions(user);
         TokenPair pair = tokens.issue(user, activeRole, authTime);

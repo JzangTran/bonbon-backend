@@ -1,5 +1,7 @@
 package com.bonbon.backend.payments.payment.dto;
 
+import com.bonbon.backend.common.validation.PersonName;
+import com.bonbon.backend.common.validation.KnownBank;
 import java.time.Instant;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -14,9 +16,9 @@ public final class RefundRequests {
 
     @Schema(name = "RefundDestinationRequest", description = "Tài khoản ngân hàng nhận hoàn tiền. Chỉ lưu trên khoản hoàn này, không lưu vào hồ sơ.")
     public record Destination(
-            @Schema(description = "Tên ngân hàng.", example = "Vietcombank") @NotBlank @Size(max = 100) String bankName,
-            @Schema(description = "Số tài khoản, 6–20 chữ số.", example = "0123456789") @NotBlank @Pattern(regexp = "[0-9]{6,20}", message = "Số tài khoản gồm 6–20 chữ số.") String accountNumber,
-            @Schema(description = "Tên chủ tài khoản.", example = "NGUYEN VAN A") @NotBlank @Size(max = 100) String accountName) {
+            @Schema(description = "Tên ngân hàng.", example = "Vietcombank") @NotBlank @Size(max = 100) @KnownBank String bankName,
+            @Schema(description = "Số tài khoản, 6–19 chữ số.", example = "0123456789") @NotBlank @Pattern(regexp = "[0-9]{6,19}", message = "Số tài khoản gồm 6–19 chữ số.") String accountNumber,
+            @Schema(description = "Tên chủ tài khoản.", example = "NGUYEN VAN A") @NotBlank @Size(max = 100) @PersonName(message = "Tên chủ tài khoản chỉ gồm chữ cái và khoảng trắng") String accountName) {
     }
 
     @Schema(name = "CompleteRefundRequest")
