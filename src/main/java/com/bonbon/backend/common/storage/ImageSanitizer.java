@@ -30,6 +30,8 @@ final class ImageSanitizer {
             case PNG -> png(bytes);
             case WEBP -> webp(bytes);
             case PDF -> pdf(bytes);
+            // written by the server itself (the personal-data export), so there is nothing to strip
+            case JSON -> bytes;
         };
     }
 

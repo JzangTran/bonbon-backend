@@ -20,7 +20,9 @@ public record ValidatedFile(byte[] content, FileType type) {
         JPEG("image/jpeg", "jpg"),
         PNG("image/png", "png"),
         WEBP("image/webp", "webp"),
-        PDF("application/pdf", "pdf");
+        PDF("application/pdf", "pdf"),
+        /** Only for files the server writes itself (the personal-data export), never accepted as an upload. */
+        JSON("application/json", "json");
 
         private final String contentType;
         private final String extension;

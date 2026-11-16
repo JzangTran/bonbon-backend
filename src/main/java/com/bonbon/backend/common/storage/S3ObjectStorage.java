@@ -15,6 +15,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
+import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
@@ -83,6 +84,17 @@ class S3ObjectStorage implements ObjectStorage {
     @Override
     public void delete(Visibility visibility, String key) {
         s3.deleteObject(DeleteObjectRequest.builder().bucket(bucket(visibility)).key(key).build());
+    }
+
+    @Override
+    public String copyPrivate(String sourceKey, String prefix) {
+        String name = sourceKey.substring(sourceKey.lastIndexOf('/') + 1);
+        String key = prefix + "/" + name;
+        s3.copyObject(CopyObjectRequest.builder()
+                .sourceBucket(props.privateBucket()).sourceKey(sourceKey)
+                .destinationBucket(props.privateBucket()).destinationKey(key)
+                .build());
+        return key;
     }
 
     @PreDestroy

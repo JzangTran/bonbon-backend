@@ -201,6 +201,24 @@ class ReportingTests {
     }
 
     @Test
+    void aReportedPictureIsHeldApartFromTheChatCopy() throws Exception {
+        String conversation = firstMessage("Chào quán");
+        String key = JsonPath.read(mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/conversations/images")
+                        .file(new org.springframework.mock.web.MockMultipartFile("file", "a.png", "image/png", com.bonbon.backend.TestImages.PNG))
+                        .header("Authorization", "Bearer " + seller)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), "$.imageKey");
+        String messageId = JsonPath.read(call(seller, post("/api/conversations/" + conversation + "/messages"), Map.of("imageKey", key))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+        String reportId = JsonPath.read(report(customer, "MESSAGE", messageId, "INAPPROPRIATE_IMAGE", null).andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        // BC-16: the evidence points at a copy under hold/, so purging the chat picture cannot remove it; the admin gets a link
+        String held = jdbc.sql("select evidence->'message'->>'imageKey' from support.content_reports where id = cast(:id as uuid)").param("id", reportId)
+                .query(String.class).single();
+        assertThat(held).startsWith("hold/reports/" + reportId + "/").isNotEqualTo(key);
+        call(admin, get("/api/admin/reports/" + reportId), null).andExpect(jsonPath("$.evidence.message.imageUrl").exists())
+                .andExpect(jsonPath("$.evidence.message.imageKey").doesNotExist());
+    }
+
+    @Test
     void reportingRulesForShopsReasonsAndRoles() throws Exception {
         // BC-10: a customer reports a shop; OTHER needs a note
         report(customer, "SHOP", vendorId.toString(), "OTHER", null).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("NOTE_REQUIRED"));
