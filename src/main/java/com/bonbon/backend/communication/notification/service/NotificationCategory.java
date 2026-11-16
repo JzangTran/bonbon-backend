@@ -62,7 +62,8 @@ public enum NotificationCategory {
 
     /** The category of a stored notification, by who it is for and what it is about. */
     public static NotificationCategory of(String audience, String type) {
-        if (type.equals("SUPPORT_REPLY")) {
+        // the outcome of a content report reads like an answer from support
+        if (type.equals("SUPPORT_REPLY") || type.startsWith("REPORT_")) {
             return SUPPORT_REPLIES;
         }
         if (type.startsWith("LEGAL_")) {

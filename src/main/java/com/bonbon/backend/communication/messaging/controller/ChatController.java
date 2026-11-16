@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -90,6 +91,9 @@ class ChatController {
     @ApiError(status = 400, code = "IMAGE_INVALID", when = "Khoá ảnh không phải ảnh người gọi đã tải lên.")
     @ApiError(status = 400, code = "REPLY_NOT_FOUND", when = "Tin được trả lời không thuộc cuộc trò chuyện này.")
     @ApiError(status = 429, code = "TOO_MANY_MESSAGES", when = "Quá 30 tin trong một phút.")
+    @ApiError(status = 403, code = "MESSAGING_RESTRICTED", when = "Người gửi đang bị hạn chế nhắn tin sau một báo cáo vi phạm; `until` cho biết tới khi nào.")
+    @ApiError(status = 409, code = "CONVERSATION_BLOCKED", when = "Bên kia đã chặn cuộc trò chuyện.")
+    @ApiError(status = 409, code = "CONVERSATION_BLOCKED_BY_YOU", when = "Người gọi đã chặn cuộc trò chuyện; bỏ chặn để gửi.")
     @ApiResponse(responseCode = "201", description = "Đã gửi.")
     @PostMapping("/shops/{vendorId}/messages")
     @ResponseStatus(HttpStatus.CREATED)
@@ -107,6 +111,9 @@ class ChatController {
     @ApiError(status = 400, code = "IMAGE_INVALID", when = "Khoá ảnh không phải ảnh người gọi đã tải lên.")
     @ApiError(status = 400, code = "REPLY_NOT_FOUND", when = "Tin được trả lời không thuộc cuộc trò chuyện này.")
     @ApiError(status = 429, code = "TOO_MANY_MESSAGES", when = "Quá 30 tin trong một phút.")
+    @ApiError(status = 403, code = "MESSAGING_RESTRICTED", when = "Người gửi đang bị hạn chế nhắn tin sau một báo cáo vi phạm; `until` cho biết tới khi nào.")
+    @ApiError(status = 409, code = "CONVERSATION_BLOCKED", when = "Bên kia đã chặn cuộc trò chuyện.")
+    @ApiError(status = 409, code = "CONVERSATION_BLOCKED_BY_YOU", when = "Người gọi đã chặn cuộc trò chuyện; bỏ chặn để gửi.")
     @ApiResponse(responseCode = "201", description = "Đã gửi.")
     @PostMapping("/conversations/{id}/messages")
     @ResponseStatus(HttpStatus.CREATED)
@@ -125,5 +132,22 @@ class ChatController {
     @PreAuthorize("hasAuthority('conversation:write')")
     ChatViews.Upload image(CurrentPrincipal principal, @RequestPart("file") MultipartFile file) {
         return chat.uploadImage(principal, file);
+    }
+
+    @Operation(operationId = "blockConversation", summary = "Chặn cuộc trò chuyện",
+            description = "Khách chặn cửa hàng hoặc cửa hàng chặn khách, chỉ trong nhắn tin: bên bị chặn không gửi được nữa (\"bên kia đã đóng cuộc trò chuyện\"), lịch sử vẫn đọc được, đặt món và thông báo đơn không bị ảnh hưởng. Chặn không thay cho báo cáo; vẫn báo cáo được sau khi chặn.")
+    @ApiError(status = 404, code = "CONVERSATION_NOT_FOUND", when = "Không có cuộc trò chuyện này ở phía của người gọi.")
+    @PostMapping("/conversations/{id}/block")
+    @PreAuthorize("hasAuthority('conversation:write')")
+    ChatViews.Conversation block(CurrentPrincipal principal, @PathVariable UUID id) {
+        return chat.block(principal, id);
+    }
+
+    @Operation(operationId = "unblockConversation", summary = "Bỏ chặn cuộc trò chuyện", description = "Có hiệu lực ngay.")
+    @ApiError(status = 404, code = "CONVERSATION_NOT_FOUND", when = "Không có cuộc trò chuyện này ở phía của người gọi.")
+    @DeleteMapping("/conversations/{id}/block")
+    @PreAuthorize("hasAuthority('conversation:write')")
+    ChatViews.Conversation unblock(CurrentPrincipal principal, @PathVariable UUID id) {
+        return chat.unblock(principal, id);
     }
 }

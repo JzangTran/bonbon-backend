@@ -61,4 +61,11 @@ public final class ShopProfileRequests {
 
     public record AcceptingOrders(@NotNull Boolean accepting) {
     }
+
+    @Schema(name = "AutoReply", description = "Tin quán tự gửi khi khách nhắn, một lần cho mỗi lượt khách nhắn mà quán chưa trả lời.")
+    public record AutoReply(
+            @Schema(description = "Bật hay tắt; bỏ trống để giữ nguyên.") Boolean enabled,
+            @Schema(description = "Nội dung, 1–1000 ký tự; bỏ trống để giữ nguyên.", example = "Cảm ơn bạn đã nhắn tin, quán sẽ phản hồi sớm nhất có thể!")
+            @Size(max = 1000) String message) {
+    }
 }

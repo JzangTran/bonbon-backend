@@ -7,7 +7,9 @@ import com.bonbon.backend.common.openapi.ApiTags;
 import com.bonbon.backend.common.security.CurrentPrincipal;
 import com.bonbon.backend.support.dto.HelpRequests;
 import com.bonbon.backend.support.dto.HelpViews;
+import com.bonbon.backend.support.dto.HelpChatDtos;
 import com.bonbon.backend.support.service.HelpArticleService;
+import com.bonbon.backend.support.service.HelpChatService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,9 +36,19 @@ import org.springframework.web.bind.annotation.RestController;
 class AdminHelpArticleController {
 
     private final HelpArticleService help;
+    private final HelpChatService chat;
 
-    AdminHelpArticleController(HelpArticleService help) {
+    AdminHelpArticleController(HelpArticleService help, HelpChatService chat) {
         this.help = help;
+        this.chat = chat;
+    }
+
+    @Operation(operationId = "listUnansweredHelpQuestions", summary = "Câu hỏi trợ lý tự động chưa trả lời được",
+            description = "Câu hỏi không khớp bài trợ giúp nào trong `days` ngày qua, gộp các câu giống nhau (không phân biệt dấu), hỏi nhiều nhất trước. Dùng để viết thêm bài hoặc thêm từ khoá.")
+    @ApiError(status = 400, code = "INVALID_RANGE", when = "`days` ngoài 1–90 hoặc `limit` ngoài 1–200.")
+    @GetMapping("/unanswered-questions")
+    java.util.List<HelpChatDtos.Unanswered> unanswered(@RequestParam(defaultValue = "30") int days, @RequestParam(defaultValue = "50") int limit) {
+        return chat.unanswered(days, limit);
     }
 
     @Operation(operationId = "listAdminHelpArticles", summary = "Danh sách bài trợ giúp (kể cả nháp)", description = "Mới cập nhật trước. `status` lọc DRAFT hoặc PUBLISHED, `q` tìm như phía người dùng.")

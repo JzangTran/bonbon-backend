@@ -26,7 +26,9 @@ public final class ChatViews {
             String shopName,
             @Schema(description = "Tên tài khoản của khách.") String customerName,
             LastMessage lastMessage,
-            @Schema(description = "Có tin của bên kia mới hơn lần đọc gần nhất của phía người gọi (khách, hoặc cả cửa hàng).") boolean unread) {
+            @Schema(description = "Có tin của bên kia mới hơn lần đọc gần nhất của phía người gọi (khách, hoặc cả cửa hàng).") boolean unread,
+            @Schema(description = "Phía người gọi đã chặn bên kia; gửi tin bị từ chối cho tới khi bỏ chặn.") boolean blockedByMe,
+            @Schema(description = "Bên kia đã đóng cuộc trò chuyện; người gọi không gửi được, lịch sử vẫn đọc được.") boolean blockedByOther) {
     }
 
     @Schema(name = "AdminConversationView", description = "Một cuộc trò chuyện khách – cửa hàng, cho quản trị viên đọc.")
@@ -55,7 +57,9 @@ public final class ChatViews {
             String text,
             @Schema(description = "Liên kết ngắn hạn tới ảnh (15 phút); rỗng nếu không có ảnh.") String imageUrl,
             Reply replyTo,
-            Instant createdAt) {
+            Instant createdAt,
+            @Schema(description = "Tin quán tự gửi khi khách nhắn mà quán chưa trả lời.") boolean autoReply,
+            @Schema(description = "Tin đã bị gỡ vì vi phạm quy định sau một báo cáo; khách và quán không thấy nội dung, quản trị viên vẫn thấy.") boolean removed) {
     }
 
     @Schema(name = "ChatMessagePage", description = "Tin nhắn mới nhất trước.")
@@ -63,6 +67,10 @@ public final class ChatViews {
             List<Message> items,
             @Schema(description = "Còn tin cũ hơn nữa.") boolean hasMore,
             @Schema(description = "Truyền vào `before` để lấy trang cũ hơn; rỗng khi hết.") Instant nextBefore) {
+    }
+
+    @Schema(name = "ModerationTerm", description = "Một từ hoặc cụm từ bị che bằng *** trong tin nhắn người nhận đọc.")
+    public record ModerationTerm(UUID id, String term, boolean active, Instant createdAt) {
     }
 
     @Schema(name = "ChatImageUpload")
