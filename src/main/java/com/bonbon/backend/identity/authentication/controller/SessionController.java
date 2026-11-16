@@ -34,8 +34,11 @@ class SessionController {
 
     private final RefreshCookies cookies;
     private final TokenService tokens;
+    private final com.bonbon.backend.identity.sellerteam.service.TeamSessions teamSessions;
 
-    SessionController(SessionService sessions, PasswordRecoveryService recovery, RefreshCookies cookies, TokenService tokens) {
+    SessionController(SessionService sessions, PasswordRecoveryService recovery, RefreshCookies cookies, TokenService tokens,
+            com.bonbon.backend.identity.sellerteam.service.TeamSessions teamSessions) {
+        this.teamSessions = teamSessions;
         this.sessions = sessions;
         this.recovery = recovery;
         this.cookies = cookies;
@@ -50,6 +53,7 @@ class SessionController {
             HttpServletResponse response) {
         String refreshToken = cookies.pick(body == null ? null : body.refreshToken(), http);
         if (RefreshCookies.isWeb(http)) cookies.clear(response);
+        teamSessions.revoke(refreshToken);
         // the web app may come back with only its cookie once the access token has expired: holding the refresh token is enough
         if (jwt == null && refreshToken != null) {
             tokens.revokeRefreshToken(refreshToken);

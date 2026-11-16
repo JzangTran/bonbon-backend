@@ -7,9 +7,19 @@ import com.bonbon.backend.identity.authentication.Role;
 import com.bonbon.backend.identity.authentication.entity.User;
 
 /** Who is signed in, which role this session uses, and which others they could switch to. */
-public record UserSummary(UUID id, String email, String name, Role activeRole, Set<Role> availableRoles) {
+public record UserSummary(UUID id, String email, String name, Role activeRole, Set<Role> availableRoles,
+        @io.swagger.v3.oas.annotations.media.Schema(description = "Chỉ có với phiên của tài khoản chính hoặc thành viên: ai đăng nhập, cửa hàng đang làm việc và các cửa hàng được chọn.")
+        @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) TeamSession team) {
 
     public static UserSummary of(User user, Role activeRole) {
-        return new UserSummary(user.getId(), user.getEmail(), user.getName(), activeRole, user.getRoles());
+        return new UserSummary(user.getId(), user.getEmail(), user.getName(), activeRole, user.getRoles(), null);
+    }
+
+    /** A main account or member. {@code kind} is MAIN_ACCOUNT or MEMBER; {@code shopId} null means the team console with no shop open. */
+    public record TeamSession(String kind, UUID principalId, String login, String displayName, UUID shopId, String shopName,
+            java.util.List<ShopChoice> shops, java.util.List<String> permissions) {
+    }
+
+    public record ShopChoice(UUID vendorId, String name, String status) {
     }
 }

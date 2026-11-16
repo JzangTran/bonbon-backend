@@ -57,7 +57,10 @@ class SecurityConfig {
             "/api/auth/**",
             "/api/legal/documents/**",
             "/api/app/config",
-            "/api/admin/auth/**"
+            "/api/admin/auth/**",
+            // seller-team sign-in and password recovery for main accounts (flows/seller-team)
+            "/api/seller-team/login",
+            "/api/seller-team/recover/**"
     };
 
     /** JSON responses never load anything; the dev-only HTML pages (API reference, fake MoMo checkout) are left alone. */
@@ -110,6 +113,7 @@ class SecurityConfig {
                 .exceptionHandling(e -> e.authenticationEntryPoint((req, res, ex) ->
                         writeProblem(res, HttpServletResponse.SC_UNAUTHORIZED, "UNAUTHENTICATED",
                                 "Vui lòng đăng nhập để tiếp tục.")));
+        http.addFilterAfter(new TeamScopeFilter(), org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter.class);
         return http.build();
     }
 
@@ -157,7 +161,7 @@ class SecurityConfig {
         return converter;
     }
 
-    private static void writeProblem(HttpServletResponse res, int status, String code, String detail)
+    static void writeProblem(HttpServletResponse res, int status, String code, String detail)
             throws IOException {
         res.setStatus(status);
         res.setContentType("application/problem+json");
