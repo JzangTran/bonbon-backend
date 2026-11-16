@@ -46,7 +46,8 @@ class HomeFeedController {
             `RECOMMENDED`); `highlyRated=true` đánh giá từ 4.4; `promotions=true` có món giảm giá hoặc voucher dùng được; \
             `bestSellers=true` từ 10 đơn đã giao trong 30 ngày; `nearby=true` trong 2 km (cần toạ độ). \
             Khách đã đăng nhập không thấy quán đã ẩn; khách chưa đăng nhập gửi quán đã ẩn trong `hide`. \
-            `dealMaxPercent` là mức giảm cao nhất trong khu, cho dòng "Giảm đến X%".""")
+            `dealMaxPercent` là mức giảm cao nhất trong khu, cho dòng "Giảm đến X%". Không quán nào giao tới toạ độ: \
+            `outOfArea=true` và danh sách là các quán gần nhất để xem, chưa đặt được.""")
     @ApiError(status = 400, code = "INVALID_POSITION", when = "Chỉ gửi một trong hai toạ độ, hoặc toạ độ ngoài phạm vi.")
     @ApiError(status = 400, code = "INVALID_PAGE", when = "`page` âm hoặc quá lớn.")
     @ApiError(status = 400, code = "TOO_MANY_HIDDEN", when = "`hide` có hơn 100 quán.")

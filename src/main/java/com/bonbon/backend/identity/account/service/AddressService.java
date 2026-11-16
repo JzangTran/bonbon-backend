@@ -1,7 +1,10 @@
 package com.bonbon.backend.identity.account.service;
 
+import java.text.Normalizer;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import com.bonbon.backend.identity.account.DeliveryAddresses;
@@ -17,12 +20,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * A customer's saved delivery addresses (manage-delivery-addresses.md): up to 10, exactly one default while
- * any exist. Goong Place Detail is called once per picked place, never when only the detail line changes.
+ * any exist. Goong Place Detail is called once per picked place, never when only the detail line changes. "Nhà" and "Công ty" are
+ * one address each (owner decision 2026-11-12): to change one, remove it and add the new one.
  */
 @Service
 public class AddressService implements DeliveryAddresses {
 
     static final int MAX_ADDRESSES = 10;
+    private static final Set<String> UNIQUE_LABELS = Set.of("nha", "cong ty");
 
     private final AddressRepository addresses;
     private final Geocoder geocoder;
@@ -53,6 +58,7 @@ public class AddressService implements DeliveryAddresses {
             throw new BusinessException(HttpStatus.CONFLICT, "ADDRESS_LIMIT_REACHED",
                     "Bạn đã lưu tối đa " + MAX_ADDRESSES + " địa chỉ. Hãy xoá bớt một địa chỉ.");
         }
+        requireFreeLabel(customerId, null, req.label());
         Address address = new Address(customerId);
         address.setLabel(req.label().strip());
         applyPlace(address, req.placeId());
@@ -72,6 +78,7 @@ public class AddressService implements DeliveryAddresses {
     public AddressDtos.View update(UUID customerId, UUID id, AddressDtos.Update req) {
         Address address = find(customerId, id);
         if (req.label() != null) {
+            requireFreeLabel(customerId, id, req.label());
             address.setLabel(req.label().strip());
         }
         if (req.placeId() != null && !req.placeId().equals(address.getPlaceId())) {
@@ -115,6 +122,28 @@ public class AddressService implements DeliveryAddresses {
                 addresses.saveAndFlush(next);
             });
         }
+    }
+
+    /** "Nhà" and "Công ty" (any case or accent) name one address each; every other label is free. */
+    private void requireFreeLabel(UUID customerId, UUID except, String label) {
+        String key = fold(label);
+        if (!UNIQUE_LABELS.contains(key)) {
+            return;
+        }
+        boolean taken = addresses.findForCustomer(customerId).stream()
+                .anyMatch(a -> !a.getId().equals(except) && fold(a.getLabel()).equals(key));
+        if (taken) {
+            throw BusinessException.conflict("ADDRESS_LABEL_TAKEN",
+                    "Bạn đã có địa chỉ \"" + label.strip() + "\". Hãy gỡ địa chỉ đó trước khi thêm địa chỉ mới.");
+        }
+    }
+
+    private static String fold(String label) {
+        if (label == null) {
+            return "";
+        }
+        String plain = Normalizer.normalize(label, Normalizer.Form.NFD).replaceAll("\\p{M}", "").replace('đ', 'd').replace('Đ', 'D');
+        return plain.strip().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
     }
 
     private void applyPlace(Address address, String placeId) {
