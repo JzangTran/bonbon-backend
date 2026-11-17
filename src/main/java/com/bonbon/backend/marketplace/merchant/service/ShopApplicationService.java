@@ -88,7 +88,7 @@ public class ShopApplicationService {
     public ShopApplicationView view(UUID ownerId) {
         return vendors.findByOwnerUserId(ownerId).map(this::toView)
                 .orElseGet(() -> new ShopApplicationView("NONE", null, null, 1, List.of(), radiusCap.maxKm(), null,
-                        null, null, null, null, null, null));
+                        null, null, null, null, null, null, null, null));
     }
 
     @Transactional
@@ -299,7 +299,7 @@ public class ShopApplicationService {
                 id.getTermsAcceptedAt() != null, id.getIdentityConsentAt() != null);
         return new ShopApplicationView(v.getStatus().name(), v.getRejectionReason(), v.getSubmittedAt(), firstIncomplete,
                 steps, radiusCap.maxKm(v), serviceArea(v), v.isAcceptingOrders(), ShopHours.isOpen(v, ZonedDateTime.now()), shop, shipping,
-                taxView, identityView);
+                taxView, identityView, v.isAcceptingOrders() ? null : v.getPausedUntil(), v.isAcceptingOrders() ? null : v.getPauseReason());
     }
 
     private ShopApplicationView.ServiceAreaInfo serviceArea(Vendor v) {

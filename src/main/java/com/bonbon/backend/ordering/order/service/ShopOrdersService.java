@@ -157,7 +157,8 @@ class ShopOrdersService implements ShopOrders {
         boolean masked = o.getStatus().isTerminal() && !o.isIncidentHold() && o.getFinishedAt() != null
                 && o.getFinishedAt().plus(window).isBefore(Instant.now());
         List<Line> lines = o.getItems().stream().map(i -> new Line(i.getName(), i.getQuantity(), i.getUnitPrice(), i.getLineTotal(), i.getNote(),
-                i.getOptions().stream().map(op -> new LineOption(op.getGroupName(), op.getOptionName(), op.getPriceDelta())).toList())).toList();
+                i.getOptions().stream().map(op -> new LineOption(op.getGroupName(), op.getOptionName(), op.getPriceDelta())).toList(),
+                i.getMenuItemId())).toList();
         List<Step> timeline = history.findByOrderIdOrderByCreatedAtAsc(o.getId()).stream().map(h -> new Step(h.getFromStatus(), h.getToStatus(),
                 switch (h.getActedByType()) {
                     case CUSTOMER -> "CUSTOMER";

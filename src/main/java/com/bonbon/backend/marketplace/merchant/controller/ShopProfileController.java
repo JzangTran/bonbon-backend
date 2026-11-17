@@ -109,11 +109,11 @@ class ShopProfileController {
         return profiles.removeCover(principal);
     }
 
-    @Operation(operationId = "setAcceptingOrders", summary = "Tạm ngưng / nhận đơn lại", description = "Ghi đè lịch ngay lập tức; đơn đã nhận không bị ảnh hưởng. Ai bấm và lúc nào được ghi lại.")
+    @Operation(operationId = "setAcceptingOrders", summary = "Tạm ngưng / nhận đơn lại", description = "Ghi đè lịch ngay lập tức; đơn đã nhận không bị ảnh hưởng. Tạm ngưng có thể kèm số phút (tự nhận đơn lại khi hết) và lý do. Ai bấm và lúc nào được ghi lại.")
     @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người gọi chưa có cửa hàng được duyệt; `status` cho biết trạng thái hồ sơ.")
     @PutMapping("/accepting-orders")
     ShopApplicationView acceptingOrders(CurrentPrincipal principal, @Valid @RequestBody ShopProfileRequests.AcceptingOrders request) {
-        return profiles.setAcceptingOrders(principal, request.accepting());
+        return profiles.setAcceptingOrders(principal, request);
     }
 
     @Operation(operationId = "getMyAutoReply", summary = "Xem tin trả lời tự động", description = "Mặc định bật với câu chào sẵn.")

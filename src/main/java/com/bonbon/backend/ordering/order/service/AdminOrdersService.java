@@ -67,9 +67,9 @@ class AdminOrdersService implements AdminOrders {
                             .add(new ShopOrders.LineOption(rs.getString("group_name"), rs.getString("option_name"), rs.getInt("price_delta")));
                     return 0;
                 }).list();
-        return jdbc.sql("select id, name, quantity, unit_price, line_total, note from order_items where order_id = :id order by position").param("id", orderId)
+        return jdbc.sql("select id, menu_item_id, name, quantity, unit_price, line_total, note from order_items where order_id = :id order by position").param("id", orderId)
                 .query((rs, n) -> new ShopOrders.Line(rs.getString("name"), rs.getInt("quantity"), rs.getInt("unit_price"), rs.getInt("line_total"), rs.getString("note"),
-                        options.getOrDefault(rs.getObject("id", UUID.class), List.of())))
+                        options.getOrDefault(rs.getObject("id", UUID.class), List.of()), rs.getObject("menu_item_id", UUID.class)))
                 .list();
     }
 

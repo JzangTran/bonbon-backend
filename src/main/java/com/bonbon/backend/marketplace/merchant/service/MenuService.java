@@ -238,7 +238,7 @@ public class MenuService {
     public MenuView setItemStatus(CurrentPrincipal owner, UUID itemId, MenuRequests.ItemStatus req) {
         Vendor shop = approvedShop(owner.id());
         MenuItem item = item(shop, itemId);
-        item.setStatus(req.status());
+        item.setAvailability(req.status(), "TODAY".equals(req.until()) ? endOfSellingDay(java.time.Instant.now()) : null);
         item.touchedBy(owner.actorType(), owner.id());
         items.save(item);
         return view(shop);
@@ -262,6 +262,13 @@ public class MenuService {
         }
     }
 
+    /** "Hết hôm nay" lasts until 4 a.m. Vietnam time, so a late-night shop does not get the dish back at midnight mid-service. */
+    static java.time.Instant endOfSellingDay(java.time.Instant now) {
+        java.time.ZonedDateTime t = now.atZone(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+        java.time.ZonedDateTime fourAm = t.toLocalDate().atTime(4, 0).atZone(t.getZone());
+        return (t.isBefore(fourAm) ? fourAm : fourAm.plusDays(1)).toInstant();
+    }
+
     private MenuView view(Vendor shop) {
         OptionService.MenuOptionInfo optionInfo = optionService.forMenu(shop.getId());
         Map<UUID, List<MenuView.Item>> bySection = new LinkedHashMap<>();
@@ -270,7 +277,7 @@ public class MenuService {
                     i.getId(), i.getSectionId(), i.getCategoryId(), i.getName(), i.getDescription(), i.getPrice(),
                     i.getOriginalPrice(), i.discountPercent(), i.getPhotoKey() == null ? null : storage.publicUrl(i.getPhotoKey()), i.getStatus(),
                     i.isSoldOut() || optionInfo.blockedItems().contains(i.getId()), i.getStockQuantity(), i.getSortOrder(),
-                    optionInfo.groupIdsByItem().getOrDefault(i.getId(), List.of())));
+                    optionInfo.groupIdsByItem().getOrDefault(i.getId(), List.of()), i.isSoldOut() ? i.getSoldOutUntil() : null));
         }
         return new MenuView(sections.findByVendorIdOrderBySortOrderAscNameAsc(shop.getId()).stream()
                 .map(s -> new MenuView.Section(s.getId(), s.getName(), s.getSortOrder(),

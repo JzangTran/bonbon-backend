@@ -27,7 +27,9 @@ public final class MenuRequests {
     }
 
     @Schema(name = "MenuItemStatusRequest")
-    public record ItemStatus(@NotNull com.bonbon.backend.marketplace.merchant.MenuItemStatus status) {
+    public record ItemStatus(@NotNull com.bonbon.backend.marketplace.merchant.MenuItemStatus status,
+            @Schema(description = "Với `SOLD_OUT`: `TODAY` là hết đến 4 giờ sáng mai rồi tự bán lại; bỏ trống là hết đến khi bật lại.")
+            @jakarta.validation.constraints.Pattern(regexp = "TODAY", message = "Chỉ nhận TODAY hoặc để trống.") String until) {
     }
 
     @Schema(name = "MenuItemCreateRequest")

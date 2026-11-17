@@ -59,7 +59,11 @@ public final class ShopProfileRequests {
 
     @Schema(name = "AcceptingOrdersRequest")
 
-    public record AcceptingOrders(@NotNull Boolean accepting) {
+    public record AcceptingOrders(@NotNull Boolean accepting,
+            @io.swagger.v3.oas.annotations.media.Schema(description = "Khi tạm ngưng: số phút (15–480) rồi tự nhận đơn lại; bỏ trống là tạm ngưng đến khi bật lại.")
+            @jakarta.validation.constraints.Min(15) @jakarta.validation.constraints.Max(480) Integer pauseMinutes,
+            @io.swagger.v3.oas.annotations.media.Schema(description = "Lý do tạm ngưng, tối đa 100 ký tự, ví dụ Quá đông, Hết nguyên liệu.")
+            @jakarta.validation.constraints.Size(max = 100) String reason) {
     }
 
     @Schema(name = "AutoReply", description = "Tin quán tự gửi khi khách nhắn, một lần cho mỗi lượt khách nhắn mà quán chưa trả lời.")
