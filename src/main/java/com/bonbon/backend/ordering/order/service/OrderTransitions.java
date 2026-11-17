@@ -49,6 +49,8 @@ class OrderTransitions {
                 case CUSTOMER -> CUSTOMER;
                 case SHOP_ACCOUNT, MAIN_ACCOUNT, MEMBER -> SHOP;
                 case SYSTEM, ADMIN -> SYSTEM;
+                // a developer only reads the API reference and holds no order permission
+                case DEVELOPER -> throw new IllegalStateException("A developer session cannot move an order.");
             };
         }
     }

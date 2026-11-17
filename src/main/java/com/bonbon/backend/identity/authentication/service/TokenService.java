@@ -163,6 +163,7 @@ public class TokenService {
             case CUSTOMER -> ActorType.CUSTOMER;
             case SELLER -> ActorType.SHOP_ACCOUNT;
             case ADMIN -> ActorType.ADMIN;
+            case DEVELOPER -> ActorType.DEVELOPER;
         };
     }
 

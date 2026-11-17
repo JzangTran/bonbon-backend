@@ -49,8 +49,6 @@ class SecurityConfig {
 
     static final String[] PUBLIC_PATHS = {
             "/actuator/health/**",
-            "/v3/api-docs/**",
-            "/scalar",
             // The WebSocket handshake carries no token; the first message does (see OrderSocketHandler).
             "/ws/orders",
             "/api/public/**",
@@ -60,6 +58,8 @@ class SecurityConfig {
             "/api/admin/auth/**",
             // seller-team sign-in and password recovery for main accounts (flows/seller-team)
             "/api/seller-team/login",
+            // the developer portal's sign-in (an approved request is the only way in)
+            "/api/developer/auth/**",
             "/api/seller-team/recover/**"
     };
 
@@ -72,7 +72,8 @@ class SecurityConfig {
     };
 
     @Bean
-    SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
+    SecurityFilterChain apiSecurity(HttpSecurity http,
+            @org.springframework.beans.factory.annotation.Value("${bonbon.api-docs.public:false}") boolean publicApiDocs) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 // Spring's defaults (nosniff, frame DENY, no-store, HSTS over HTTPS) plus a referrer policy and a CSP.
@@ -85,6 +86,11 @@ class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(PUBLIC_PATHS).permitAll()
+                        // The API reference: open where the clients generate their types (dev, test); elsewhere only an approved developer.
+                        .requestMatchers("/v3/api-docs/**", "/scalar").access(publicApiDocs
+                                ? (a, c) -> new org.springframework.security.authorization.AuthorizationDecision(true)
+                                : org.springframework.security.authorization.AuthorityAuthorizationManager.hasAuthority("api-docs:read"))
+                        .requestMatchers(HttpMethod.POST, "/api/developer/access-requests").permitAll()
                         // Reading the category tree is public (browsing filters); writes live under /api/admin.
                         .requestMatchers(HttpMethod.GET, "/api/categories", "/api/display-categories").permitAll()
                         // Guests browse shops and menus before logging in (browse-vendors-in-area.md).

@@ -66,6 +66,10 @@ bonbon:
     web-url: ${BONBON_WEB_URL:http://localhost:5173}
     # Where the merchant pages open from an email: https://merchant.bonbon.com in production (a subdomain), the /merchant path in development.
     merchant-url: ${BONBON_MERCHANT_URL:${bonbon.app.web-url}/merchant}
+    # The developer portal (API reference for approved developers): https://developers.bonbon.com in production.
+    developers-url: ${BONBON_DEVELOPERS_URL:${bonbon.app.web-url}/developers}
+    # The public base URL of this API, shown as the server in the API reference: https://api.bonbon.com in production.
+    api-url: ${BONBON_API_URL:}
   mail:
     from: ${BONBON_MAIL_FROM:bonbon <no-reply@bonbon.local>}
   admin:

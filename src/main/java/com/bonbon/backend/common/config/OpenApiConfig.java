@@ -67,7 +67,16 @@ class OpenApiConfig {
     }
 
     @Bean
-    OpenAPI bonbonOpenApi() {
+    OpenAPI bonbonOpenApi(@org.springframework.beans.factory.annotation.Value("${bonbon.app.api-url:}") String apiUrl) {
+        OpenAPI api = bonbonOpenApiBase();
+        if (!apiUrl.isBlank()) {
+            // the base URL developers call; every path already starts with /api
+            api.servers(List.of(new io.swagger.v3.oas.models.servers.Server().url(apiUrl.replaceAll("/+$", "")).description("bonbon API")));
+        }
+        return api;
+    }
+
+    private static OpenAPI bonbonOpenApiBase() {
         return new OpenAPI()
                 .info(new Info().title("bonbon API").version("v1").description(DESCRIPTION))
                 .components(new Components()

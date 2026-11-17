@@ -9,5 +9,6 @@ public enum ActorType {
     MAIN_ACCOUNT,
     MEMBER,
     ADMIN,
+    DEVELOPER,
     SYSTEM
 }

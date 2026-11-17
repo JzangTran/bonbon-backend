@@ -164,7 +164,7 @@ class ShopOrdersService implements ShopOrders {
                     case CUSTOMER -> "CUSTOMER";
                     case SHOP_ACCOUNT, MAIN_ACCOUNT, MEMBER -> "SHOP";
                     case ADMIN -> "ADMIN";
-                    case SYSTEM -> "SYSTEM";
+                    case SYSTEM, DEVELOPER -> "SYSTEM";
                 }, h.getReason(), h.getCreatedAt())).toList();
         return new ShopOrderDetail(o.getId(), o.getNumber(), o.getStatus(), o.getPaymentMethod(), o.getPaymentStatus(), o.getDeliveryName(),
                 masked ? maskPhone(o.getDeliveryPhone()) : o.getDeliveryPhone(),

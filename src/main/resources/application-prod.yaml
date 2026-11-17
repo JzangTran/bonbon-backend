@@ -11,8 +11,9 @@ bonbon:
     provider: ${BONBON_PAYMENT_PROVIDER:momo}
 
 springdoc:
+  # The API reference is served to approved developers only (api-docs:read); see SecurityConfig.
   api-docs:
-    enabled: false
+    enabled: true
 
 server:
   # Behind Caddy on the compose network (the backend port is never published): trust its X-Forwarded-For/-Proto so

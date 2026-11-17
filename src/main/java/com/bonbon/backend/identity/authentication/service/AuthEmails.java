@@ -42,7 +42,7 @@ class AuthEmails {
     void onPasswordLinkRequested(PasswordLinkRequested event) {
         String path = event.initialPassword() ? "/set-password" : "/reset-password";
         String link = link(path, event.rawToken());
-        String subject = event.initialPassword() ? "Đặt mật khẩu tài khoản quản trị bonbon" : "Đặt lại mật khẩu bonbon";
+        String subject = event.initialPassword() ? "Đặt mật khẩu tài khoản bonbon" : "Đặt lại mật khẩu bonbon";
         String validity = event.initialPassword() ? "24 giờ" : "1 giờ";
         sender.send(new EmailMessage(event.email(), subject,
                 "Chào " + event.name() + ",\n\n"

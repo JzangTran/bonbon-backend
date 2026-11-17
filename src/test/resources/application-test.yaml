@@ -1,4 +1,7 @@
 bonbon:
+  api-docs:
+    # the contract tests read /v3/api-docs without a token
+    public: true
   order:
     timers:
       # Tests call OrderTimers.runOnce themselves, with a time they choose.

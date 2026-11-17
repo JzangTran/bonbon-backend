@@ -417,7 +417,7 @@ public class OrderService {
             case CUSTOMER -> "CUSTOMER";
             case SHOP_ACCOUNT, MAIN_ACCOUNT, MEMBER -> "SHOP";
             case ADMIN -> "ADMIN";
-            case SYSTEM -> "SYSTEM";
+            case SYSTEM, DEVELOPER -> "SYSTEM";
         };
     }
 
