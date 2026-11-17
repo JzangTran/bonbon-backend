@@ -25,9 +25,21 @@ spring:
     locations: classpath:db/migration
     # Flyway's history stays in public whatever the search path says; migrations after V0047 name the schema of every table.
     default-schema: public
+  # Mailpit in development and on the demo by default; a real SMTP provider (Brevo, Gmail, SES…) when these are set.
   mail:
     host: ${SPRING_MAIL_HOST:localhost}
     port: ${SPRING_MAIL_PORT:1025}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    # Vietnamese subjects and bodies
+    default-encoding: UTF-8
+    properties:
+      mail.smtp.auth: ${BONBON_MAIL_SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${BONBON_MAIL_STARTTLS:false}
+      mail.smtp.starttls.required: ${BONBON_MAIL_STARTTLS:false}
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
   servlet:
     multipart:
       # Uploads are validated per use (type sniffed, size per field); this is only the outer bound.
