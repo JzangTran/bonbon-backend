@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
  * provider's SMTP host and credentials come from SPRING_MAIL_* environment variables.
  */
 @Component
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "bonbon.mail.provider", havingValue = "smtp", matchIfMissing = true)
 class SmtpEmailSender implements EmailSender {
 
     private final JavaMailSender mailSender;
