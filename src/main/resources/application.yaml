@@ -84,6 +84,10 @@ bonbon:
     api-url: ${BONBON_API_URL:}
   mail:
     from: ${BONBON_MAIL_FROM:bonbon <no-reply@bonbon.local>}
+    # smtp (default: spring.mail above) or brevo (Brevo's HTTP API with an API key, no SMTP key needed)
+    provider: ${BONBON_MAIL_PROVIDER:smtp}
+    brevo:
+      api-key: ${BREVO_API_KEY:}
   admin:
     seed:
       # First administrator, created once at startup if none exists (admin-login.md).
