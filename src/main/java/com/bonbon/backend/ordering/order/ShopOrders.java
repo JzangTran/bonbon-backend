@@ -51,7 +51,8 @@ public interface ShopOrders {
             List<Step> timeline) {
     }
 
-    record Line(String name, int quantity, int unitPrice, int lineTotal, String note, List<LineOption> options) {
+    /** {@code menuItemId} lets the shop mark the dish sold out from the order; null for a dish since deleted. */
+    record Line(String name, int quantity, int unitPrice, int lineTotal, String note, List<LineOption> options, UUID menuItemId) {
     }
 
     record LineOption(String group, String name, int priceDelta) {

@@ -27,7 +27,9 @@ public record ShopApplicationView(
         ShopInfo shop,
         Shipping shipping,
         Tax tax,
-        Identity identity) {
+        Identity identity,
+        @Schema(description = "Tạm ngưng nhận đơn đến lúc này rồi tự mở lại; rỗng khi không tạm ngưng có hạn.") Instant pausedUntil,
+        @Schema(description = "Lý do tạm ngưng quán đã chọn.") String pauseReason) {
 
     /** The service area the shop's map point falls in; its limit is the largest delivery radius the shop may set. */
     @Schema(name = "ShopServiceArea")

@@ -32,6 +32,8 @@ public record MenuView(List<Section> sections) {
             boolean soldOut,
             Integer stockQuantity,
             int sortOrder,
-            List<UUID> optionGroupIds) {
+            List<UUID> optionGroupIds,
+            @io.swagger.v3.oas.annotations.media.Schema(description = "Hết món chỉ đến lúc này (hết hôm nay); rỗng là hết đến khi bật lại hoặc đang bán.")
+            java.time.Instant soldOutUntil) {
     }
 }

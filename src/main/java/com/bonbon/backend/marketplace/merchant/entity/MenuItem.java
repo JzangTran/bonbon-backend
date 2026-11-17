@@ -57,6 +57,10 @@ public class MenuItem {
     @Column(name = "stock_quantity")
     private Integer stockQuantity;
 
+    /** Sold out only until this moment ("hết hôm nay"); null when sold out with no end or when available. */
+    @Column(name = "sold_out_until")
+    private Instant soldOutUntil;
+
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
 
@@ -108,7 +112,18 @@ public class MenuItem {
 
     /** Sold out by the seller's switch, or because the stock ran out. */
     public boolean isSoldOut() {
-        return status == MenuItemStatus.SOLD_OUT || (stockQuantity != null && stockQuantity <= 0);
+        boolean switchedOff = status == MenuItemStatus.SOLD_OUT && (soldOutUntil == null || soldOutUntil.isAfter(Instant.now()));
+        return switchedOff || (stockQuantity != null && stockQuantity <= 0);
+    }
+
+    /** The quick switch: {@code until} null is sold out until switched back; available clears it. */
+    public void setAvailability(MenuItemStatus status, Instant until) {
+        this.status = status;
+        this.soldOutUntil = status == MenuItemStatus.SOLD_OUT ? until : null;
+    }
+
+    public Instant getSoldOutUntil() {
+        return soldOutUntil;
     }
 
     public void archive(Instant now) {

@@ -205,12 +205,21 @@ public class ShopProfileService {
     /** Overrides the schedule at once; orders already accepted are unaffected. */
     @Transactional
     public ShopApplicationView setAcceptingOrders(CurrentPrincipal owner, boolean accepting) {
+        return setAcceptingOrders(owner, new ShopProfileRequests.AcceptingOrders(accepting, null, null));
+    }
+
+    @Transactional
+    public ShopApplicationView setAcceptingOrders(CurrentPrincipal owner, ShopProfileRequests.AcceptingOrders request) {
+        boolean accepting = request.accepting();
         Vendor vendor = approvedShop(owner.id());
         if (accepting && vendor.getCommissionStage().pausesOrders()) {
             throw new BusinessException(HttpStatus.CONFLICT, "PAUSED_FOR_COMMISSION",
                     "Quán đang bị tạm ngưng nhận đơn vì chưa trả hoa hồng quá hạn. Trả khoản nợ để nhận đơn trở lại.");
         }
-        vendor.setAcceptingOrders(accepting, owner.actorType(), owner.id(), Instant.now());
+        Instant now = Instant.now();
+        Instant until = !accepting && request.pauseMinutes() != null ? now.plus(Duration.ofMinutes(request.pauseMinutes())) : null;
+        String reason = request.reason() == null || request.reason().isBlank() ? null : request.reason().strip();
+        vendor.setAcceptingOrders(accepting, owner.actorType(), owner.id(), now, until, reason);
         return views.toView(vendors.save(vendor));
     }
 

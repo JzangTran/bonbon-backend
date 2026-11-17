@@ -125,6 +125,13 @@ public class Vendor {
     @Column(name = "accepting_orders_changed_by_id")
     private UUID acceptingOrdersChangedById;
 
+    /** A pause that ends by itself (SellingDayJob); null for a pause with no end. */
+    @Column(name = "paused_until")
+    private Instant pausedUntil;
+
+    @Column(name = "pause_reason")
+    private String pauseReason;
+
     @Column(name = "rejection_reason", columnDefinition = "text")
     private String rejectionReason;
 
@@ -348,10 +355,25 @@ public class Vendor {
     }
 
     public void setAcceptingOrders(boolean accepting, ActorType byType, UUID byId, Instant at) {
+        setAcceptingOrders(accepting, byType, byId, at, null, null);
+    }
+
+    /** Pausing may carry an end and a reason; taking orders again clears both. */
+    public void setAcceptingOrders(boolean accepting, ActorType byType, UUID byId, Instant at, Instant pausedUntil, String pauseReason) {
+        this.pausedUntil = accepting ? null : pausedUntil;
+        this.pauseReason = accepting ? null : pauseReason;
         this.acceptingOrders = accepting;
         this.acceptingOrdersChangedAt = at;
         this.acceptingOrdersChangedByType = byType;
         this.acceptingOrdersChangedById = byId;
+    }
+
+    public Instant getPausedUntil() {
+        return pausedUntil;
+    }
+
+    public String getPauseReason() {
+        return pauseReason;
     }
 
     public Instant getAcceptingOrdersChangedAt() {
