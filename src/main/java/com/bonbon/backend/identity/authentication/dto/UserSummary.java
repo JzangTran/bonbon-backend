@@ -12,7 +12,13 @@ public record UserSummary(UUID id, String email, String name, Role activeRole, S
         @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) TeamSession team) {
 
     public static UserSummary of(User user, Role activeRole) {
-        return new UserSummary(user.getId(), user.getEmail(), user.getName(), activeRole, user.getRoles(), null);
+        // the apps switch between customer and seller only; the developer role is used on the developer portal alone
+        java.util.Set<Role> roles = java.util.EnumSet.noneOf(Role.class);
+        roles.addAll(user.getRoles());
+        if (activeRole != Role.DEVELOPER) {
+            roles.remove(Role.DEVELOPER);
+        }
+        return new UserSummary(user.getId(), user.getEmail(), user.getName(), activeRole, roles, null);
     }
 
     /** A main account or member. {@code kind} is MAIN_ACCOUNT or MEMBER; {@code shopId} null means the team console with no shop open. */

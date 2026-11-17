@@ -5,6 +5,9 @@ spring:
   # Mailpit from deploy/compose.dev.yaml: SMTP 1025, inbox at http://localhost:8025
 
 bonbon:
+  api-docs:
+    # npm run api:generate in web and mobile reads /v3/api-docs without a token
+    public: true
   storage:
     # S3Mock from deploy/compose.dev.yaml accepts any key pair.
     endpoint: ${BONBON_STORAGE_ENDPOINT:http://localhost:9090}

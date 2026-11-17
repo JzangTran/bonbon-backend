@@ -51,6 +51,9 @@ public enum Permission {
     LEGAL_DOCUMENT_WRITE("legal-document:write"),
     LEGAL_DOCUMENT_READ_CONSENTS("legal-document:read-consents"),
     DATA_REQUEST_HANDLE("data-request:handle"),
+    DEVELOPER_ACCESS_DECIDE("developer-access:decide"),
+    /** The developer portal: the API reference. Only the DEVELOPER role holds it. */
+    API_DOCS_READ("api-docs:read"),
     REPORT_READ("report:read"),
     REPORT_DECIDE("report:decide"),
     MODERATION_WRITE("moderation:write"),
