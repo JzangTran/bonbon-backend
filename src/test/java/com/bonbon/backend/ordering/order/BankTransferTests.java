@@ -27,6 +27,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import tools.jackson.databind.json.JsonMapper;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -140,6 +141,34 @@ class BankTransferTests {
                 .andReturn().getResponse().getContentAsString(), "$.id");
         call(customer, get("/api/orders/" + id + "/bank-transfer"), null).andExpect(jsonPath("$.code").value("NOT_A_BANK_TRANSFER"));
         call(seller, post("/api/merchant/orders/" + id + "/transfer-received"), null).andExpect(jsonPath("$.code").value("NOT_A_BANK_TRANSFER"));
+    }
+
+    @Test
+    void theShopChangesWhereItIsPaidAndTheNextQrUsesIt() throws Exception {
+        receivingAccount("Vietcombank", "0011001234567");
+        UUID ownerId = jdbc.sql("select owner_user_id from vendors where id = :v").param("v", vendorId).query(UUID.class).single();
+        Map<String, Object> body = Map.of("bankName", "MBBank", "accountNumber", "0912345678901", "accountHolderName", "NGUYEN VAN A");
+
+        // a sign-in older than ten minutes must sign in again first
+        String stale = tokens.issue(users.findById(ownerId).orElseThrow(), Role.SELLER, Instant.now().minusSeconds(3600)).accessToken();
+        call(stale, put("/api/merchant/shop/payout-account"), body).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("REAUTH_REQUIRED"));
+        call(seller, put("/api/merchant/shop/payout-account"), Map.of("bankName", "Ngân hàng tự đặt", "accountNumber", "0912345678901", "accountHolderName", "NGUYEN VAN A"))
+                .andExpect(status().isBadRequest());
+        call(seller, put("/api/merchant/shop/payout-account"), Map.of("bankName", "Vietcombank", "accountNumber", "0011001234567", "accountHolderName", "NGUYEN VAN A"))
+                .andExpect(jsonPath("$.code").value("SAME_PAYOUT_ACCOUNT"));
+
+        call(seller, put("/api/merchant/shop/payout-account"), body).andExpect(status().isOk())
+                .andExpect(jsonPath("$.tax.payout.bankName").value("MBBank")).andExpect(jsonPath("$.tax.payout.accountLast4").value("8901"));
+        // the old account stays as history; one active
+        assertThat(jdbc.sql("select status from marketplace.vendor_payout_accounts where vendor_id = :v order by created_at").param("v", vendorId)
+                .query(String.class).list()).containsExactly("REPLACED", "ACTIVE");
+        assertThat(jdbc.sql("select count(*) from notifications where recipient_id = :u and type = 'SHOP_PAYOUT_ACCOUNT_CHANGED'").param("u", ownerId)
+                .query(Long.class).single()).isEqualTo(1);
+
+        String id = JsonPath.read(call(customer, post("/api/orders"), order("BANK_TRANSFER")).andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        call(customer, get("/api/orders/" + id + "/bank-transfer"), null)
+                .andExpect(jsonPath("$.bankName").value("MBBank")).andExpect(jsonPath("$.accountNumber").value("0912345678901"));
     }
 
     private void receivingAccount(String bank, String account) {

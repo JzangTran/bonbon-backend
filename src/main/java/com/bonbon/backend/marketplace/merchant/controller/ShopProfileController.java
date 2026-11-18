@@ -34,10 +34,13 @@ class ShopProfileController {
 
     private final ShopProfileService profiles;
     private final AutoReplyService autoReplies;
+    private final com.bonbon.backend.marketplace.merchant.service.PayoutAccountService payoutAccounts;
 
-    ShopProfileController(ShopProfileService profiles, AutoReplyService autoReplies) {
+    ShopProfileController(ShopProfileService profiles, AutoReplyService autoReplies,
+            com.bonbon.backend.marketplace.merchant.service.PayoutAccountService payoutAccounts) {
         this.profiles = profiles;
         this.autoReplies = autoReplies;
+        this.payoutAccounts = payoutAccounts;
     }
 
     /** Partial update; a changed address returns the shop to PENDING until approved again. */
@@ -60,6 +63,18 @@ class ShopProfileController {
     @PutMapping("/opening-hours")
     ShopApplicationView openingHours(CurrentPrincipal principal, @Valid @RequestBody ShopProfileRequests.OpeningHours request) {
         return profiles.replaceOpeningHours(principal, request);
+    }
+
+    @Operation(operationId = "changeMyPayoutAccount", summary = "Đổi tài khoản nhận tiền",
+            description = "Áp dụng ngay cho mã VietQR khách chuyển khoản và cho các lần nền tảng chi trả. Cần đăng nhập trong 10 phút gần nhất; chỉ tài khoản cửa hàng (không phải tài khoản chính hay thành viên). Tài khoản cũ được giữ làm lịch sử; chủ quán nhận thông báo. Nếu quán dùng SePay, nhớ liên kết tài khoản mới trong SePay.")
+    @ApiError(status = 403, code = "REAUTH_REQUIRED", when = "Đăng nhập đã quá 10 phút.")
+    @ApiError(status = 409, code = "SAME_PAYOUT_ACCOUNT", when = "Trùng tài khoản đang dùng.")
+    @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người gọi chưa có cửa hàng được duyệt.")
+    @PutMapping("/payout-account")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('vendor:create')")
+    ShopApplicationView payoutAccount(CurrentPrincipal principal, @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody ShopProfileRequests.PayoutAccount request) {
+        Object claim = jwt.getClaims().get(CurrentPrincipal.CLAIM_AUTH_TIME);
+        return payoutAccounts.change(principal, claim instanceof Number n ? java.time.Instant.ofEpochSecond(n.longValue()) : null, request, java.time.Instant.now());
     }
 
     @Operation(operationId = "closeMyShop", summary = "Đóng cửa hàng", description = "Đóng hẳn cửa hàng, không mở lại được. Cần đăng nhập trong 10 phút gần nhất. Quán chuyển sang `CLOSING`: biến mất khỏi danh sách, không nhận đơn mới, nhưng các đơn đang làm vẫn làm tiếp và xem được thu nhập. Quán thành `CLOSED` khi không còn đơn đang làm, khiếu nại hoặc kháng nghị chưa xong, không còn tiền bị giữ và sổ cái đã về 0 (số dương được chi trả, số âm được thu hoặc xoá bởi quản trị viên). Muốn bán lại phải mở cửa hàng mới.")
