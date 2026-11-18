@@ -12,7 +12,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 
-/** One external sign-in method attached to a user (Google today; Facebook later). */
+/** One external sign-in method attached to a user (Google). */
 @Entity
 @Table(schema = "identity", name = "user_auth_providers")
 public class UserAuthProvider {

@@ -137,7 +137,7 @@ public class RegistrationService {
         }
         if (!user.hasPassword()) {
             throw new BusinessException(HttpStatus.CONFLICT, "SIGN_IN_TO_ADD_ROLE",
-                    "Tài khoản này đăng nhập bằng Google/Facebook. Hãy đăng nhập rồi thêm vai trò trong ứng dụng.");
+                    "Tài khoản này đăng nhập bằng Google. Hãy đăng nhập rồi thêm vai trò trong ứng dụng.");
         }
         String email = user.getEmail();
         if (req.password() == null || !passwords.matches(req.password(), user.getPasswordHash())) {
