@@ -53,9 +53,9 @@ public class SepayService {
     @Transactional(readOnly = true)
     public SepayViews.Status status(CurrentPrincipal caller) {
         UUID vendorId = vendorOf(caller);
-        var connection = jdbc.sql("select created_at, last_event_at from payments.sepay_connections where vendor_id = :v")
+        var connection = jdbc.sql("select created_at, last_event_at, sub_account from payments.sepay_connections where vendor_id = :v")
                 .param("v", vendorId)
-                .query((rs, n) -> new java.time.Instant[] {rs.getTimestamp(1).toInstant(), instant(rs.getTimestamp(2))})
+                .query((rs, n) -> new Object[] {rs.getTimestamp(1).toInstant(), instant(rs.getTimestamp(2)), rs.getString(3)})
                 .optional();
         List<SepayViews.Event> recent = jdbc.sql("""
                 select sepay_id, amount, content, order_number, outcome, received_at from payments.sepay_events
@@ -64,8 +64,24 @@ public class SepayService {
                 .query((rs, n) -> new SepayViews.Event(rs.getLong(1), rs.getLong(2), rs.getString(3), (Long) rs.getObject(4), rs.getString(5),
                         rs.getTimestamp(6).toInstant()))
                 .list();
-        return new SepayViews.Status(connection.isPresent(), webhookUrl(vendorId), connection.map(c -> c[0]).orElse(null),
-                connection.map(c -> c[1]).orElse(null), recent);
+        return new SepayViews.Status(connection.isPresent(), webhookUrl(vendorId), connection.map(c -> (java.time.Instant) c[0]).orElse(null),
+                connection.map(c -> (java.time.Instant) c[1]).orElse(null), connection.map(c -> (String) c[2]).orElse(null), recent);
+    }
+
+    /**
+     * The shop's SePay sub-account (VA) code: some banks linked through SePay report a transfer only when its content starts with
+     * {@code SEVQR TKP<code>}, so the VietQR content carries it from now on. Blank removes it.
+     */
+    @Transactional
+    public SepayViews.Status setSubAccount(CurrentPrincipal caller, String code) {
+        UUID vendorId = vendorOf(caller);
+        String value = code == null || code.isBlank() ? null : code.strip().toUpperCase(java.util.Locale.ROOT).replaceFirst("^TKP(?=.)", "");
+        int updated = jdbc.sql("update payments.sepay_connections set sub_account = :s where vendor_id = :v")
+                .param("s", value).param("v", vendorId).update();
+        if (updated == 0) {
+            throw BusinessException.conflict("SEPAY_NOT_CONNECTED", "Hãy kết nối SePay trước.");
+        }
+        return status(caller);
     }
 
     /** Creates the connection, or replaces the secret: the old one stops working at once. */

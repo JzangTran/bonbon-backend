@@ -11,6 +11,12 @@ import java.util.UUID;
  */
 public interface OnlinePayments {
 
+    /**
+     * What a bank transfer's content starts with for this shop, before {@code BONBON<number>}: empty, or the SePay sub-account
+     * marker ({@code "SEVQR TKP2BO "}) when the shop's bank reports to SePay only transfers that carry it.
+     */
+    String transferPrefix(UUID vendorId);
+
     /** The payments row of a cash-on-delivery order, created with the order. */
     void recordCashOnDelivery(UUID orderId, long orderNumber, UUID customerId, int amount);
 
