@@ -231,10 +231,9 @@ class OAuthLoginTests {
     }
 
     @Test
-    void facebookIsNotSupportedYet() throws Exception {
+    void facebookIsNotAProvider() throws Exception {
         oauth(Map.of("provider", "FACEBOOK", "token", "anything"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("PROVIDER_NOT_SUPPORTED"));
+                .andExpect(status().isBadRequest());
     }
 
     // --- helpers

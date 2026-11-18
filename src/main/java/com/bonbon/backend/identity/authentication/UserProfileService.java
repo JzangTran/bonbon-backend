@@ -64,7 +64,7 @@ public class UserProfileService {
         User user = find(userId);
         if (!user.hasPassword()) {
             throw new BusinessException(HttpStatus.CONFLICT, "NO_PASSWORD",
-                    "Tài khoản đăng nhập bằng Google/Facebook không có mật khẩu để đổi.");
+                    "Tài khoản đăng nhập bằng Google không có mật khẩu để đổi.");
         }
         if (!passwords.matches(currentPassword, user.getPasswordHash())) {
             throw new BusinessException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Mật khẩu hiện tại không đúng.");

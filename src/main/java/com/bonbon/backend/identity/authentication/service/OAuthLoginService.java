@@ -61,7 +61,7 @@ public class OAuthLoginService {
 
     @Transactional
     public LoginResponse login(OAuthLoginRequest req, ClientContext client) {
-        if (req.provider() != AuthProvider.GOOGLE || !google.isEnabled()) {
+        if (!google.isEnabled()) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "PROVIDER_NOT_SUPPORTED",
                     "Phương thức đăng nhập này chưa được hỗ trợ.");
         }
