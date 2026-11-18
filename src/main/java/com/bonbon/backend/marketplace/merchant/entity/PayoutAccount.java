@@ -76,6 +76,11 @@ public class PayoutAccount {
         this.accountHolderName = accountHolderName;
     }
 
+    /** A newer account took over; this row stays as history. */
+    public void replace() {
+        this.status = Status.REPLACED;
+    }
+
     public void setAccountNumber(String encrypted, String last4) {
         this.accountNumberEncrypted = encrypted;
         this.accountLast4 = last4;

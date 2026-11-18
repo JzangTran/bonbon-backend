@@ -57,6 +57,15 @@ public final class ShopProfileRequests {
     public record OpeningHours(@NotNull @Size(max = 28) List<ShopApplicationRequests.@Valid @NotNull Window> openingHours) {
     }
 
+    @Schema(name = "PayoutAccountChangeRequest", description = "Tài khoản ngân hàng mới nhận tiền: tiền khách chuyển khoản (VietQR) và tiền nền tảng chi trả.")
+    public record PayoutAccount(
+            @Schema(description = "Tên ngân hàng trong danh sách VietQR.") @jakarta.validation.constraints.NotBlank @Size(max = 100)
+            @com.bonbon.backend.common.validation.KnownBank String bankName,
+            @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Pattern(regexp = "^\\d{6,19}$", message = "Số tài khoản gồm 6–19 chữ số") String accountNumber,
+            @jakarta.validation.constraints.NotBlank @Size(max = 100)
+            @com.bonbon.backend.common.validation.PersonName(message = "Tên chủ tài khoản chỉ gồm chữ cái và khoảng trắng") String accountHolderName) {
+    }
+
     @Schema(name = "AcceptingOrdersRequest")
 
     public record AcceptingOrders(@NotNull Boolean accepting,

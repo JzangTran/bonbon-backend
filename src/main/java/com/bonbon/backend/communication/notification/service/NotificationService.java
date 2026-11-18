@@ -384,6 +384,13 @@ public class NotificationService {
         events.publishEvent(new Created(List.of(n)));
     }
 
+    /** The receiving account changed: the owner sees it at once, so a change they did not make does not go unnoticed. */
+    @EventListener
+    void onPayoutAccountChanged(com.bonbon.backend.marketplace.merchant.PayoutAccountChanged e) {
+        toShop(e.vendorId(), "SHOP_PAYOUT_ACCOUNT_CHANGED", "Đã đổi tài khoản nhận tiền",
+                "Tài khoản mới: " + e.bankName() + " •••• " + e.accountLast4() + ". Nếu không phải bạn đổi, hãy đổi mật khẩu và liên hệ hỗ trợ ngay.");
+    }
+
     /** The owner is told the shop is closing, and again when it is closed. */
     @EventListener
     void onShopClosureChanged(ShopClosureChanged e) {
