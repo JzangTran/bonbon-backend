@@ -41,6 +41,12 @@ class PaymentService implements OnlinePayments {
     }
 
     @Override
+    public String transferPrefix(UUID vendorId) {
+        return jdbc.sql("select sub_account from payments.sepay_connections where vendor_id = :v and sub_account is not null")
+                .param("v", vendorId).query(String.class).optional().map(code -> "SEVQR TKP" + code + " ").orElse("");
+    }
+
+    @Override
     public void recordCashOnDelivery(UUID orderId, long orderNumber, UUID customerId, int amount) {
         jdbc.sql("""
                 insert into payments (order_id, order_number, customer_id, method, amount) values (:o, :n, :c, 'COD', :a)

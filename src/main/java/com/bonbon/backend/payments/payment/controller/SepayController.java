@@ -8,6 +8,7 @@ import com.bonbon.backend.common.security.CurrentPrincipal;
 import com.bonbon.backend.payments.payment.dto.SepayViews;
 import com.bonbon.backend.payments.payment.service.SepayService;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -50,6 +52,18 @@ class SepayController {
     @ResponseStatus(HttpStatus.CREATED)
     SepayViews.Connection connect(CurrentPrincipal principal) {
         return sepay.connect(principal);
+    }
+
+    @Tag(name = ApiTags.SELLER_ORDERS)
+    @Operation(operationId = "setSepaySubAccount", summary = "Đặt mã tài khoản ảo SePay",
+            description = "Với ngân hàng mà SePay chỉ báo giao dịch có nội dung bắt đầu bằng `SEVQR TKP<mã VA>` (ví dụ VietinBank cá nhân), quán nhập mã VA SePay cấp; từ đó nội dung VietQR của đơn là `SEVQR TKP<mã> BONBON<số đơn>`. Để trống để bỏ.")
+    @ApiError(status = 400, code = "VALIDATION_FAILED", when = "Mã không phải 1–10 chữ cái hoặc chữ số.")
+    @ApiError(status = 409, code = "SEPAY_NOT_CONNECTED", when = "Quán chưa kết nối SePay.")
+    @ApiError(status = 409, code = "SHOP_NOT_APPROVED", when = "Người gọi chưa có cửa hàng được duyệt.")
+    @PutMapping("/api/merchant/payments/sepay/sub-account")
+    @PreAuthorize("hasAuthority('vendor:write')")
+    SepayViews.Status setSubAccount(CurrentPrincipal principal, @Valid @RequestBody SepayViews.SubAccount body) {
+        return sepay.setSubAccount(principal, body.code());
     }
 
     @Tag(name = ApiTags.SELLER_ORDERS)

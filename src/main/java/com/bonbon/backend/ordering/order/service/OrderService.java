@@ -329,7 +329,7 @@ public class OrderService {
         }
         TransferAccount account = transferAccount(order.getVendorId())
                 .orElseThrow(() -> BusinessException.conflict("BANK_TRANSFER_UNAVAILABLE", "Quán này chưa nhận chuyển khoản."));
-        String message = "BONBON" + order.getNumber();
+        String message = payments.transferPrefix(order.getVendorId()) + "BONBON" + order.getNumber();
         return new OrderViews.BankTransfer(account.bank().shortName(), account.bank().bin(), account.account().accountNumber(),
                 account.account().holderName(), order.getGrandTotal(), message,
                 VietQr.payload(account.bank().bin(), account.account().accountNumber(), order.getGrandTotal(), message),

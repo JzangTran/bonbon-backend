@@ -15,7 +15,15 @@ public final class SepayViews {
     public record Status(boolean connected,
             @Schema(description = "Địa chỉ nhận webhook để dán vào SePay.") String webhookUrl,
             Instant connectedAt, Instant lastEventAt,
+            @Schema(description = "Mã tài khoản ảo (VA) SePay của quán, ví dụ `2BO`; có thì nội dung chuyển khoản bắt đầu bằng `SEVQR TKP<mã>`.") String subAccount,
             @Schema(description = "Mười giao dịch gần nhất SePay báo về.") List<Event> recent) {
+    }
+
+    @Schema(name = "SepaySubAccountRequest", description = "Mã tài khoản ảo (VA) SePay cấp cho tài khoản ngân hàng của quán; để trống để bỏ.")
+    public record SubAccount(
+            @Schema(description = "1–10 chữ cái hoặc chữ số, ví dụ `2BO`; không gồm tiền tố `TKP`.", example = "2BO")
+            @jakarta.validation.constraints.Pattern(regexp = "^\\s*(([Tt][Kk][Pp])?[A-Za-z0-9]{1,10})?\\s*$", message = "Mã tài khoản ảo gồm 1–10 chữ cái hoặc chữ số.")
+            String code) {
     }
 
     @Schema(name = "SepayEvent")

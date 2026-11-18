@@ -153,6 +153,29 @@ class SepayTests {
         call(customer, get("/api/merchant/payments/sepay"), null).andExpect(status().isForbidden());
     }
 
+    @Test
+    void aSubAccountCodeGoesInFrontOfTheTransferContentAndStillMatches() throws Exception {
+        receivingAccount("VietinBank", "0011001234567");
+        call(seller, put("/api/merchant/payments/sepay/sub-account"), Map.of("code", "2BO")).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("SEPAY_NOT_CONNECTED"));
+        String key = connect();
+        call(seller, put("/api/merchant/payments/sepay/sub-account"), Map.of("code", "2b o")).andExpect(status().isBadRequest());
+        call(seller, put("/api/merchant/payments/sepay/sub-account"), Map.of("code", " tkp2bo ")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.subAccount").value("2BO"));
+        String order = call(customer, post("/api/orders"), order("BANK_TRANSFER")).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String id = JsonPath.read(order, "$.id");
+        long number = ((Number) JsonPath.read(order, "$.number")).longValue();
+        call(customer, get("/api/orders/" + id + "/bank-transfer"), null)
+                .andExpect(jsonPath("$.message").value("SEVQR TKP2BO BONBON" + number));
+
+        hook(key, Map.of("id", System.nanoTime(), "content", "SEVQR TKP2BO BONBON" + number, "transferType", "in", "transferAmount", 55000))
+                .andExpect(status().isOk());
+        call(customer, get("/api/orders/" + id + "/bank-transfer"), null).andExpect(jsonPath("$.received").value(true));
+
+        call(seller, put("/api/merchant/payments/sepay/sub-account"), Map.of("code", "")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.subAccount").doesNotExist());
+    }
+
     private String connect() throws Exception {
         return JsonPath.read(call(seller, post("/api/merchant/payments/sepay"), null).andExpect(status().isCreated())
                 .andExpect(jsonPath("$.apiKey").value(startsWith("bb_"))).andReturn().getResponse().getContentAsString(), "$.apiKey");
