@@ -14,6 +14,8 @@ as real use would. Everything is invented: people, shops, phone numbers (`090000
 | Orders, first scenarios | 15 delivered (7 reviewed, 3 with a shop reply), 2 placed, 1 confirmed, 1 preparing, 1 out for delivery, 1 cancelled by the customer, 1 rejected by the shop, 1 delivered order with an open "missing item" case |
 | Orders, busy wave | about 80 more across all shops (popular shops get more): most delivered, about 50 reviews from 2 to 5 stars, replies on the low ones, a few cancelled or rejected, new and cooking orders on five of the newer shops; favourite shops for four customers |
 | Money | Commission ledger entries for every delivered order and a recorded payout to Cơm nhà Bếp Sen |
+| Everything else (`life.mjs`) | ~34 chat conversations (some unread) with quick replies and auto-replies; 1–3 vouchers per shop; work addresses, favourites, hidden shops, quiet hours and notification preferences; ~10 order complaints (waiting for the shop, accepted, disputed, decided by the admin) and 3 no-show reports; ~10 support tickets from customers and sellers (answered, waiting, closed) and public contact requests; reports of reviews, messages and shops (some decided); 5 personal-data requests at every stage; 14 help articles (2 drafts); penalties on four shops with appeals; payouts and adjustments; dishes flagged for the wrong category; 3 shop applications waiting for review, 1 rejected, 1 draft; chat moderation terms |
+| Notifications | made by all of the above, as in real use (orders, chats, tickets, complaints, reviews) |
 | Pictures (`photos.mjs`) | a logo, a cover and a photo for every dish, and ten home page categories with pictures |
 
 Password for every demo account: `bonbon-demo-2027` (override with `DEMO_PASSWORD`). The admin is the one from the
@@ -40,6 +42,16 @@ Running it again is safe: accounts, shops, menu items and addresses are created 
 scenarios run only while the first demo customer has no orders, and the busy wave only while none of customers 5 to 16 has
 one. On a stack seeded before the busy wave existed, running it again adds the new shops, customers and the busy wave.
 
+Then everything that is not a shop or an order (`life.mjs`), with the shops still open, and the realistic hours again after:
+
+```bash
+ADMIN_EMAIL=... ADMIN_PASSWORD=... DEMO_REDIS_CONTAINER=bonbon-dev-redis-1 node demo-data/life.mjs
+ADMIN_EMAIL=... ADMIN_PASSWORD=... DEMO_REDIS_CONTAINER=bonbon-dev-redis-1 node demo-data/seed.mjs
+```
+
+`life.mjs` takes about 12 minutes: a shop may only report a no-show 10 minutes after the order left, so it starts those
+orders first and reports them last. Each part checks what is there and runs once.
+
 Then the pictures, from a folder of food photos sorted by kind (the Food-11 layout: Bread, Rice, Noodles-Pasta, ...):
 
 ```bash
@@ -48,17 +60,28 @@ PHOTOS_DIR=~/Downloads/archive/evaluation ADMIN_EMAIL=... ADMIN_PASSWORD=... nod
 
 ### On the demo server
 
-Mailpit listens only on the server, so open a tunnel first and point the seed at the public API:
+The demo sends real email through an SMTP provider. While seeding, point the API back at the stack's own Mailpit, so the
+verification emails can be read and the hundreds of notifications for `example.com` addresses do not go out. On the server,
+in the deploy folder (the same `docker compose` command the deploy uses, with these variables in front of it):
 
 ```bash
-ssh -L 8025:127.0.0.1:8025 <user>@<demo server>      # keep it open in another terminal
-BONBON_API=https://api.bonbon.pro.vn ADMIN_EMAIL=... ADMIN_PASSWORD=... node demo-data/seed.mjs --always-open
-BONBON_API=https://api.bonbon.pro.vn ADMIN_EMAIL=... ADMIN_PASSWORD=... node demo-data/seed.mjs        # real opening hours again
-BONBON_API=https://api.bonbon.pro.vn PHOTOS_DIR=... ADMIN_EMAIL=... ADMIN_PASSWORD=... node demo-data/photos.mjs
+SPRING_MAIL_HOST=mailpit SPRING_MAIL_PORT=1025 SPRING_MAIL_USERNAME= SPRING_MAIL_PASSWORD= BONBON_MAIL_SMTP_AUTH=false BONBON_MAIL_STARTTLS=false \
+  docker compose -f compose.prod.yaml -f compose.demo.yaml --env-file .env.prod up -d backend
 ```
 
-Without `DEMO_REDIS_CONTAINER` (the server's Redis is not on this machine) the seed waits out the registration limit, about
-an hour per five accounts; run it on the server itself with `DEMO_REDIS_CONTAINER` set to skip the wait.
+Then, from your computer, with a tunnel to that Mailpit open in another terminal (`ssh -L 8025:127.0.0.1:8025 <user>@<server>`):
+
+```bash
+export BONBON_API=https://api.bonbon.pro.vn ADMIN_EMAIL=... ADMIN_PASSWORD=...
+node demo-data/seed.mjs --always-open
+node demo-data/life.mjs
+node demo-data/seed.mjs
+PHOTOS_DIR=~/Downloads/archive/evaluation node demo-data/photos.mjs
+```
+
+and put the real mail back with the plain command (`docker compose -f compose.prod.yaml -f compose.demo.yaml --env-file .env.prod up -d backend`).
+Without `DEMO_REDIS_CONTAINER` (the server's Redis is not on your computer) the seed waits out the registration limit of five
+accounts per hour; set it only when running on the server itself.
 
 ## Start over
 

@@ -471,7 +471,7 @@ async function seedOrders(shops, customers, admin) {
   const balance = await call('GET', `/api/admin/settlement/vendors/${shops[0].id}`, { token: admin })
   const owed = balance.payable
   if (owed > 0) {
-    await call('POST', `/api/admin/settlement/vendors/${shops[0].id}/entries`, { token: admin, body: {
+    await call('POST', `/api/admin/settlement/vendors/${shops[0].id}/entries`, { token: admin, headers: { 'Idempotency-Key': randomUUID() }, body: {
       type: 'PAYOUT', amount: Math.floor(owed / 2), reference: 'CK-DEMO-0001', note: 'Chi trả tuần (dữ liệu demo).',
     } })
   }
