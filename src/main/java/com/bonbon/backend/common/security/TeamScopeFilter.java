@@ -14,7 +14,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * A main account or member works a shop on the owner's behalf: its token names the owner as subject so the shop is found, which must
- * not open the owner's personal endpoints (profile, password, addresses, data export, account deletion, notifications). Team sessions
+ * not open the owner's personal endpoints (profile, password, addresses, data export, notifications). Team sessions
  * may only call the seller side, the team console and the public reference data; everything else is 403.
  */
 public class TeamScopeFilter extends OncePerRequestFilter {
