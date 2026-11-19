@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Demo data for bonbon: a small neighbourhood with shops, menus, customers and orders in every status.
+// Demo data for bonbon: a neighbourhood of 20 shops (every leaf category), 16 customers, and orders in every status plus the
+// history of a busy fortnight (neighbourhood.mjs holds the bigger part of the data).
 // It drives the public API (the same rules, events and ledger postings as real use), so it works against
 // any running stack that also runs Mailpit (to read the verification emails). Safe to run again: every step
 // checks what already exists. All people, shops and contacts are invented (emails on example.com).
@@ -8,11 +9,12 @@
 //   ADMIN_EMAIL=... ADMIN_PASSWORD=... node demo-data/seed.mjs [--always-open]
 // Env: BONBON_API (default http://localhost:8080), BONBON_MAILPIT (default http://localhost:8025),
 //      DEMO_PASSWORD (default bonbon-demo-2027), DEMO_AREA (place query, default "Vinhomes Smart City Tây Mỗ"),
-//      DEMO_REDIS_CONTAINER (e.g. bonbon-dev-redis-1): the seed registers 10 accounts, more than the 5 per IP per hour
+//      DEMO_REDIS_CONTAINER (e.g. bonbon-dev-redis-1): the seed registers 36 accounts, more than the 5 per IP per hour
 //      the API allows; with this set it clears that counter in the stack's own Redis instead of waiting an hour.
 
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
+import { busyReplies, busyReviews, moreCustomers, moreShops } from './neighbourhood.mjs'
 
 const API = (process.env.BONBON_API ?? 'http://localhost:8080').replace(/\/+$/, '')
 const MAILPIT = (process.env.BONBON_MAILPIT ?? 'http://localhost:8025').replace(/\/+$/, '')
@@ -31,7 +33,7 @@ const PNG = Buffer.from(
 
 // ---------------------------------------------------------------- data (invented)
 
-const SHOPS = [
+const BASE_SHOPS = [
   {
     seller: { email: 'demo.seller1@example.com', name: 'Trần Thị Sen' },
     name: 'Cơm nhà Bếp Sen', place: `Toà S1.01 ${AREA}`, detail: 'Kiot 02, sảnh toà S1.01', phone: '0900000101',
@@ -131,6 +133,7 @@ const SHOPS = [
     ],
   },
 ]
+const SHOPS = [...BASE_SHOPS, ...moreShops(AREA)]
 
 const OPTION_GROUPS = {
   size: { name: 'Khẩu phần', min: 1, max: 1, options: [['Suất thường', 0, true], ['Suất lớn', 10000]] },
@@ -138,12 +141,13 @@ const OPTION_GROUPS = {
   sugar: { name: 'Mức đường', min: 1, max: 1, options: [['Bình thường', 0, true], ['Ít đường', 0], ['Không đường', 0]] },
 }
 
-const CUSTOMERS = [
+const BASE_CUSTOMERS = [
   { email: 'demo.khach1@example.com', name: 'Hoàng Minh Anh', phone: '0900000201', place: `Toà S1.02 ${AREA}`, detail: 'Căn 1208' },
   { email: 'demo.khach2@example.com', name: 'Bùi Quang Huy', phone: '0900000202', place: `Toà S2.01 ${AREA}`, detail: 'Căn 0715' },
   { email: 'demo.khach3@example.com', name: 'Đặng Thu Hà', phone: '0900000203', place: `Toà S3.01 ${AREA}`, detail: 'Căn 2103' },
   { email: 'demo.khach4@example.com', name: 'Ngô Đức Long', phone: '0900000204', place: `Toà S1.03 ${AREA}`, detail: 'Căn 0902' },
 ]
+const CUSTOMERS = [...BASE_CUSTOMERS, ...moreCustomers(AREA)]
 
 const REVIEWS = [
   [5, 'Cơm nóng, đóng hộp cẩn thận, giao nhanh.'],
@@ -297,6 +301,9 @@ function hoursOf(shop) {
   return [1, 2, 3, 4, 5, 6, 7].flatMap((weekday) => windows.map(([opensAt, closesAt]) => ({ weekday, opensAt, closesAt })))
 }
 
+/** An invented CCCD number in the valid shape: Hà Nội code 001, a woman born in 1995, then the end of the shop phone number. */
+const demoIdNumber = (phone) => `0011950${phone.slice(-5)}`
+
 async function ensureShop(shop, admin, categories) {
   const token = await account(shop.seller, 'SELLER')
   let current = await call('GET', '/api/merchant/shop', { token }).catch((e) => (e.status === 404 ? null : Promise.reject(e)))
@@ -308,7 +315,7 @@ async function ensureShop(shop, admin, categories) {
       { openingHours: hoursOf(shop), deliveryRadiusKm: shop.radiusKm, deliveryFee: shop.fee, freeDeliveryThreshold: shop.freeFrom },
       { businessType: 'INDIVIDUAL', businessAddress: `${shop.detail}, ${AREA}`, taxCode: '0100000000',
         invoiceEmails: [shop.seller.email], bankName: 'Vietcombank', accountNumber: '0000000000', accountHolderName: shop.seller.name },
-      { docType: 'CCCD', docNumber: '000000000000', fullName: shop.seller.name, accuracyConfirmed: true,
+      { docType: 'CCCD', docNumber: demoIdNumber(shop.phone), fullName: shop.seller.name, accuracyConfirmed: true,
         sellerTermsDocumentId: terms, privacyPolicyDocumentId: privacy },
     ]
     for (const [i, body] of steps.entries()) await call('PUT', `/api/merchant/shop/steps/${i + 1}`, { body, token })
@@ -471,6 +478,86 @@ async function seedOrders(shops, customers, admin) {
   log(`  + ${n} orders`)
 }
 
+/**
+ * The history of a busy fortnight across all 20 shops: about 70 orders from 16 customers (popular shops get more), most
+ * delivered and reviewed with varied ratings, some shop replies, a few cancelled or rejected, and a couple still in progress
+ * per shop so every seller dashboard has work. Runs once: only while none of the twelve newer customers has an order.
+ */
+async function seedBusyWave(shops, customers) {
+  // done once any of the busy-wave customers has an order (one of them may sit outside every shop's radius)
+  const counts = await Promise.all(customers.slice(BASE_CUSTOMERS.length).map((c) => call('GET', '/api/orders', { token: c.token }).then((r) => r.total)))
+  if (counts.some((t) => t > 0)) {
+    log('Busy wave already seeded; skipping.')
+    return
+  }
+  // a small fixed pseudo-random sequence, so every run of a fresh stack makes the same neighbourhood
+  let seed = 20261119
+  const rand = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648)
+  // popular shops (lower weight index) get more orders
+  const weights = shops.map((_, i) => 1 + ((i * 7) % 5))
+  const total = weights.reduce((a, b) => a + b, 0)
+  const pickShop = () => {
+    let r = rand() * total
+    for (const [i, w] of weights.entries()) if ((r -= w) < 0) return i
+    return shops.length - 1
+  }
+
+  let n = 0
+  let reviewed = 0
+  const failed = []
+  for (let i = 0; i < 70; i++) {
+    const ci = i < 16 ? i : Math.floor(rand() * customers.length)
+    const si = pickShop()
+    const fate = rand()
+    try {
+      const o = await placeOrder(customers[ci], shops[si], Math.floor(rand() * 7))
+      n++
+      if (fate < 0.05) {
+        await call('POST', `/api/orders/${o.id}/cancel`, { token: customers[ci].token, body: { reason: 'Đổi ý, đặt món khác.' } })
+      } else if (fate < 0.09) {
+        await call('POST', `/api/merchant/orders/${o.id}/reject`, { token: shops[si].token, body: { reason: 'Quán tạm hết món này.' } })
+      } else {
+        await advance(o, shops[si], 'DELIVERED')
+        if (fate < 0.8) {
+          const [rating, comment] = busyReviews[reviewed++ % busyReviews.length]
+          await call('POST', `/api/orders/${o.id}/review`, { token: customers[ci].token, body: { rating, comment: comment || undefined } })
+        }
+      }
+    } catch (e) {
+      // a shop closed at this hour, a dish sold out: note it and go on with the rest
+      failed.push(`${shops[si].name}: ${e.message.slice(0, 90)}`)
+    }
+  }
+
+  // shops answer some reviews, the low ones first
+  for (const [i, shop] of shops.entries()) {
+    if (i % 2) continue
+    const reviews = await call('GET', '/api/merchant/reviews?unreplied=true', { token: shop.token })
+    const target = (reviews.items ?? []).sort((a, b) => (a.rating ?? 5) - (b.rating ?? 5))[0]
+    if (target) await call('POST', `/api/merchant/reviews/${target.id}/response`, { token: shop.token, body: { text: busyReplies[i % busyReplies.length] } }).catch(() => {})
+  }
+
+  // work in progress on the new shops: something new to accept and something cooking
+  for (const [k, si] of [6, 7, 10, 13, 18].entries()) {
+    try {
+      await placeOrder(customers[4 + k], shops[si], k)
+      const cooking = await placeOrder(customers[10 + k], shops[si], k + 1)
+      await advance(cooking, shops[si], k % 2 ? 'PREPARING' : 'CONFIRMED')
+      n += 2
+    } catch (e) {
+      failed.push(`${shops[si].name}: ${e.message.slice(0, 90)}`)
+    }
+  }
+
+  // favourites, so "Quán yêu thích" is not empty
+  for (const [ci, list] of [[0, [6, 10, 18]], [1, [7, 14]], [4, [0, 11, 12]], [5, [8, 15]]]) {
+    for (const si of list) await call('PUT', `/api/account/favorite-shops/${shops[si].id}`, { token: customers[ci].token }).catch(() => {})
+  }
+
+  log(`  + ${n} orders in the busy wave, ${reviewed} reviews`)
+  if (failed.length) log(`  ! ${failed.length} skipped (run with --always-open if shops were closed):\n    ${failed.slice(0, 5).join('\n    ')}`)
+}
+
 // ---------------------------------------------------------------- main
 
 async function main() {
@@ -486,7 +573,10 @@ async function main() {
   const customers = []
   for (const c of CUSTOMERS) customers.push(await ensureCustomer(c))
   log('Orders')
-  await seedOrders(shops, customers, admin)
+  // the first scenarios use the original six shops and four customers, as before
+  await seedOrders(shops.slice(0, BASE_SHOPS.length), customers.slice(0, BASE_CUSTOMERS.length), admin)
+  log('Busy wave')
+  await seedBusyWave(shops, customers)
   log(`Done. Sign in with any demo.*@example.com account and the password "${PASSWORD}".`)
 }
 
